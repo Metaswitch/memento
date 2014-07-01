@@ -17,6 +17,9 @@ TARGET_SOURCES := localstore.cpp \
                   signalhandler.cpp \
                   logger.cpp \
                   saslogger.cpp \
+                  statistic.cpp \
+                  utils.cpp \
+                  zmq_lvc.cpp \
                   load_monitor.cpp \
                   log.cpp \
                   handlers.cpp \
