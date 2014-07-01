@@ -1,0 +1,331 @@
+/**
+ * @file main.cpp main function for memento
+ *
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2014  Metaswitch Networks Ltd
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version, along with the "Special Exception" for use of
+ * the program along with SSL, set forth below. This program is distributed
+ * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details. You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * The author can be reached by email at clearwater@metaswitch.com or by
+ * post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+ *
+ * Special Exception
+ * Metaswitch Networks Ltd  grants you permission to copy, modify,
+ * propagate, and distribute a work formed by combining OpenSSL with The
+ * Software, or a work derivative of such a combination, even if such
+ * copying, modification, propagation, or distribution would otherwise
+ * violate the terms of the GPL. You must comply with the GPL in all
+ * respects for all of the code used other than OpenSSL.
+ * "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+ * Project and licensed under the OpenSSL Licenses, or a work based on such
+ * software and licensed under the OpenSSL Licenses.
+ * "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+ * under which the OpenSSL Project distributes the OpenSSL toolkit software,
+ * as those licenses appear in the file LICENSE-OPENSSL.
+ */
+
+#include <getopt.h>
+#include <signal.h>
+#include <semaphore.h>
+#include <strings.h>
+
+#include "memcachedstore.h"
+#include "httpstack.h"
+#include "homesteadconnection.h"
+#include "log.h"
+#include "logger.h"
+#include "saslogger.h"
+#include "handlers.h"
+#include "sas.h"
+#include "load_monitor.h"
+#include "authstore.h"
+
+struct options
+{
+  std::string local_host;
+  std::string http_address;
+  unsigned short http_port;
+  int http_threads;
+  std::string homestead_http_name;
+  std::string sas_server;
+  std::string sas_system_name;
+  bool access_log_enabled;
+  std::string access_log_directory;
+  bool log_to_file;
+  std::string log_directory;
+  int log_level;
+};
+
+// Enum for option types not assigned short-forms
+enum OptionTypes
+{
+  LOCAL_HOST = 128, // start after the ASCII set ends to avoid conflicts
+  HTTP_ADDRESS,
+  HTTP_THREADS,
+  HOMESTEAD_HTTP_NAME,
+  SAS_CONFIG,
+  ACCESS_LOG,
+  LOG_FILE,
+  LOG_LEVEL, 
+  HELP
+};
+
+void usage(void)
+{
+  puts("Options:\n"
+       "\n"
+       " --localhost <hostname>     Specify the local hostname or IP address\n"
+       " --http <address>[:<port>]\n"
+       "              Set HTTP bind address and port (default: 0.0.0.0:11888)\n"
+       " --http-threads N           Number of HTTP threads (default: 1)\n"
+       " --http-sprout-name <name>\n"
+       "                            Set HTTP address to contact Homestead\n"
+       " --sas <host>,<system name>\n"
+       "    Use specified host as Service Assurance Server and specified\n"
+       "    system name to identify this system to SAS. If this option isn't\n"
+       "    specified, SAS is disabled\n"
+       " --access-log <directory>\n"
+       "                            Generate access logs in specified directory\n"
+       " --log-file <directory>\n"
+       "                            Log to file in specified directory\n"
+       " --log-level N              Set log level to N (default: 4)\n"
+       " --help                     Show this help screen\n");
+}
+
+int init_options(int argc, char**argv, struct options& options)
+{
+  struct option long_opt[] =
+  {
+    {"localhost",           required_argument, NULL, LOCAL_HOST},
+    {"http",                required_argument, NULL, HTTP_ADDRESS},
+    {"http-threads",        required_argument, NULL, HTTP_THREADS},
+    {"homestead-http-name", required_argument, NULL, HOMESTEAD_HTTP_NAME},
+    {"sas",                 required_argument, NULL, SAS_CONFIG},
+    {"access-log",          required_argument, NULL, ACCESS_LOG},
+    {"log-file",            required_argument, NULL, LOG_FILE},
+    {"log-level",           required_argument, NULL, LOG_LEVEL},
+    {"help",                no_argument,       NULL, HELP},
+    {NULL,                  0,                 NULL, 0},
+  };
+
+  int opt;
+  int long_opt_ind;
+  while ((opt = getopt_long(argc, argv, "", long_opt, &long_opt_ind)) != -1)
+  {
+    switch (opt)
+    {
+    case LOCAL_HOST:
+      options.local_host = std::string(optarg);
+      break;
+
+    case HTTP_ADDRESS:
+      options.http_address = std::string(optarg);
+      break;
+
+    case HTTP_THREADS:
+      options.http_threads = atoi(optarg);
+      break;
+
+    case HOMESTEAD_HTTP_NAME:
+      options.homestead_http_name = std::string(optarg);
+      break;
+
+    case SAS_CONFIG:
+    {
+      std::vector<std::string> sas_options;
+      Utils::split_string(std::string(optarg), ',', sas_options, 0, false);
+      if ((sas_options.size() == 2) &&
+          !sas_options[0].empty() &&
+          !sas_options[1].empty())
+      {
+        options.sas_server = sas_options[0];
+        options.sas_system_name = sas_options[1];
+        printf("SAS set to %s\n", options.sas_server.c_str());
+        printf("System name is set to %s\n", options.sas_system_name.c_str());
+      }
+      else
+      {
+        printf("Invalid --sas option, SAS disabled\n");
+      }
+    }
+    break;
+
+    case ACCESS_LOG:
+      options.access_log_enabled = true;
+      options.access_log_directory = std::string(optarg);
+      break;
+
+    case LOG_FILE:
+      options.log_to_file = true;
+      options.log_directory = std::string(optarg);
+      break;
+
+    case LOG_LEVEL:
+      options.log_level = atoi(optarg);
+      break;
+
+    case HELP:
+      usage();
+      return -1;
+
+    default:
+      printf("Unknown option: %d.  Run with --help for options.\n", opt);
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+static sem_t term_sem;
+
+// Signal handler that triggers memento termination.
+void terminate_handler(int sig)
+{
+  sem_post(&term_sem);
+}
+
+// Signal handler that simply dumps the stack and then crashes out.
+void exception_handler(int sig)
+{
+  // Reset the signal handlers so that another exception will cause a crash.
+  signal(SIGABRT, SIG_DFL);
+  signal(SIGSEGV, SIG_DFL);
+
+  // Log the signal, along with a backtrace.
+  LOG_BACKTRACE("Signal %d caught", sig);
+
+  // Ensure the log files are complete - the core file created by abort() below
+  // will trigger the log files to be copied to the diags bundle
+  LOG_COMMIT();
+
+  // Dump a core.
+  abort();
+}
+
+int main(int argc, char**argv)
+{
+  // Set up our exception signal handler for asserts and segfaults.
+  signal(SIGABRT, exception_handler);
+  signal(SIGSEGV, exception_handler);
+
+  sem_init(&term_sem, 0, 0);
+  signal(SIGTERM, terminate_handler);
+
+  struct options options;
+  options.local_host = "127.0.0.1";
+  options.http_address = "0.0.0.0";
+  options.http_port = 11888;
+  options.http_threads = 1;
+  options.homestead_http_name = "homestead-http-name.unknown";
+  options.sas_server = "0.0.0.0";
+  options.sas_system_name = "";
+  options.access_log_enabled = false;
+  options.log_to_file = false;
+  options.log_level = 0;
+
+  if (init_options(argc, argv, options) != 0)
+  {
+    return 1;
+  }
+
+  Log::setLoggingLevel(options.log_level);
+
+  if ((options.log_to_file) && (options.log_directory != ""))
+  {
+    // Work out the program name from argv[0], stripping anything before the final slash.
+    char* prog_name = argv[0];
+    char* slash_ptr = rindex(argv[0], '/');
+
+    if (slash_ptr != NULL)
+    {
+      prog_name = slash_ptr + 1;
+    }
+
+    Log::setLogger(new Logger(options.log_directory, prog_name));
+  }
+
+  AccessLogger* access_logger = NULL;
+
+  if (options.access_log_enabled)
+  {
+    LOG_STATUS("Access logging enabled to %s", options.access_log_directory.c_str());
+    access_logger = new AccessLogger(options.access_log_directory);
+  }
+
+  LOG_STATUS("Log level set to %d", options.log_level);
+
+  SAS::init(options.sas_system_name,
+            "memento",
+            SASEvent::CURRENT_RESOURCE_BUNDLE,
+            options.sas_server,
+            sas_write);
+
+  MemcachedStore* m_store = new MemcachedStore(false, "./cluster_settings");
+  AuthStore* auth_store = new AuthStore(m_store);
+
+  LoadMonitor* load_monitor = new LoadMonitor(100000, // Initial target latency (us)
+                                              20, // Maximum token bucket size.
+                                              10.0, // Initial token fill rate (per sec).
+                                              10.0); // Minimum token fill rate (pre sec).
+
+  HttpConnection* http = new HttpConnection(options.homestead_http_name,
+                                            false,
+                                            SASEvent::HttpLogLevel::PROTOCOL);
+  HomesteadConnection* homestead_conn = new HomesteadConnection(http);
+
+  HttpStack* http_stack = HttpStack::get_instance();
+  HttpStack::HandlerFactory<PingHandler> ping_handler_factory;
+
+  try
+  {
+    http_stack->initialize();
+    http_stack->configure(options.http_address,
+                          options.http_port,
+                          options.http_threads,
+                          access_logger,
+                          load_monitor);
+    http_stack->register_handler("^/ping$",
+                                 &ping_handler_factory);
+    http_stack->start();
+  }
+  catch (HttpStack::Exception& e)
+  {
+    LOG_ERROR("Failed to initialize HttpStack stack - function %s, rc %d", e._func, e._rc);
+    exit(2);
+  }
+
+  LOG_STATUS("Start-up complete - wait for termination signal");
+  sem_wait(&term_sem);
+  LOG_STATUS("Termination signal received - terminating");
+
+  try
+  {
+    http_stack->stop();
+    http_stack->wait_stopped();
+  }
+  catch (HttpStack::Exception& e)
+  {
+    LOG_ERROR("Failed to stop HttpStack stack - function %s, rc %d", e._func, e._rc);
+  }
+
+  delete homestead_conn; homestead_conn = NULL;
+  delete load_monitor; load_monitor = NULL;
+  delete auth_store; auth_store = NULL;
+  delete m_store; m_store = NULL;
+
+  SAS::term();
+
+  signal(SIGTERM, SIG_DFL);
+  sem_destroy(&term_sem);
+}

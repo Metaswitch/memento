@@ -1,0 +1,9 @@
+*.debhelper
+*.debhelper.log
+*.substvars
+/changelog
+/files
+/memento-dbg/
+/memento-libs/
+/memento-libs-dbg/
+/memento/

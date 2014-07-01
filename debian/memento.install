@@ -1,0 +1,2 @@
+build/bin/memento usr/share/clearwater/bin
+memento.root/* /

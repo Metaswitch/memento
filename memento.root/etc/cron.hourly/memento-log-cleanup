@@ -1,0 +1,5 @@
+#!/bin/bash
+ONE_GIG=1073741824
+python2.7 /usr/share/clearwater/bin/log_cleanup.py /var/log/memento --prefix memento_ --maxsize $ONE_GIG
+python2.7 /usr/share/clearwater/bin/log_cleanup.py /var/log/memento --prefix log_ --maxsize $ONE_GIG
+python2.7 /usr/share/clearwater/bin/log_cleanup.py /var/log/memento --prefix access_ --maxsize $ONE_GIG
