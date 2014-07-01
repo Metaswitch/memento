@@ -42,7 +42,7 @@
 namespace SASEvent
 {
   //----------------------------------------------------------------------------
-  // Sprout events.
+  // Memento events.
   //----------------------------------------------------------------------------
   const int DUMMY_EVENT = MEMENTO_BASE + 0x000000;
 } //namespace SASEvent

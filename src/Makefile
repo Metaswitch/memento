@@ -18,9 +18,6 @@ TARGET_SOURCES := localstore.cpp \
                   logger.cpp \
                   saslogger.cpp \
                   load_monitor.cpp \
-                  statistic.cpp \
-                  utils.cpp \
-                  zmq_lvc.cpp \
                   log.cpp \
                   handlers.cpp \
                   httpstack.cpp \
@@ -63,9 +60,7 @@ CPPFLAGS += -I${ROOT}/include \
             -I${ROOT}/usr/include \
             -I${ROOT}/modules/cpp-common/include \
             -I${ROOT}/modules/cpp-common/test_utils \
-            -I${ROOT}/modules/sas-client/include \
-            -I${ROOT}/modules/jsoncpp/include \
-            -I${ROOT}/modules/rapidjson/include
+            -I${ROOT}/modules/sas-client/include 
 
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils
