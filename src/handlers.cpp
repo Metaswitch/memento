@@ -75,7 +75,7 @@ void CallListHandler::run()
   }
   else if (rc != HTTP_OK)
   {
-    LOG_DEBUG("Authorization data invalid, responding with %d", rc);
+    LOG_DEBUG("Authorization failed, responding with %d", rc);
     send_http_reply(rc);
     delete this;
     return;
