@@ -85,7 +85,7 @@ get_settings()
   num_http_threads=$(($(grep processor /proc/cpuinfo | wc -l) * 50))
   . /etc/clearwater/config
 
-  homestead_http_name=$(python /usr/share/clearwater/bin/bracket_ipv6_address.py $hs_hostname):11888
+  homestead_http_name=$(python /usr/share/clearwater/bin/bracket_ipv6_address.py $hs_hostname)
 
   # Set up a default cluster_settings file if it does not exist.
   [ -f /etc/clearwater/cluster_settings ] || echo "servers=$local_ip:11211" > /etc/clearwater/cluster_settings
@@ -127,6 +127,7 @@ do_start()
         DAEMON_ARGS="--localhost $local_ip
                      --http-threads $num_http_threads
                      --homestead-http-name $homestead_http_name
+                     --home-domain $home_domain
                      --access-log $log_directory
                      --log-file $log_directory
                      --log-level $log_level

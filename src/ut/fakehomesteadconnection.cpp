@@ -1,8 +1,8 @@
 /**
- * @file mockhttpconnection.h Mock HTTP connection.
+ * @file fakehomesteadconnection.cpp 
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2014  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,21 +34,68 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCKHTTPCONNECTION_H__
-#define MOCKHTTPCONNECTION_H__
+#include <cstdio>
+#include "fakehomesteadconnection.hpp"
+#include "gtest/gtest.h"
 
-#include "gmock/gmock.h"
-#include "httpconnection.h"
-
-class MockHttpConnection : public HttpConnection
+FakeHomesteadConnection::FakeHomesteadConnection() : HomesteadConnection("localhost")
 {
-public:
-  MockHttpConnection() :
-    HttpConnection("", false, SASEvent::HttpLogLevel::PROTOCOL)
-  {};
-  virtual ~MockHttpConnection() {};
+}
 
-  MOCK_METHOD4(send_delete, long(const std::string& path, SAS::TrailId trail, const std::string& body, std::string& response));
-};
 
-#endif
+FakeHomesteadConnection::~FakeHomesteadConnection()
+{
+  flush_all();
+}
+
+
+void FakeHomesteadConnection::flush_all()
+{
+  _results.clear();
+  _rcs.clear();
+}
+
+void FakeHomesteadConnection::set_result(const std::string& url,
+                                         const std::string& result)
+{
+  _results[UrlBody(url, "")] = result;
+}
+
+void FakeHomesteadConnection::delete_result(const std::string& url)
+{
+  _results.erase(UrlBody(url, ""));
+}
+
+void FakeHomesteadConnection::set_rc(const std::string& url,
+                                     long rc)
+{
+  _rcs[url] = rc;
+}
+
+
+void FakeHomesteadConnection::delete_rc(const std::string& url)
+{
+  _rcs.erase(url);
+}
+
+long FakeHomesteadConnection::parse_digest(const std::string& path,
+                                           std::string& object,
+                                           SAS::TrailId trail)
+{
+  HTTPCode http_code = HTTP_NOT_FOUND;
+  std::map<UrlBody, std::string>::const_iterator i = _results.find(UrlBody(path, ""));
+
+  if (i != _results.end())
+  {
+    object = i->second;
+    http_code = HTTP_OK;
+  }
+
+  std::map<std::string, long>::const_iterator i2 = _rcs.find(path);
+  if (i2 != _rcs.end())
+  {
+    http_code = i2->second;
+  }
+
+  return http_code;
+}

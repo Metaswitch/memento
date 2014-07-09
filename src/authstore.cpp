@@ -34,14 +34,136 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
+#include <iostream>
+#include <sstream>
+#include <fstream>
+
 #include "store.h"
 #include "authstore.h"
+#include "log.h"
+#include "sas.h"
+#include "mementosasevent.h"
 
-AuthStore::AuthStore(Store* data_store) :
-  _data_store(data_store)
+AuthStore::AuthStore(Store* data_store, int expiry) :
+  _data_store(data_store),
+  _expiry(expiry)
 {
 }
 
 AuthStore::~AuthStore()
 {
+}
+
+bool AuthStore::set_digest(const std::string& impi,
+                           const std::string& nonce,
+                           const AuthStore::Digest* digest,
+                           SAS::TrailId trail)
+{
+  std::string key = impi + '\\' + nonce;
+  std::string data = serialize_digest(digest);
+
+  LOG_DEBUG("Set digest for %s\n%s", key.c_str(), data.c_str());
+
+  Store::Status status = _data_store->set_data("AuthStore", key, data, 0, _expiry, trail);
+  std::string operation = "SET";
+
+  if (status != Store::Status::OK)
+  {
+    // LCOV_EXCL_START - Store used in UTs doesn't fail
+    LOG_ERROR("Failed to write digest for key %s", key.c_str());
+
+    SAS::Event event(trail, SASEvent::AUTHSTORE_FAILURE, 0);
+    event.add_var_param(operation);
+    event.add_var_param(key);
+    SAS::report_event(event);
+
+    return false;
+    // LCOV_EXCL_STOP
+  }
+
+  SAS::Event event(trail, SASEvent::AUTHSTORE_SUCCESS, 0);
+  event.add_var_param(operation);
+  event.add_var_param(key);
+  SAS::report_event(event);
+
+  return true;
+}
+
+
+bool AuthStore::get_digest(const std::string& impi,
+                           const std::string& nonce,
+                           AuthStore::Digest*& digest,
+                           SAS::TrailId trail)
+{
+  std::string key = impi + '\\' + nonce;
+  std::string data;
+  uint64_t cas;
+  Store::Status status = _data_store->get_data("AuthStore", key, data, cas, trail);
+  std::string operation = "GET";
+
+  LOG_DEBUG("Get digest for %s", key.c_str());
+
+  if (status != Store::Status::OK)
+  {
+    LOG_DEBUG("Failed to retrieve digest for %s", key.c_str());
+    SAS::Event event(trail, SASEvent::AUTHSTORE_FAILURE, 0);
+    event.add_var_param(operation);
+    event.add_var_param(key);
+    SAS::report_event(event);
+
+    digest = NULL;
+    return false;
+  }
+
+  LOG_DEBUG("Retrieved Digest for %s\n%s", key.c_str(), data.c_str());
+ 
+  SAS::Event event(trail, SASEvent::AUTHSTORE_SUCCESS, 0);
+  event.add_var_param(operation);
+  event.add_var_param(key);
+  SAS::report_event(event);
+
+  digest = deserialize_digest(data);
+  return true;
+}
+
+AuthStore::Digest::Digest() : 
+  _ha1(""),
+  _opaque(""),
+  _nonce(""),
+  _impi(""),
+  _realm(""),
+  _nonce_count(1)
+{
+}
+
+AuthStore::Digest::~Digest()
+{
+}
+
+AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
+{
+  std::istringstream iss(digest_s, std::istringstream::in|std::istringstream::binary);
+  Digest* digest = new Digest();
+
+  getline(iss, digest->_ha1, '\0');
+  getline(iss, digest->_opaque, '\0');
+  getline(iss, digest->_nonce, '\0');
+  getline(iss, digest->_impi, '\0');
+  getline(iss, digest->_realm, '\0');
+  iss.read((char *)&digest->_nonce_count, sizeof(int));
+
+  return digest;
+}
+
+std::string AuthStore::serialize_digest(const AuthStore::Digest* digest_d)
+{
+  std::ostringstream oss(std::ostringstream::out|std::ostringstream::binary);
+  oss << digest_d->_ha1 << '\0'; 
+  oss << digest_d->_opaque << '\0';
+  oss << digest_d->_nonce << '\0';
+  oss << digest_d->_impi << '\0';
+  oss << digest_d->_realm << '\0';
+  oss.write((const char *)&digest_d->_nonce_count, sizeof(int));
+
+  return oss.str();
 }

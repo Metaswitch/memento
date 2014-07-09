@@ -39,23 +39,38 @@
 
 #include "store.h"
 
-/// Class implementing store of authentication vectors.  This is a wrapper
-/// around an underlying Store class which implements a simple KV store API
-/// with atomic write and record expiry semantics.  The underlying store
-/// can be any implementation that implements the Store API.
 class AuthStore
 {
 public:
+  class Digest
+  {
+  public:
+    std::string _ha1;
+    std::string _opaque;
+    std::string _nonce;
+    std::string _impi;
+    std::string _realm;
+    int _nonce_count;
+  
+    Digest();
+    ~Digest();
+  };
+
   /// Constructor.
-  /// @param data_store    A pointer to the underlying data store.
-  AuthStore(Store* data_store);
+  AuthStore(Store* data_store,
+            int expiry);
 
   /// Destructor.
   ~AuthStore();
 
+  bool set_digest(const std::string&, const std::string&, const Digest*, SAS::TrailId);
+  bool get_digest(const std::string&, const std::string&, Digest*&, SAS::TrailId);
+  std::string serialize_digest(const Digest* digest);
+  Digest* deserialize_digest(const std::string& digest_s);
+
 private:
-  /// A pointer to the underlying data store.
   Store* _data_store;
+  int _expiry;
 };
 
 #endif

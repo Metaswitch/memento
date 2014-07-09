@@ -27,14 +27,20 @@ TARGET_SOURCES := localstore.cpp \
                   accesslogger.cpp \
                   authstore.cpp \
                   httpconnection.cpp \
-                  homesteadconnection.cpp
+                  homesteadconnection.cpp \
+                  httpdigestauthenticate.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
 TARGET_SOURCES_TEST := test_main.cpp \
                        test_interposer.cpp \
                        handlers_test.cpp \
-                       fakelogger.cpp 
+                       authstore_test.cpp \
+                       homesteadconnection_test.cpp \
+                       httpdigestauthenticate_test.cpp \
+                       fakelogger.cpp \
+                       fakecurl.cpp \
+                       fakehomesteadconnection.cpp 
 
 TARGET_EXTRA_OBJS_TEST := gmock-all.o \
                           gtest-all.o
@@ -63,7 +69,8 @@ CPPFLAGS += -I${ROOT}/include \
             -I${ROOT}/usr/include \
             -I${ROOT}/modules/cpp-common/include \
             -I${ROOT}/modules/cpp-common/test_utils \
-            -I${ROOT}/modules/sas-client/include 
+            -I${ROOT}/modules/sas-client/include \
+            -I${ROOT}/modules/rapidjson/include
 
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils
@@ -88,6 +95,9 @@ CPPFLAGS_TEST  += -DUNIT_TEST \
 
 LDFLAGS += -L${ROOT}/usr/lib
 LDFLAGS += -lzmq \
+           -lssl \
+           -ldl \
+           -lcrypto \
            -levhtp \
            -levent_pthreads \
            -lmemcached \

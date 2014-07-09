@@ -57,6 +57,8 @@ struct options
   unsigned short http_port;
   int http_threads;
   std::string homestead_http_name;
+  int digest_timeout;
+  std::string home_domain;
   std::string sas_server;
   std::string sas_system_name;
   bool access_log_enabled;
@@ -73,6 +75,8 @@ enum OptionTypes
   HTTP_ADDRESS,
   HTTP_THREADS,
   HOMESTEAD_HTTP_NAME,
+  DIGEST_TIMEOUT,
+  HOME_DOMAIN,
   SAS_CONFIG,
   ACCESS_LOG,
   LOG_FILE,
@@ -88,8 +92,10 @@ void usage(void)
        " --http <address>[:<port>]\n"
        "              Set HTTP bind address and port (default: 0.0.0.0:11888)\n"
        " --http-threads N           Number of HTTP threads (default: 1)\n"
-       " --http-sprout-name <name>\n"
+       " --homestead-http-name <name>\n"
        "                            Set HTTP address to contact Homestead\n"
+       " --digest-timeout N         Time a digest is stored in memcached (in seconds)\n"
+       " --home-domain              The home domain of the deployment\n"
        " --sas <host>,<system name>\n"
        "    Use specified host as Service Assurance Server and specified\n"
        "    system name to identify this system to SAS. If this option isn't\n"
@@ -110,6 +116,8 @@ int init_options(int argc, char**argv, struct options& options)
     {"http",                required_argument, NULL, HTTP_ADDRESS},
     {"http-threads",        required_argument, NULL, HTTP_THREADS},
     {"homestead-http-name", required_argument, NULL, HOMESTEAD_HTTP_NAME},
+    {"digest-timeout",      required_argument, NULL, DIGEST_TIMEOUT},
+    {"home-domain",         required_argument, NULL, HOME_DOMAIN},
     {"sas",                 required_argument, NULL, SAS_CONFIG},
     {"access-log",          required_argument, NULL, ACCESS_LOG},
     {"log-file",            required_argument, NULL, LOG_FILE},
@@ -138,6 +146,14 @@ int init_options(int argc, char**argv, struct options& options)
 
     case HOMESTEAD_HTTP_NAME:
       options.homestead_http_name = std::string(optarg);
+      break;
+
+    case DIGEST_TIMEOUT:
+      options.digest_timeout = atoi(optarg);
+      break;
+
+    case HOME_DOMAIN:
+      options.home_domain = std::string(optarg);
       break;
 
     case SAS_CONFIG:
@@ -228,6 +244,8 @@ int main(int argc, char**argv)
   options.http_port = 11888;
   options.http_threads = 1;
   options.homestead_http_name = "homestead-http-name.unknown";
+  options.digest_timeout = 300;
+  options.home_domain = "home.domain";
   options.sas_server = "0.0.0.0";
   options.sas_system_name = "";
   options.access_log_enabled = false;
@@ -272,20 +290,21 @@ int main(int argc, char**argv)
             sas_write);
 
   MemcachedStore* m_store = new MemcachedStore(false, "./cluster_settings");
-  AuthStore* auth_store = new AuthStore(m_store);
+  AuthStore* auth_store = new AuthStore(m_store, options.digest_timeout);
 
   LoadMonitor* load_monitor = new LoadMonitor(100000, // Initial target latency (us)
                                               20, // Maximum token bucket size.
                                               10.0, // Initial token fill rate (per sec).
                                               10.0); // Minimum token fill rate (pre sec).
 
-  HttpConnection* http = new HttpConnection(options.homestead_http_name,
-                                            false,
-                                            SASEvent::HttpLogLevel::PROTOCOL);
-  HomesteadConnection* homestead_conn = new HomesteadConnection(http);
+  HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name);
 
   HttpStack* http_stack = HttpStack::get_instance();
+
+  CallListHandler::Config call_list_config(auth_store, homestead_conn, options.home_domain);
+
   HttpStack::HandlerFactory<PingHandler> ping_handler_factory;
+  HttpStack::ConfiguredHandlerFactory<CallListHandler, CallListHandler::Config> call_list_handler_factory(&call_list_config);
 
   try
   {
@@ -297,6 +316,8 @@ int main(int argc, char**argv)
                           load_monitor);
     http_stack->register_handler("^/ping$",
                                  &ping_handler_factory);
+    http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
+                                 &call_list_handler_factory);
     http_stack->start();
   }
   catch (HttpStack::Exception& e)

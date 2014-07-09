@@ -38,14 +38,23 @@
 #define HOMESTEADCONNECTION_H__
 
 #include "httpconnection.h"
+#include "sas.h"
 
 class HomesteadConnection
 {
 public:
-  HomesteadConnection(HttpConnection *http);
+  HomesteadConnection(const std::string& server);
   virtual ~HomesteadConnection();
 
+  HTTPCode get_digest_data(const std::string& private_user_identity,
+                           const std::string& public_user_identity,
+                           std::string& digest_data,
+                           SAS::TrailId trail);
 private:
+  virtual HTTPCode parse_digest(const std::string& path, 
+                                std::string& digest_data, 
+                                SAS::TrailId trail);
+
   HttpConnection* _http;
 };
 #endif

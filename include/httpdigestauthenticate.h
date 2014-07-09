@@ -1,5 +1,5 @@
 /**
- * @file handlers.h 
+ * @file httpdigestauthenticate.h  Definition of class for storing Authentication Vectors
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -34,66 +34,67 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef HANDLERS_H__
-#define HANDLERS_H__
+#ifndef HTTPDIGESTAUTHENTICATE_H_
+#define HTTPDIGESTAUTHENTICATE_H_
 
-#include "httpstack.h"
 #include "sas.h"
-#include "authstore.h"
+#include "httpconnection.h"
 #include "homesteadconnection.h"
-#include "httpdigestauthenticate.h"
+#include "authstore.h"
 
-class PingHandler : public HttpStack::Handler
+class HTTPDigestAuthenticate
 {
 public:
-  PingHandler(HttpStack::Request& req, SAS::TrailId trail) :
-    HttpStack::Handler(req, trail)
-  {};
-  void run();
-};
-
-class CallListHandler : public HttpStack::Handler
-{
-public:
-  struct Config
+  struct Response
   {
-    Config(AuthStore* auth_store, 
-           HomesteadConnection* homestead_conn,
-           std::string home_domain) :
-      _auth_store(auth_store), 
-      _homestead_conn(homestead_conn),
-      _home_domain(home_domain)
+    Response(std::string username, std::string realm, std::string nonce,
+             std::string uri, std::string qop, std::string nc,
+             std::string cnonce, std::string response, std::string opaque) :
+      _username(username), _realm(realm), _nonce(nonce),
+      _uri(uri), _qop(qop), _nc(nc),
+      _cnonce(cnonce), _response(response), _opaque(opaque)
       {}
-    AuthStore* _auth_store;
-    HomesteadConnection* _homestead_conn;
-    std::string _home_domain;
+
+    std::string _username;
+    std::string _realm;
+    std::string _nonce;
+    std::string _uri;
+    std::string _qop;
+    std::string _nc;
+    std::string _cnonce;
+    std::string _response;
+    std::string _opaque;
   };
 
-  CallListHandler(HttpStack::Request& req,
-                  const Config* cfg,
-                  SAS::TrailId trail) :
-    HttpStack::Handler(req, trail), 
-    _cfg(cfg),
-    _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store, 
-                                         _cfg->_homestead_conn,
-                                         _cfg->_home_domain))
-  {};
+  HTTPDigestAuthenticate(AuthStore *auth_store, 
+                         HomesteadConnection *homestead_conn,
+                         std::string home_domain);
 
-  ~CallListHandler()
-  {
-    delete _auth_mod;
-    _auth_mod = NULL;
-  }
+  virtual ~HTTPDigestAuthenticate();
 
-  void run();
-  HTTPCode parse_request();
-  HTTPCode authenticate_request();
+  HTTPCode authenticate_request(const std::string impu, 
+                                std::string authorization_header, 
+                                std::string& www_auth_header, 
+                                SAS::TrailId trail);
+  HTTPCode check_auth_info(std::string authorization_header);
+  HTTPCode retrieve_digest();
+  HTTPCode request_store_digest(bool include_stale);
+  HTTPCode check_if_matches();
+  void generate_digest(std::string ha1);
+  std::string generate_www_auth_header(bool include_stale);
+  HTTPCode parse_authenticate(std::string auth_header);
 
-protected:
-  const Config* _cfg;
-  HTTPDigestAuthenticate* _auth_mod;
+  AuthStore* _auth_store;
+  HomesteadConnection* _homestead_conn;
+  std::string _home_domain;
 
   std::string _impu;
+  SAS::TrailId _trail;
+  std::string _impi;
+  bool _auth_info;
+  AuthStore::Digest* _digest;
+  Response* _response;
+  std::string _header;
 };
 
 #endif

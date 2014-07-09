@@ -1,5 +1,5 @@
 /**
- * @file handlers_test.cpp UT for Handlers module.
+ * @file fakehomesteadconnection.hpp .
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -33,58 +33,30 @@
  * under which the OpenSSL Project distributes the OpenSSL toolkit software,
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
-#include "test_utils.hpp"
-#include "test_interposer.hpp"
 
-#include "mockhttpstack.hpp"
-#include "handlers.h"
-#include "fakelogger.hpp"
+#pragma once
 
-using ::testing::Return;
-using ::testing::SetArgReferee;
-using ::testing::_;
-using ::testing::Invoke;
-using ::testing::WithArgs;
-using ::testing::NiceMock;
-using ::testing::StrictMock;
-using ::testing::Mock;
+#include <string>
+#include "sas.h"
+#include "homesteadconnection.h"
 
-// Fixture for HandlersTest.
-class HandlersTest : public testing::Test
+/// HomesteadConnection that writes to/reads from a local map rather than Homestead
+class FakeHomesteadConnection : public HomesteadConnection
 {
 public:
-  FakeLogger _log;
-  static MockHttpStack* _httpstack;
+  FakeHomesteadConnection();
+  ~FakeHomesteadConnection();
 
-  HandlersTest() {}
-  virtual ~HandlersTest()
-  {
-  }
+  void flush_all();
 
-  static void SetUpTestCase()
-  {
-    _httpstack = new MockHttpStack();
-    cwtest_completely_control_time();
-  }
+  void set_result(const std::string& url, const std::string& result);
+  void delete_result(const std::string& url);
+  void set_rc(const std::string& url, long rc);
+  void delete_rc(const std::string& url);
 
-  static void TearDownTestCase()
-  {
-    cwtest_reset_time();
-
-    delete _httpstack; _httpstack = NULL;
-  }
+private:
+  long parse_digest(const std::string& path, std::string& object, SAS::TrailId trail);
+  typedef std::pair<std::string, std::string> UrlBody;
+  std::map<UrlBody, std::string> _results;
+  std::map<std::string, long> _rcs;
 };
-
-MockHttpStack* HandlersTest::_httpstack = NULL;
-
-//
-// Ping test
-//
-TEST_F(HandlersTest, SimpleMainline)
-{
-  MockHttpStack::Request req(_httpstack, "/", "ping");
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  PingHandler* handler = new PingHandler(req, 0);
-  handler->run();
-  EXPECT_EQ("OK", req.content());
-}
