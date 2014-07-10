@@ -1,5 +1,5 @@
 /**
-* @file homesteadconnection_test.cpp 
+* @file homesteadconnection_test.cpp
 *
 * Project Clearwater - IMS in the Cloud
 * Copyright (C) 2014 Metaswitch Networks Ltd
@@ -54,7 +54,7 @@ class HomesteadConnectionTest : public ::testing::Test
     fakecurl_responses["http://narcissus/impi/privid3/digest?public_id=pubid3"] = "{\"digest_ha1\": DIGEST1\"}";
     fakecurl_responses["http://narcissus/impi/privid4/digest?public_id=pubid4"] = "{\"digest_ha\": \"DIGEST1\"}";
   }
-  
+
   virtual ~HomesteadConnectionTest()
   {
   }
@@ -70,7 +70,7 @@ TEST_F(HomesteadConnectionTest, Mainline)
 }
 
 // Timeout when retrieving the digest. The rc should be converted
-// to 504. 
+// to 504.
 TEST_F(HomesteadConnectionTest, DigestTimeout)
 {
   std::string digest;

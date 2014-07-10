@@ -1,5 +1,5 @@
 /**
- * @file httpdigestauthenticate.cpp 
+ * @file httpdigestauthenticate.cpp
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014 Metaswitch Networks Ltd
@@ -40,9 +40,9 @@
 #include <time.h>
 
 HTTPDigestAuthenticate::HTTPDigestAuthenticate(AuthStore* auth_store,
-                                               HomesteadConnection* homestead_conn, 
+                                               HomesteadConnection* homestead_conn,
                                                std::string home_domain) :
-  _auth_store(auth_store), 
+  _auth_store(auth_store),
   _homestead_conn(homestead_conn),
   _home_domain(home_domain),
   _impu(""),
@@ -50,10 +50,8 @@ HTTPDigestAuthenticate::HTTPDigestAuthenticate(AuthStore* auth_store,
   _impi(""),
   _auth_info(false),
   _digest(NULL),
-  _response(new Response("", "", "", "", "", "", "", "", ""))
-//  _response(NULL)
+  _response(NULL)
 {
-  srand(time(NULL));
 }
 
 HTTPDigestAuthenticate::~HTTPDigestAuthenticate()
@@ -62,11 +60,10 @@ HTTPDigestAuthenticate::~HTTPDigestAuthenticate()
   delete _response; _response = NULL;
 }
 
-// TODO add full comment containing description of code path
 // LCOV_EXCL_START - The components of this function are tested separately
-HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu, 
-                                                      std::string authorization_header, 
-                                                      std::string& www_auth_header, 
+HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
+                                                      std::string authorization_header,
+                                                      std::string& www_auth_header,
                                                       SAS::TrailId trail)
 {
   _impu = impu;
@@ -81,13 +78,13 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
     return rc;
   }
 
-  // If there's a full authorization header, attempt to retrieve the digest 
-  // from memcached. If not, request the digest from Homestead. 
+  // If there's a full authorization header, attempt to retrieve the digest
+  // from memcached. If not, request the digest from Homestead.
   if (_auth_info)
   {
     SAS::Event event(trail, SASEvent::NO_AUTHENTICATION_PRESENT, 0);
     SAS::report_event(event);
-    
+
     rc = retrieve_digest();
   }
   else
@@ -115,29 +112,31 @@ HTTPCode HTTPDigestAuthenticate::check_auth_info(std::string authorization_heade
     LOG_DEBUG("No authorization header present");
 
     _auth_info = false;
-    size_t start_of_path = _impu.find("sip:") + (std::string("sip:").length());
-    _impi = _impu.substr(start_of_path, std::string::npos);
 
-    if (_impi == "")
+    std::string sip = "sip:";
+    size_t sip_pos = _impu.find(sip);
+    if (sip_pos != std::string::npos)
     {
-      // TODO - Correctly check for bad IMPU
-      // LCOV_EXCL_START
+      _impi = _impu.substr(sip_pos + sip.length(), std::string::npos);
+    }
+    else
+    {
+      LOG_DEBUG("Private ID can't be derived from the public ID (%s)", _impu.c_str());
       rc = HTTP_BAD_RESULT;
-      // LCOV_EXCL_STOP
     }
   }
   else
   {
     // Check header is valid. Header should contain a username, realm, nonce, uri,
-    // qop, nc, cnonce, response, opaque or only a username and realm.
+    // qop, nc, cnonce, response, opaque or only a username.
     LOG_DEBUG("Authorization header present: %s", authorization_header.c_str());
 
     rc = parse_authenticate(authorization_header);
-    
+
     if (rc == HTTP_OK)
     {
       if (_auth_info)
-      { 
+      {
         if (_response->_qop != "auth")
         {
           LOG_DEBUG("Client requesting non-auth (%s) digest", _response->_qop.c_str());
@@ -146,14 +145,11 @@ HTTPCode HTTPDigestAuthenticate::check_auth_info(std::string authorization_heade
 
         if (_response->_realm != _home_domain)
         {
-          LOG_DEBUG("Request not targeted at the home domain. Target: %s, Home: %s", 
+          LOG_DEBUG("Request not targeted at the home domain. Target: %s, Home: %s",
                     _response->_realm.c_str(), _home_domain.c_str());
           return HTTP_BAD_RESULT;
         }
       }
-
-      // TODO - decide on exact form here
-      _impi = std::string(_response->_username).append("@").append(_response->_realm);
 
       LOG_DEBUG("Authorization header is in a valid form for ID %s", _impi.c_str());
     }
@@ -166,7 +162,7 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
 {
   HTTPCode rc = HTTP_OK;
 
-  std::string digest = "Digest"; 
+  std::string digest = "Digest";
   size_t digest_pos = auth_header.find(digest);
 
   if (digest_pos != 0)
@@ -180,23 +176,22 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
   // Split the request on the delimiter ','
   std::vector<std::string> response_params;
   Utils::split_string(rest_of_header, ',', response_params, 0, true, true);
-  
+
   // Then split by = and sort through array.
-  std::map<std::string, std::string> response_key_values; 
+  std::map<std::string, std::string> response_key_values;
   std::vector<std::string> temp_value;
 
   for (std::vector<std::string>::iterator ii = response_params.begin(); ii != response_params.end(); ++ii)
   {
-    LOG_DEBUG("string is %s", ii->c_str());
     std::string temp_vec(ii->c_str());
     Utils::split_string(temp_vec, '=', temp_value, 2, true);
-    LOG_DEBUG("temp_value  = %s:%s", temp_value[0].c_str(), temp_value[1].c_str());
 
-    // TODO strip quotes off befores storing
-//    if (temp_value[1].begin() == '"' && temp_value[1].end() == '"')
-//    {
-//      temp_value[1] = temp_value[1]->substr(1, (temp_value[1]->length - 1));
-//    }
+    // Strip quotes off befores storing
+    int val_len = temp_value[1].length();
+    if (val_len > 1 && temp_value[1][0] == '"' && temp_value[1][val_len - 1] == '"')
+    {
+      temp_value[1] = temp_value[1].substr(1, val_len - 2);
+    }
 
     response_key_values.insert(std::pair<std::string, std::string>(temp_value[0], temp_value[1]));
     temp_value.clear();
@@ -211,39 +206,40 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
   std::string cnonce;
   std::string response;
   std::string opaque;
- 
+
   std::map<std::string, std::string>::iterator it;
-  
-  // A valid Authorization header must contain a username and a realm. 
-  // It must then either contain all of a nonce, uri, qop, nc, cnonce, response
-  // and opaque values, or none of the above. 
-  // It can contain other parameters; these aren't validated. 
+
+  // A valid Authorization header must contain a username.
+  // It must then either contain all of a realm, nonce, uri, qop, nc,
+  // cnonce, response and opaque values, or none of the above.
+  // It can contain other parameters; these aren't validated.
   it = response_key_values.find("username");
   if (it == response_key_values.end())
-  {  
+  {
     LOG_DEBUG("Authorization header doesn't include a username");
     rc = HTTP_BAD_RESULT;
   }
   else
   {
-    _response->_username = it->second;
-  }  
+    username = it->second;
+  }
 
-  it = response_key_values.find("realm");
-  if (it == response_key_values.end())
-  {
-    LOG_DEBUG("Authorization header doesn't include a realm");
-    rc = HTTP_BAD_RESULT;
-  }
-  else
-  {
-    _response->_realm = it->second;
-  }
-      
   if (rc == HTTP_OK)
   {
     bool all_present = true;
     bool none_present = true;
+
+    it = response_key_values.find("realm");
+
+    if (it == response_key_values.end())
+    {
+      all_present = false;
+    }
+    else
+    {
+      none_present = false;
+      realm = it->second;
+    }
 
     it = response_key_values.find("nonce");
     if (it == response_key_values.end())
@@ -253,10 +249,10 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_nonce = it->second;
+      nonce = it->second;
     }
 
-    // LCOV_EXCL_START - no need to check each of these branches
+    // LCOV_EXCL_START - no need to check each of these branches in UT
     it = response_key_values.find("uri");
     if (it == response_key_values.end())
     {
@@ -265,9 +261,9 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_uri = it->second;
+      uri = it->second;
     }
- 
+
     it = response_key_values.find("qop");
     if (it == response_key_values.end())
     {
@@ -276,9 +272,9 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_qop = it->second;
+      qop = it->second;
     }
-  
+
     it = response_key_values.find("nc");
     if (it == response_key_values.end())
     {
@@ -287,9 +283,9 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_nc = it->second;
+      nc = it->second;
     }
- 
+
     it = response_key_values.find("cnonce");
     if (it == response_key_values.end())
     {
@@ -298,9 +294,9 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_cnonce = it->second;
+      cnonce = it->second;
     }
- 
+
     it = response_key_values.find("response");
     if (it == response_key_values.end())
     {
@@ -309,9 +305,9 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_response = it->second;
+      response = it->second;
     }
-  
+
     it = response_key_values.find("opaque");
     if (it == response_key_values.end())
     {
@@ -320,25 +316,22 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     else
     {
       none_present = false;
-      _response->_opaque= it->second;
+      opaque= it->second;
     }
     // LCOV_EXCL_STOP
 
     if (all_present)
     {
       LOG_DEBUG("Authorization header valid and complete");
-      _impi = std::string(username).append("@").append(realm);
+      _impi = username;
       _auth_info = true;
-//      _response = new Response(username, realm, nonce, uri, qop, 
-  //                             nc, cnonce, response, opaque);
-      //_response = Response(username, realm, nonce, uri, qop,
-        //                       nc, cnonce, response, opaque);
-
+      _response = new Response(username, realm, nonce, uri, qop,
+                               nc, cnonce, response, opaque);
     }
     else if (none_present)
-    { 
+    {
       LOG_DEBUG("Authorization header valid and minimal");
-      _impi = std::string(username).append("@").append(realm);
+      _impi = username;
       _auth_info = false;
     }
     else
@@ -348,7 +341,7 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
     }
   }
 
-  return rc;  
+  return rc;
 }
 
 HTTPCode HTTPDigestAuthenticate::retrieve_digest()
@@ -366,7 +359,7 @@ HTTPCode HTTPDigestAuthenticate::retrieve_digest()
   }
   else
   {
-    // Digest wasn't found in the store. Request the digest from 
+    // Digest wasn't found in the store. Request the digest from
     // homestead
     SAS::Event event(_trail, SASEvent::AUTHENTICATION_OUT_OF_DATE, 0);
     SAS::report_event(event);
@@ -378,10 +371,10 @@ HTTPCode HTTPDigestAuthenticate::retrieve_digest()
 }
 
 // Request a digest from Homestead, store it in memcached, and generate
-// the WWW-Authenticate header. 
+// the WWW-Authenticate header.
 HTTPCode HTTPDigestAuthenticate::request_store_digest(bool include_stale)
 {
-  HTTPCode rc = HTTP_BAD_RESULT; 
+  HTTPCode rc = HTTP_BAD_RESULT;
   std::string ha1;
   LOG_DEBUG("Request digest for IMPU: %s, IMPI: %s", _impu.c_str(), _impi.c_str());
 
@@ -403,11 +396,13 @@ HTTPCode HTTPDigestAuthenticate::request_store_digest(bool include_stale)
     }
     else
     {
+      // LCOV_EXCL_START - Store used in UT never fails
       LOG_ERROR("Unable to write digest to store");
-      rc = HTTP_SERVER_ERROR; 
+      rc = HTTP_SERVER_ERROR;
+      // LCOV_EXCL_STOP
     }
   }
-  
+
   return rc;
 }
 
@@ -427,29 +422,37 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches()
     return HTTP_BAD_RESULT;
   }
 
-  // TODO decide about hash/hex stuff
-  // TODO stop memory leaks
-  int MD5_HASH_SIZE = 16;
-  /*std::string ha2_str = "GET:" + _response->_uri;
-  unsigned char ha2[MD5_HASH_SIZE];
-  const char* ha2_c = ha2_str.c_str();
-  MD5((unsigned char*)&ha2_c, strlen(ha2_c), (unsigned char*)&ha2);
+  unsigned char ha2[16];
+  unsigned char ha2_hex[33];
 
-  std::string ha2_hash((const char*)ha2);
-  std::string joint_str = std::string(_digest->_ha1).append(":");
-  joint_str.append(_response->_nonce).append(":");
-  joint_str.append(_response->_nc).append(":");
-  joint_str.append(_response->_cnonce).append(":");
-  joint_str.append(_response->_qop).append(":");
-  joint_str.append(ha2_hash);
-  unsigned char joint[MD5_HASH_SIZE];
-  const char* joint_c = joint_str.c_str();
-  MD5((unsigned char*)&joint_c, strlen(joint_c), (unsigned char*)&joint);
+  MD5_CTX Md5Ctx;
+  MD5_Init(&Md5Ctx);
+  MD5_Update(&Md5Ctx, "GET", strlen("GET"));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, _response->_uri.c_str(), strlen(_response->_uri.c_str()));
+  MD5_Final(ha2, &Md5Ctx);
+  Utils::hashToHex(&ha2[0], &ha2_hex[0]);
 
-  std::string response((const char*)joint);
-*/
-  std::string response = "";
-  // TODO - LCOV_EXCL_START MD5 tests
+  unsigned char resp[16];
+  unsigned char resp_hex[33];
+
+  MD5_Init(&Md5Ctx);
+  MD5_Update(&Md5Ctx, _digest->_ha1.c_str(), strlen(_digest->_ha1.c_str()));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, _response->_nonce.c_str(), strlen(_response->_nonce.c_str()));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, _response->_nc.c_str(), strlen(_response->_nc.c_str()));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, _response->_cnonce.c_str(), strlen(_response->_cnonce.c_str()));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, _response->_qop.c_str(), strlen(_response->_qop.c_str()));
+  MD5_Update(&Md5Ctx, ":", 1);
+  MD5_Update(&Md5Ctx, &ha2_hex, 32);
+  MD5_Final(resp, &Md5Ctx);
+  Utils::hashToHex(&resp[0], &resp_hex[0]);
+
+  std::string response((const char*) resp_hex);
+
   if (_response->_response == response)
   {
     LOG_DEBUG("Client response matches stored digest");
@@ -471,7 +474,6 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches()
       SAS::report_event(event);
     }
   }
-  // LCOV_EXCL_STOP
   else
   {
     // Digest doesn't match - reject the request
@@ -485,37 +487,33 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches()
   return rc;
 }
 
-// LCOV_EXCL_START
-// Generate a string of random characters, of a given length
-void gen_random_string(char* s, const int len)
+void gen_unique_val(size_t length, std::string& unique_val)
 {
-  static const char alphanum[] =
-    "0123456789"
-    "abcdef";
+  unique_val.reserve(length);
 
-  for (int i = 0; i < len; ++i)
-  {
-    s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-  }
+  long timestamp;
+  struct timespec spec;
+  clock_gettime(CLOCK_REALTIME, &spec);
+  timestamp = spec.tv_sec * 1000 + round(spec.tv_nsec / 1000000);
 
-  s[len] = 0;
+  unique_val = std::to_string(timestamp);
+
+  std::string token;
+  Utils::create_random_token(length - unique_val.length(), token);
+  unique_val += token;
 }
-// LCOV_EXCL_STOP 
 
-// Populate the Digest, including generating the nonce 
+// Populate the Digest, including generating the nonce
 void HTTPDigestAuthenticate::generate_digest(std::string ha1)
 {
   _digest = new AuthStore::Digest();
   _digest->_ha1 = ha1;
   _digest->_impi = _impi;
   _digest->_realm = _home_domain;
- // char* nonce = NULL;
- // gen_random_string(nonce, 16);
- // _digest->_nonce = std::string(nonce);
 
-  // TODO temporary values!
-  _digest->_nonce = "1234";
-  _digest->_opaque = "1234";
+  // TODO add the nonce as a correlator for SAS.
+  gen_unique_val(32, _digest->_nonce);
+  gen_unique_val(32, _digest->_opaque);
 }
 
 // Generate a WWW-Authenticate header. This has the format:
@@ -540,4 +538,3 @@ std::string HTTPDigestAuthenticate::generate_www_auth_header(bool include_stale)
   LOG_DEBUG("WWW-Authenticate header generated: %s", header.c_str());
   return header;
 }
-

@@ -80,7 +80,7 @@ enum OptionTypes
   SAS_CONFIG,
   ACCESS_LOG,
   LOG_FILE,
-  LOG_LEVEL, 
+  LOG_LEVEL,
   HELP
 };
 
@@ -288,6 +288,11 @@ int main(int argc, char**argv)
             SASEvent::CURRENT_RESOURCE_BUNDLE,
             options.sas_server,
             sas_write);
+
+  // Ensure our random numbers are unpredictable.
+  unsigned int seed;
+  seed = time(NULL) ^ getpid();
+  srand(seed);
 
   MemcachedStore* m_store = new MemcachedStore(false, "./cluster_settings");
   AuthStore* auth_store = new AuthStore(m_store, options.digest_timeout);

@@ -40,7 +40,7 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
-HomesteadConnection::HomesteadConnection(const std::string& server) : 
+HomesteadConnection::HomesteadConnection(const std::string& server) :
   _http(new HttpConnection(server,
                            false,
                            SASEvent::HttpLogLevel::PROTOCOL))
@@ -86,14 +86,14 @@ HTTPCode HomesteadConnection::get_digest_data(const std::string& private_user_id
     event.add_var_param(public_user_identity);
     SAS::report_event(event);
   }
- 
+
   return rc;
 }
 
 // Parse received digest. This must be valid JSON and have the format:
 // { "digest_ha1": <digest>}
 HTTPCode HomesteadConnection::parse_digest(const std::string& path,
-                                           std::string& digest_data, 
+                                           std::string& digest_data,
                                            SAS::TrailId trail)
 {
   std::string json_data;
@@ -106,7 +106,7 @@ HTTPCode HomesteadConnection::parse_digest(const std::string& path,
 
     if (doc.HasParseError())
     {
-      LOG_WARNING("Failed to parse JSON body, offset: %lu - %s. JSON is: %s", 
+      LOG_WARNING("Failed to parse JSON body, offset: %lu - %s. JSON is: %s",
                   doc.GetErrorOffset(), doc.GetParseError(), json_data.c_str());
       rc = HTTP_BAD_RESULT;
     }

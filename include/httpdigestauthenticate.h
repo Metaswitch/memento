@@ -66,15 +66,15 @@ public:
     std::string _opaque;
   };
 
-  HTTPDigestAuthenticate(AuthStore *auth_store, 
+  HTTPDigestAuthenticate(AuthStore *auth_store,
                          HomesteadConnection *homestead_conn,
                          std::string home_domain);
 
   virtual ~HTTPDigestAuthenticate();
 
-  HTTPCode authenticate_request(const std::string impu, 
-                                std::string authorization_header, 
-                                std::string& www_auth_header, 
+  HTTPCode authenticate_request(const std::string impu,
+                                std::string authorization_header,
+                                std::string& www_auth_header,
                                 SAS::TrailId trail);
   HTTPCode check_auth_info(std::string authorization_header);
   HTTPCode retrieve_digest();

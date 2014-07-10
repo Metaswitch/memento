@@ -125,6 +125,7 @@ do_start()
         echo 0 > /proc/sys/kernel/yama/ptrace_scope
         get_settings
         DAEMON_ARGS="--localhost $local_ip
+                     --http $local_ip
                      --http-threads $num_http_threads
                      --homestead-http-name $homestead_http_name
                      --home-domain $home_domain

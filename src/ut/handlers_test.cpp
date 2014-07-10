@@ -38,7 +38,6 @@
 
 #include "mockhttpstack.hpp"
 #include "handlers.h"
-#include "fakelogger.hpp"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -53,7 +52,6 @@ using ::testing::Mock;
 class HandlersTest : public testing::Test
 {
 public:
-  FakeLogger _log;
   static MockHttpStack* _httpstack;
 
   HandlersTest() {}
