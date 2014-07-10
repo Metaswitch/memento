@@ -1,5 +1,5 @@
 /**
- * @file fakehomesteadconnection.cpp 
+ * @file fakehomesteadconnection.cpp
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -34,7 +34,6 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include <cstdio>
 #include "fakehomesteadconnection.hpp"
 #include "gtest/gtest.h"
 

@@ -82,14 +82,14 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
   // from memcached. If not, request the digest from Homestead.
   if (_auth_info)
   {
-    SAS::Event event(trail, SASEvent::NO_AUTHENTICATION_PRESENT, 0);
+    SAS::Event event(trail, SASEvent::AUTHENTICATION_PRESENT, 0);
     SAS::report_event(event);
 
     rc = retrieve_digest();
   }
   else
   {
-    SAS::Event event(trail, SASEvent::AUTHENTICATION_PRESENT, 0);
+    SAS::Event event(trail, SASEvent::NO_AUTHENTICATION_PRESENT, 0);
     event.add_var_param(authorization_header);
     SAS::report_event(event);
 
@@ -252,7 +252,6 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
       nonce = it->second;
     }
 
-    // LCOV_EXCL_START - no need to check each of these branches in UT
     it = response_key_values.find("uri");
     if (it == response_key_values.end())
     {
@@ -318,7 +317,6 @@ HTTPCode HTTPDigestAuthenticate::parse_authenticate(std::string auth_header)
       none_present = false;
       opaque= it->second;
     }
-    // LCOV_EXCL_STOP
 
     if (all_present)
     {

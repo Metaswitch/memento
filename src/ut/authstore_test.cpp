@@ -1,5 +1,5 @@
 /**
- * @file authstore_test.cpp 
+ * @file authstore_test.cpp
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -46,7 +46,7 @@
 
 using namespace std;
 
-/// Fixture for RegStoreTest.
+/// Fixture for AuthStoreTest.
 class AuthStoreTest : public ::testing::Test
 {
   AuthStoreTest()
@@ -69,15 +69,15 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
   std::string nonce = "9876543210";
 
   AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = impi;
-  digest->_nonce = nonce;
+  digest->_impi = "6505551234@cw-ngv.com";
+  digest->_nonce = "9876543210";
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "cw-ngv.com";
 
   auth_store->set_digest(impi, nonce, digest, 0);
 
-  // Retrieve the digest from the store and check it against 
+  // Retrieve the digest from the store and check it against
   // the initial digest
   AuthStore::Digest* digest2;
   auth_store->get_digest(impi, nonce, digest2, 0);
@@ -100,8 +100,8 @@ TEST_F(AuthStoreTest, ReadExpired)
   std::string nonce = "9876543210";
 
   AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = impi;
-  digest->_nonce = nonce;
+  digest->_impi = "6505551234@cw-ngv.com";
+  digest->_nonce = "9876543210";
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "cw-ngv.com";
