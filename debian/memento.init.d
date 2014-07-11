@@ -82,7 +82,9 @@ get_settings()
 {
   # Set up defaults and then pull in the settings for this node.
   sas_server=0.0.0.0
-  num_http_threads=$(($(grep processor /proc/cpuinfo | wc -l) * 50))
+  local num_cpus=$(grep processor /proc/cpuinfo | wc -l)
+  num_http_threads=$num_cpus
+  num_http_worker_threads=$(( $num_cpus * 50 ))
   . /etc/clearwater/config
 
   homestead_http_name=$(python /usr/share/clearwater/bin/bracket_ipv6_address.py $hs_hostname)
@@ -127,6 +129,7 @@ do_start()
         DAEMON_ARGS="--localhost $local_ip
                      --http $local_ip
                      --http-threads $num_http_threads
+                     --http-worker-threads $num_http_worker_threads
                      --homestead-http-name $homestead_http_name
                      --home-domain $home_domain
                      --access-log $log_directory
