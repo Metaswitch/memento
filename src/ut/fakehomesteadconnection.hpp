@@ -1,5 +1,5 @@
 /**
- * @file avstore.h  Definition of class for storing Authentication Vectors
+ * @file fakehomesteadconnection.hpp .
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -34,46 +34,32 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef AUTHSTORE_H_
-#define AUTHSTORE_H_
+#ifndef FAKEHOMESTEADCONNECTION_H__
+#define FAKEHOMESTEADCONNECTION_H__
 
-#include "store.h"
+#include <string>
+#include "sas.h"
+#include "homesteadconnection.h"
 
-class AuthStore
+/// HomesteadConnection that writes to/reads from a local map rather than Homestead
+class FakeHomesteadConnection : public HomesteadConnection
 {
 public:
-  class Digest
-  {
-  public:
-    std::string _ha1;
-    std::string _opaque;
-    std::string _nonce;
-    std::string _impi;
-    std::string _realm;
-    uint32_t _nonce_count;
+  FakeHomesteadConnection();
+  ~FakeHomesteadConnection();
 
-    Digest();
-    ~Digest();
-  };
+  void flush_all();
 
-  /// Constructor.
-  /// @param data_store    A pointer to the underlying data store.
-  /// @param expiry        Expiry time of entries
-  AuthStore(Store* data_store,
-            int expiry);
-
-  /// Destructor.
-  ~AuthStore();
-
-  bool set_digest(const std::string&, const std::string&, const Digest*, SAS::TrailId);
-  bool get_digest(const std::string&, const std::string&, Digest*&, SAS::TrailId);
+  void set_result(const std::string& url, const std::vector<std::string> result);
+  void delete_result(const std::string& url);
+  void set_rc(const std::string& url, long rc);
+  void delete_rc(const std::string& url);
 
 private:
-  std::string serialize_digest(const Digest* digest);
-  Digest* deserialize_digest(const std::string& digest_s);
-
-  Store* _data_store;
-  int _expiry;
+  long get_digest_and_parse(const std::string& path, std::string& digest, std::string& realm, SAS::TrailId trail);
+  typedef std::pair<std::string, std::string> UrlBody;
+  std::map<UrlBody, std::vector<std::string>> _results;
+  std::map<std::string, long> _rcs;
 };
 
 #endif

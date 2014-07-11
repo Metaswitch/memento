@@ -40,4 +40,5 @@
 # Check we can contact homestead.
 check_connectivity_to_domain "$hs_hostname" 11888
 
-copy_to_dump "/var/lib/memento/memento.conf"
+# Add when cassandra is included
+# copy_to_dump "/var/lib/memento/memento.conf"

@@ -1,5 +1,5 @@
 /**
- * @file handlers.h 
+ * @file handlers.h
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -39,6 +39,9 @@
 
 #include "httpstack.h"
 #include "sas.h"
+#include "authstore.h"
+#include "homesteadconnection.h"
+#include "httpdigestauthenticate.h"
 
 class PingHandler : public HttpStack::Handler
 {
@@ -47,6 +50,49 @@ public:
     HttpStack::Handler(req, trail)
   {};
   void run();
+};
+
+class CallListHandler : public HttpStack::Handler
+{
+public:
+  struct Config
+  {
+    Config(AuthStore* auth_store,
+           HomesteadConnection* homestead_conn,
+           std::string home_domain) :
+      _auth_store(auth_store),
+      _homestead_conn(homestead_conn),
+      _home_domain(home_domain)
+      {}
+    AuthStore* _auth_store;
+    HomesteadConnection* _homestead_conn;
+    std::string _home_domain;
+  };
+
+  CallListHandler(HttpStack::Request& req,
+                  const Config* cfg,
+                  SAS::TrailId trail) :
+    HttpStack::Handler(req, trail),
+    _cfg(cfg),
+    _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
+                                         _cfg->_homestead_conn,
+                                         _cfg->_home_domain))
+  {};
+
+  ~CallListHandler()
+  {
+    delete _auth_mod; _auth_mod = NULL;
+  }
+
+  void run();
+  HTTPCode parse_request();
+  HTTPCode authenticate_request();
+
+protected:
+  const Config* _cfg;
+  HTTPDigestAuthenticate* _auth_mod;
+
+  std::string _impu;
 };
 
 #endif

@@ -44,7 +44,20 @@ namespace SASEvent
   //----------------------------------------------------------------------------
   // Memento events.
   //----------------------------------------------------------------------------
-  const int DUMMY_EVENT = MEMENTO_BASE + 0x000000;
+  const int HTTP_HS_DIGEST_LOOKUP = MEMENTO_BASE + 0x000000;
+  const int HTTP_HS_DIGEST_LOOKUP_SUCCESS = MEMENTO_BASE + 0x000001;
+  const int HTTP_HS_DIGEST_LOOKUP_FAILURE = MEMENTO_BASE + 0x000002;
+
+  const int AUTHSTORE_GET_SUCCESS = MEMENTO_BASE + 0x000010;
+  const int AUTHSTORE_GET_FAILURE = MEMENTO_BASE + 0x000011;
+  const int AUTHSTORE_SET_SUCCESS = MEMENTO_BASE + 0x000012;
+  const int AUTHSTORE_SET_FAILURE = MEMENTO_BASE + 0x000013;
+
+  const int NO_AUTHENTICATION_PRESENT = MEMENTO_BASE + 0x000020;
+  const int AUTHENTICATION_PRESENT = MEMENTO_BASE + 0x000021;
+  const int AUTHENTICATION_OUT_OF_DATE = MEMENTO_BASE + 0x000022;
+  const int AUTHENTICATION_REJECTED = MEMENTO_BASE + 0x000023;
+  const int AUTHENTICATION_ACCEPTED = MEMENTO_BASE + 0x000024;
 } //namespace SASEvent
 
 #endif
