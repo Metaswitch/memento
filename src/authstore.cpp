@@ -65,15 +65,13 @@ bool AuthStore::set_digest(const std::string& impi,
   LOG_DEBUG("Set digest for %s\n%s", key.c_str(), data.c_str());
 
   Store::Status status = _data_store->set_data("AuthStore", key, data, 0, _expiry, trail);
-  std::string operation = "SET";
 
   if (status != Store::Status::OK)
   {
     // LCOV_EXCL_START - Store used in UTs doesn't fail
     LOG_ERROR("Failed to write digest for key %s", key.c_str());
 
-    SAS::Event event(trail, SASEvent::AUTHSTORE_FAILURE, 0);
-    event.add_var_param(operation);
+    SAS::Event event(trail, SASEvent::AUTHSTORE_SET_FAILURE, 0);
     event.add_var_param(key);
     SAS::report_event(event);
 
@@ -81,8 +79,7 @@ bool AuthStore::set_digest(const std::string& impi,
     // LCOV_EXCL_STOP
   }
 
-  SAS::Event event(trail, SASEvent::AUTHSTORE_SUCCESS, 0);
-  event.add_var_param(operation);
+  SAS::Event event(trail, SASEvent::AUTHSTORE_SET_SUCCESS, 0);
   event.add_var_param(key);
   SAS::report_event(event);
 
@@ -99,15 +96,13 @@ bool AuthStore::get_digest(const std::string& impi,
   std::string data;
   uint64_t cas;
   Store::Status status = _data_store->get_data("AuthStore", key, data, cas, trail);
-  std::string operation = "GET";
 
   LOG_DEBUG("Get digest for %s", key.c_str());
 
   if (status != Store::Status::OK)
   {
     LOG_DEBUG("Failed to retrieve digest for %s", key.c_str());
-    SAS::Event event(trail, SASEvent::AUTHSTORE_FAILURE, 0);
-    event.add_var_param(operation);
+    SAS::Event event(trail, SASEvent::AUTHSTORE_GET_FAILURE, 0);
     event.add_var_param(key);
     SAS::report_event(event);
 
@@ -116,9 +111,8 @@ bool AuthStore::get_digest(const std::string& impi,
   }
 
   LOG_DEBUG("Retrieved Digest for %s\n%s", key.c_str(), data.c_str());
- 
-  SAS::Event event(trail, SASEvent::AUTHSTORE_SUCCESS, 0);
-  event.add_var_param(operation);
+
+  SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
   event.add_var_param(key);
   SAS::report_event(event);
 
@@ -126,7 +120,7 @@ bool AuthStore::get_digest(const std::string& impi,
   return true;
 }
 
-AuthStore::Digest::Digest() : 
+AuthStore::Digest::Digest() :
   _ha1(""),
   _opaque(""),
   _nonce(""),
@@ -150,7 +144,7 @@ AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
   getline(iss, digest->_nonce, '\0');
   getline(iss, digest->_impi, '\0');
   getline(iss, digest->_realm, '\0');
-  iss.read((char *)&digest->_nonce_count, sizeof(int));
+  iss.read((char *)&digest->_nonce_count, sizeof(uint32_t));
 
   return digest;
 }
@@ -158,7 +152,7 @@ AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
 std::string AuthStore::serialize_digest(const AuthStore::Digest* digest_d)
 {
   std::ostringstream oss(std::ostringstream::out|std::ostringstream::binary);
-  oss << digest_d->_ha1 << '\0'; 
+  oss << digest_d->_ha1 << '\0';
   oss << digest_d->_opaque << '\0';
   oss << digest_d->_nonce << '\0';
   oss << digest_d->_impi << '\0';

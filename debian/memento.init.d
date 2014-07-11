@@ -40,8 +40,8 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Clearwater Homestead
-# Description:       Clearwater Homestead HSS Cache/Gateway
+# Short-Description: Clearwater Memento
+# Description:       Clearwater Memento-HTTP
 ### END INIT INFO
 
 # Author: Mike Evans <mike.evans@metaswitch.com>

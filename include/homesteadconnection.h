@@ -48,12 +48,14 @@ public:
 
   HTTPCode get_digest_data(const std::string& private_user_identity,
                            const std::string& public_user_identity,
-                           std::string& digest_data,
+                           std::string& digest,
+                           std::string& realm,
                            SAS::TrailId trail);
 private:
-  virtual HTTPCode parse_digest(const std::string& path, 
-                                std::string& digest_data, 
-                                SAS::TrailId trail);
+  virtual HTTPCode get_digest_and_parse(const std::string& path,
+                                        std::string& digest,
+                                        std::string& realm,
+                                        SAS::TrailId trail);
 
   HttpConnection* _http;
 };

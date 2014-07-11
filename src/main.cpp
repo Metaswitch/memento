@@ -95,7 +95,7 @@ void usage(void)
        " --homestead-http-name <name>\n"
        "                            Set HTTP address to contact Homestead\n"
        " --digest-timeout N         Time a digest is stored in memcached (in seconds)\n"
-       " --home-domain              The home domain of the deployment\n"
+       " --home-domain <domain>     The home domain of the deployment\n"
        " --sas <host>,<system name>\n"
        "    Use specified host as Service Assurance Server and specified\n"
        "    system name to identify this system to SAS. If this option isn't\n"
@@ -150,6 +150,12 @@ int init_options(int argc, char**argv, struct options& options)
 
     case DIGEST_TIMEOUT:
       options.digest_timeout = atoi(optarg);
+      if (options.digest_timeout == 0)
+      {
+        // If the supplied option is invalid then revert to the
+        // default five minutes
+        options.digest_timeout = 300;
+      }
       break;
 
     case HOME_DOMAIN:

@@ -50,13 +50,15 @@ public:
     std::string _nonce;
     std::string _impi;
     std::string _realm;
-    int _nonce_count;
-  
+    uint32_t _nonce_count;
+
     Digest();
     ~Digest();
   };
 
   /// Constructor.
+  /// @param data_store    A pointer to the underlying data store.
+  /// @param expiry        Expiry time of entries
   AuthStore(Store* data_store,
             int expiry);
 
@@ -65,10 +67,11 @@ public:
 
   bool set_digest(const std::string&, const std::string&, const Digest*, SAS::TrailId);
   bool get_digest(const std::string&, const std::string&, Digest*&, SAS::TrailId);
+
+private:
   std::string serialize_digest(const Digest* digest);
   Digest* deserialize_digest(const std::string& digest_s);
 
-private:
   Store* _data_store;
   int _expiry;
 };

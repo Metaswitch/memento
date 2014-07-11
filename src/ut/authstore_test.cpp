@@ -92,6 +92,8 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
 
 TEST_F(AuthStoreTest, ReadExpired)
 {
+  cwtest_completely_control_time();
+
   LocalStore* local_data_store = new LocalStore();
   AuthStore* auth_store = new AuthStore(local_data_store, 30);
 

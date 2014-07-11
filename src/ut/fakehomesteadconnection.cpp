@@ -55,7 +55,7 @@ void FakeHomesteadConnection::flush_all()
 }
 
 void FakeHomesteadConnection::set_result(const std::string& url,
-                                         const std::string& result)
+                                         const std::vector<std::string> result)
 {
   _results[UrlBody(url, "")] = result;
 }
@@ -77,16 +77,17 @@ void FakeHomesteadConnection::delete_rc(const std::string& url)
   _rcs.erase(url);
 }
 
-long FakeHomesteadConnection::parse_digest(const std::string& path,
-                                           std::string& object,
-                                           SAS::TrailId trail)
+long FakeHomesteadConnection::get_digest_and_parse(const std::string& path,
+                                                   std::string& digest,
+                                                   std::string& realm,
+                                                   SAS::TrailId trail)
 {
   HTTPCode http_code = HTTP_NOT_FOUND;
-  std::map<UrlBody, std::string>::const_iterator i = _results.find(UrlBody(path, ""));
-
+  std::map<UrlBody, std::vector<std::string>>::const_iterator i = _results.find(UrlBody(path, ""));
   if (i != _results.end())
   {
-    object = i->second;
+    digest = i->second[0];
+    realm = i->second[1];
     http_code = HTTP_OK;
   }
 

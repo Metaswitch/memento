@@ -56,7 +56,8 @@ HomesteadConnection::~HomesteadConnection()
 /// Retrieve user's digest data.
 HTTPCode HomesteadConnection::get_digest_data(const std::string& private_user_identity,
                                               const std::string& public_user_identity,
-                                              std::string& digest_data,
+                                              std::string& digest,
+                                              std::string& realm,
                                               SAS::TrailId trail)
 {
   SAS::Event event(trail, SASEvent::HTTP_HS_DIGEST_LOOKUP, 0);
@@ -66,10 +67,9 @@ HTTPCode HomesteadConnection::get_digest_data(const std::string& private_user_id
 
   std::string path = "/impi/" +
                      Utils::url_escape(private_user_identity) +
-                     "/digest?public_id=" +
+                     "/av?public_id=" +
                      Utils::url_escape(public_user_identity);
-
-  HTTPCode rc = parse_digest(path, digest_data, trail);
+  HTTPCode rc = get_digest_and_parse(path, digest, realm, trail);
 
   if (rc != HTTP_OK)
   {
@@ -90,11 +90,14 @@ HTTPCode HomesteadConnection::get_digest_data(const std::string& private_user_id
   return rc;
 }
 
-// Parse received digest. This must be valid JSON and have the format:
-// { "digest_ha1": <digest>}
-HTTPCode HomesteadConnection::parse_digest(const std::string& path,
-                                           std::string& digest_data,
-                                           SAS::TrailId trail)
+/// Parse received digest. This must be valid JSON and have the format:
+/// { "digest" : { "ha1": "ha1",
+///                "qop": "qop",
+///                "realm": "realm" }}
+HTTPCode HomesteadConnection::get_digest_and_parse(const std::string& path,
+                                                   std::string& digest,
+                                                   std::string& realm,
+                                                   SAS::TrailId trail)
 {
   std::string json_data;
   HTTPCode rc = _http->send_get(path, json_data, "", trail);
@@ -110,19 +113,47 @@ HTTPCode HomesteadConnection::parse_digest(const std::string& path,
                   doc.GetErrorOffset(), doc.GetParseError(), json_data.c_str());
       rc = HTTP_BAD_RESULT;
     }
-    else if (!doc.HasMember("digest_ha1"))
+    else if (!doc.HasMember("digest"))
     {
       LOG_WARNING("Returned Digest is invalid. JSON is: %s", json_data.c_str());
       rc = HTTP_BAD_RESULT;
     }
-    else
+
+    if (rc == HTTP_OK)
     {
-      digest_data = doc["digest_ha1"].GetString();
+      rapidjson::Value& digest_v = doc["digest"];
+
+      if (!digest_v.HasMember("ha1"))
+      {
+        LOG_WARNING("Returned Digest is invalid. JSON is: %s", json_data.c_str());
+        rc = HTTP_BAD_RESULT;
+      }
+      else if (!digest_v.HasMember("qop"))
+      {
+        LOG_WARNING("Returned Digest is invalid. JSON is: %s", json_data.c_str());
+        rc = HTTP_BAD_RESULT;
+      }
+      else if (std::string(digest_v["qop"].GetString()) != "auth")
+      {
+        LOG_WARNING("Returned Digest is invalid. QoP isn't auth (%s)", digest_v["qop"].GetString());
+        rc = HTTP_BAD_RESULT;
+      }
+      else if (!digest_v.HasMember("realm"))
+      {
+        LOG_WARNING("Returned Digest is invalid. JSON is: %s", json_data.c_str());
+        rc = HTTP_BAD_RESULT;
+      }
+      else
+      {
+        digest = digest_v["ha1"].GetString();
+        realm = digest_v["realm"].GetString();
+      }
     }
   }
   else if (rc == HTTP_SERVER_UNAVAILABLE)
   {
-    // Change a 503 response to 504 as we don't want to trigger retries
+    // Change a 503 response to 504 as we don't want to trigger retries -
+    // as httpconnection will already have retried for us.
     rc = HTTP_GATEWAY_TIMEOUT;
   }
 

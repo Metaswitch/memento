@@ -34,7 +34,8 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#pragma once
+#ifndef FAKEHOMESTEADCONNECTION_H__
+#define FAKEHOMESTEADCONNECTION_H__
 
 #include <string>
 #include "sas.h"
@@ -49,14 +50,16 @@ public:
 
   void flush_all();
 
-  void set_result(const std::string& url, const std::string& result);
+  void set_result(const std::string& url, const std::vector<std::string> result);
   void delete_result(const std::string& url);
   void set_rc(const std::string& url, long rc);
   void delete_rc(const std::string& url);
 
 private:
-  long parse_digest(const std::string& path, std::string& object, SAS::TrailId trail);
+  long get_digest_and_parse(const std::string& path, std::string& digest, std::string& realm, SAS::TrailId trail);
   typedef std::pair<std::string, std::string> UrlBody;
-  std::map<UrlBody, std::string> _results;
+  std::map<UrlBody, std::vector<std::string>> _results;
   std::map<std::string, long> _rcs;
 };
+
+#endif

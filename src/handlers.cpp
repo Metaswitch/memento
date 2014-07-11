@@ -50,7 +50,7 @@ void PingHandler::run()
 void CallListHandler::run()
 {
   HTTPCode rc = parse_request();
- 
+
   if (rc != HTTP_OK)
   {
     send_http_reply(rc);
@@ -62,13 +62,14 @@ void CallListHandler::run()
 
   std::string www_auth_header;
   std::string auth_header = _req.header("Authorization");
+  std::string method = _req.method_as_str();
 
-  rc = _auth_mod->authenticate_request(_impu, auth_header, www_auth_header, trail());
+  rc = _auth_mod->authenticate_request(_impu, auth_header, www_auth_header, method, trail());
 
   if (rc == HTTP_UNAUTHORIZED)
   {
     LOG_DEBUG("Authorization data missing or out of date, responding with 401");
-    _req.add_header("WWW-Authenticate", www_auth_header);    
+    _req.add_header("WWW-Authenticate", www_auth_header);
     send_http_reply(rc);
     delete this;
     return;
@@ -80,11 +81,11 @@ void CallListHandler::run()
     delete this;
     return;
   }
-    
-  // Request has authenticated, so attempt to get the call lists. 
+
+  // Request has authenticated, so attempt to get the call lists.
   // DUMMY RESPONSE FOR NOW WITH AN EMPTY CALL LIST
   std::string calllists = "<call-list></call-list>";
-  _req.add_content(calllists); 
+  _req.add_content(calllists);
   send_http_reply(HTTP_OK);
   delete this;
   return;

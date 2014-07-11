@@ -1,4 +1,4 @@
-# Cedar Makefile
+# Memento Makefile
 
 all: stage-build
 
@@ -40,7 +40,7 @@ TARGET_SOURCES_TEST := test_main.cpp \
                        httpdigestauthenticate_test.cpp \
                        fakelogger.cpp \
                        fakecurl.cpp \
-                       fakehomesteadconnection.cpp 
+                       fakehomesteadconnection.cpp
 
 TARGET_EXTRA_OBJS_TEST := gmock-all.o \
                           gtest-all.o

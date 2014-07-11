@@ -75,26 +75,28 @@ public:
   HTTPCode authenticate_request(const std::string impu,
                                 std::string authorization_header,
                                 std::string& www_auth_header,
+                                std::string method,
                                 SAS::TrailId trail);
-  HTTPCode check_auth_info(std::string authorization_header);
-  HTTPCode retrieve_digest();
-  HTTPCode request_store_digest(bool include_stale);
-  HTTPCode check_if_matches();
-  void generate_digest(std::string ha1);
-  std::string generate_www_auth_header(bool include_stale);
-  HTTPCode parse_authenticate(std::string auth_header);
+
+private:
+  HTTPCode check_auth_header(std::string authorization_header, bool& auth_info);
+  HTTPCode retrieve_digest_from_store(std::string& www_auth_header);
+  HTTPCode request_digest_and_store(std::string& www_auth_header, bool include_stale);
+  HTTPCode check_if_matches(AuthStore::Digest* digest, std::string& www_auth_header);
+  void generate_digest(std::string ha1, std::string realm, AuthStore::Digest* digest);
+  void generate_www_auth_header(std::string& www_auth_header, bool include_stale, AuthStore::Digest* digest);
+  HTTPCode parse_auth_header(std::string auth_header, bool& auth_info);
+  void set_members(std::string impu, std::string method, std::string impi, SAS::TrailId trail);
 
   AuthStore* _auth_store;
   HomesteadConnection* _homestead_conn;
   std::string _home_domain;
 
+  Response* _response;
   std::string _impu;
   SAS::TrailId _trail;
   std::string _impi;
-  bool _auth_info;
-  AuthStore::Digest* _digest;
-  Response* _response;
-  std::string _header;
+  std::string _method;
 };
 
 #endif
