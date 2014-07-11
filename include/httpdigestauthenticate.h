@@ -47,13 +47,26 @@ class HTTPDigestAuthenticate
 public:
   struct Response
   {
-    Response(std::string username, std::string realm, std::string nonce,
-             std::string uri, std::string qop, std::string nc,
-             std::string cnonce, std::string response, std::string opaque) :
-      _username(username), _realm(realm), _nonce(nonce),
-      _uri(uri), _qop(qop), _nc(nc),
-      _cnonce(cnonce), _response(response), _opaque(opaque)
+    Response() :
+      _username(""), _realm(""), _nonce(""), _uri(""), _qop(""),
+       _nc(""), _cnonce(""), _response(""), _opaque("")
       {}
+
+    void set_members(std::string username, std::string realm,
+                     std::string nonce, std::string uri, std::string qop,
+                     std::string nc, std::string cnonce,
+                     std::string response, std::string opaque)
+    {
+      _username = username;
+      _realm = realm;
+      _nonce = nonce;
+      _uri = uri;
+      _qop = qop;
+      _nc = nc;
+      _cnonce = cnonce;
+      _response = response;
+      _opaque = opaque;
+    }
 
     std::string _username;
     std::string _realm;
@@ -66,12 +79,23 @@ public:
     std::string _opaque;
   };
 
+  /// Constructor.
+  /// @param auth_store      A pointer to the auth store.
+  /// @param homestead_conn  A pointer to the homestead connection object
+  /// @param home_domain     Home domain of the deployment
   HTTPDigestAuthenticate(AuthStore *auth_store,
                          HomesteadConnection *homestead_conn,
                          std::string home_domain);
 
+  /// Destructor.
   virtual ~HTTPDigestAuthenticate();
 
+  /// authenticate_request.
+  /// @param impu                  Public ID
+  /// @param authorization_header  Authorization header from the request
+  /// @param www_auth_header       WWW-Authenticate header to populate
+  /// @param method                Method of the request
+  /// @param trail                 SAS trail
   HTTPCode authenticate_request(const std::string impu,
                                 std::string authorization_header,
                                 std::string& www_auth_header,
@@ -79,20 +103,20 @@ public:
                                 SAS::TrailId trail);
 
 private:
-  HTTPCode check_auth_header(std::string authorization_header, bool& auth_info);
-  HTTPCode retrieve_digest_from_store(std::string& www_auth_header);
-  HTTPCode request_digest_and_store(std::string& www_auth_header, bool include_stale);
-  HTTPCode check_if_matches(AuthStore::Digest* digest, std::string& www_auth_header);
+
+  HTTPCode check_auth_header(std::string authorization_header, bool& auth_info, Response* response);
+  HTTPCode retrieve_digest_from_store(std::string& www_auth_header, Response* response);
+  HTTPCode request_digest_and_store(std::string& www_auth_header, bool include_stale, Response* response);
+  HTTPCode check_if_matches(AuthStore::Digest* digest, std::string& www_auth_header, Response* response);
   void generate_digest(std::string ha1, std::string realm, AuthStore::Digest* digest);
   void generate_www_auth_header(std::string& www_auth_header, bool include_stale, AuthStore::Digest* digest);
-  HTTPCode parse_auth_header(std::string auth_header, bool& auth_info);
+  HTTPCode parse_auth_header(std::string auth_header, bool& auth_info, Response* response);
   void set_members(std::string impu, std::string method, std::string impi, SAS::TrailId trail);
 
   AuthStore* _auth_store;
   HomesteadConnection* _homestead_conn;
   std::string _home_domain;
 
-  Response* _response;
   std::string _impu;
   SAS::TrailId _trail;
   std::string _impi;
