@@ -16,7 +16,7 @@ DEB_NAMES := memento-libs memento-libs-dbg memento memento-dbg
 INCLUDE_DIR := ${INSTALL_DIR}/include
 LIB_DIR := ${INSTALL_DIR}/lib
 
-SUBMODULES := c-ares libevhtp libmemcached thrift cassandra sas-client
+SUBMODULES := c-ares libevhtp libmemcached thrift cassandra sas-client openssl
 
 include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
 include ${MK_DIR}/memento.mk

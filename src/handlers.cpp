@@ -35,6 +35,7 @@
  */
 
 #include "handlers.h"
+#include "httpdigestauthenticate.h"
 
 // The poll_memento script pings memento to check it's still alive.
 // Handle the ping.
@@ -45,3 +46,57 @@ void PingHandler::run()
   delete this;
 }
 
+// This handler deals with requests to the call list URL
+void CallListHandler::run()
+{
+  HTTPCode rc = parse_request();
+
+  if (rc != HTTP_OK)
+  {
+    send_http_reply(rc);
+    delete this;
+    return;
+  }
+
+  LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
+
+  std::string www_auth_header;
+  std::string auth_header = _req.header("Authorization");
+  std::string method = _req.method_as_str();
+
+  rc = _auth_mod->authenticate_request(_impu, auth_header, www_auth_header, method, trail());
+
+  if (rc == HTTP_UNAUTHORIZED)
+  {
+    LOG_DEBUG("Authorization data missing or out of date, responding with 401");
+    _req.add_header("WWW-Authenticate", www_auth_header);
+    send_http_reply(rc);
+    delete this;
+    return;
+  }
+  else if (rc != HTTP_OK)
+  {
+    LOG_DEBUG("Authorization failed, responding with %d", rc);
+    send_http_reply(rc);
+    delete this;
+    return;
+  }
+
+  // Request has authenticated, so attempt to get the call lists.
+  // DUMMY RESPONSE FOR NOW WITH AN EMPTY CALL LIST
+  std::string calllists = "<call-list></call-list>";
+  _req.add_content(calllists);
+  send_http_reply(HTTP_OK);
+  delete this;
+  return;
+}
+
+HTTPCode CallListHandler::parse_request()
+{
+  const std::string prefix = "/org.projectclearwater.call-list/users/";
+  std::string path = _req.path();
+
+  _impu = path.substr(prefix.length(), path.find_first_of("/", prefix.length()) - prefix.length());
+
+  return HTTP_OK;
+}

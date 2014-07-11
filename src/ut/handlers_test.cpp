@@ -37,10 +37,7 @@
 #include "test_interposer.hpp"
 
 #include "mockhttpstack.hpp"
-#include "mockhttpconnection.hpp"
 #include "handlers.h"
-#include "fakelogger.hpp"
-#include "homesteadconnection.h"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -55,23 +52,16 @@ using ::testing::Mock;
 class HandlersTest : public testing::Test
 {
 public:
-  FakeLogger _log;
   static MockHttpStack* _httpstack;
-  static MockHttpConnection* _mock_http_conn;
-  static HomesteadConnection* _homestead_conn;
 
   HandlersTest() {}
   virtual ~HandlersTest()
   {
-//    Mock::VerifyAndClear(_httpstack);
   }
 
   static void SetUpTestCase()
   {
     _httpstack = new MockHttpStack();
-    _mock_http_conn = new MockHttpConnection();
-    _homestead_conn = new HomesteadConnection(_mock_http_conn);
-
     cwtest_completely_control_time();
   }
 
@@ -80,13 +70,10 @@ public:
     cwtest_reset_time();
 
     delete _httpstack; _httpstack = NULL;
-    delete _homestead_conn; _homestead_conn = NULL;
   }
 };
 
 MockHttpStack* HandlersTest::_httpstack = NULL;
-MockHttpConnection* HandlersTest::_mock_http_conn = NULL;
-HomesteadConnection* HandlersTest::_homestead_conn = NULL;
 
 //
 // Ping test
@@ -99,4 +86,3 @@ TEST_F(HandlersTest, SimpleMainline)
   handler->run();
   EXPECT_EQ("OK", req.content());
 }
-

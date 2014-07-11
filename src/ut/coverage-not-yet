@@ -6,3 +6,5 @@ modules/cpp-common/src/logger.cpp
 modules/cpp-common/src/fakelogger.cpp
 modules/cpp-common/src/load_monitor.cpp
 modules/cpp-common/src/saslogger.cpp
+
+handlers.cpp
