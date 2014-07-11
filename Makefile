@@ -11,7 +11,7 @@ MODULE_DIR := ${ROOT}/modules
 
 DEB_COMPONENT := memento
 DEB_MAJOR_VERSION := 1.0${DEB_VERSION_QUALIFIER}
-DEB_NAMES := memento-libs memento-libs-dbg memento memento-dbg
+DEB_NAMES := memento-libs memento-libs-dbg memento memento-dbg memento-nginx
 
 INCLUDE_DIR := ${INSTALL_DIR}/include
 LIB_DIR := ${INSTALL_DIR}/lib

@@ -32,3 +32,8 @@ Section: debug
 Priority: extra
 Depends: memento-libs (= ${binary:Version}), gdb
 Description: Debugging symbols for memento's libraries
+
+Package: memento-nginx
+Architecture: any
+Depends: clearwater-infrastructure, clearwater-nginx
+Description: Integrates Memento with nginx
