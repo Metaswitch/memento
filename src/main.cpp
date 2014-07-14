@@ -94,7 +94,7 @@ void usage(void)
        " --http <address>[:<port>]\n"
        "              Set HTTP bind address and port (default: 0.0.0.0:11888)\n"
        " --http-threads N           Number of HTTP threads (default: 1)\n"
-       " --http-worker-threads N    Number of HTTP worker threads (default: 1)\n"
+       " --http-worker-threads N    Number of HTTP worker threads (default: 50)\n"
        " --homestead-http-name <name>\n"
        "                            Set HTTP address to contact Homestead\n"
        " --digest-timeout N         Time a digest is stored in memcached (in seconds)\n"
@@ -257,7 +257,7 @@ int main(int argc, char**argv)
   options.http_address = "0.0.0.0";
   options.http_port = 11888;
   options.http_threads = 1;
-  options.http_worker_threads = 1;
+  options.http_worker_threads = 50;
   options.homestead_http_name = "homestead-http-name.unknown";
   options.digest_timeout = 300;
   options.home_domain = "home.domain";
