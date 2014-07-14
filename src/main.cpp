@@ -56,6 +56,7 @@ struct options
   std::string http_address;
   unsigned short http_port;
   int http_threads;
+  int http_worker_threads;
   std::string homestead_http_name;
   int digest_timeout;
   std::string home_domain;
@@ -74,6 +75,7 @@ enum OptionTypes
   LOCAL_HOST = 128, // start after the ASCII set ends to avoid conflicts
   HTTP_ADDRESS,
   HTTP_THREADS,
+  HTTP_WORKER_THREADS,
   HOMESTEAD_HTTP_NAME,
   DIGEST_TIMEOUT,
   HOME_DOMAIN,
@@ -92,6 +94,7 @@ void usage(void)
        " --http <address>[:<port>]\n"
        "              Set HTTP bind address and port (default: 0.0.0.0:11888)\n"
        " --http-threads N           Number of HTTP threads (default: 1)\n"
+       " --http-worker-threads N    Number of HTTP worker threads (default: 50)\n"
        " --homestead-http-name <name>\n"
        "                            Set HTTP address to contact Homestead\n"
        " --digest-timeout N         Time a digest is stored in memcached (in seconds)\n"
@@ -115,6 +118,7 @@ int init_options(int argc, char**argv, struct options& options)
     {"localhost",           required_argument, NULL, LOCAL_HOST},
     {"http",                required_argument, NULL, HTTP_ADDRESS},
     {"http-threads",        required_argument, NULL, HTTP_THREADS},
+    {"http-worker-threads", required_argument, NULL, HTTP_WORKER_THREADS},
     {"homestead-http-name", required_argument, NULL, HOMESTEAD_HTTP_NAME},
     {"digest-timeout",      required_argument, NULL, DIGEST_TIMEOUT},
     {"home-domain",         required_argument, NULL, HOME_DOMAIN},
@@ -142,6 +146,10 @@ int init_options(int argc, char**argv, struct options& options)
 
     case HTTP_THREADS:
       options.http_threads = atoi(optarg);
+      break;
+
+    case HTTP_WORKER_THREADS:
+      options.http_worker_threads = atoi(optarg);
       break;
 
     case HOMESTEAD_HTTP_NAME:
@@ -249,6 +257,7 @@ int main(int argc, char**argv)
   options.http_address = "0.0.0.0";
   options.http_port = 11888;
   options.http_threads = 1;
+  options.http_worker_threads = 50;
   options.homestead_http_name = "homestead-http-name.unknown";
   options.digest_timeout = 300;
   options.home_domain = "home.domain";
@@ -314,8 +323,9 @@ int main(int argc, char**argv)
 
   CallListHandler::Config call_list_config(auth_store, homestead_conn, options.home_domain);
 
-  HttpStack::HandlerFactory<PingHandler> ping_handler_factory;
-  HttpStack::ConfiguredHandlerFactory<CallListHandler, CallListHandler::Config> call_list_handler_factory(&call_list_config);
+  HttpStackUtils::PingController ping_controller;
+  HttpStackUtils::SpawningController<CallListHandler, CallListHandler::Config> call_list_controller(&call_list_config);
+  HttpStackUtils::ControllerThreadPool pool(options.http_worker_threads);
 
   try
   {
@@ -325,10 +335,9 @@ int main(int argc, char**argv)
                           options.http_threads,
                           access_logger,
                           load_monitor);
-    http_stack->register_handler("^/ping$",
-                                 &ping_handler_factory);
-    http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
-                                 &call_list_handler_factory);
+    http_stack->register_controller("^/ping$", &ping_controller);
+    http_stack->register_controller("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
+                                    pool.wrap(&call_list_controller));
     http_stack->start();
   }
   catch (HttpStack::Exception& e)

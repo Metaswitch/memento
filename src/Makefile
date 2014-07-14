@@ -24,6 +24,7 @@ TARGET_SOURCES := localstore.cpp \
                   log.cpp \
                   handlers.cpp \
                   httpstack.cpp \
+                  httpstack_utils.cpp \
                   accesslogger.cpp \
                   authstore.cpp \
                   httpconnection.cpp \

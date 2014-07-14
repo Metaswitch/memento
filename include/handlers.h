@@ -38,21 +38,13 @@
 #define HANDLERS_H__
 
 #include "httpstack.h"
+#include "httpstack_utils.h"
 #include "sas.h"
 #include "authstore.h"
 #include "homesteadconnection.h"
 #include "httpdigestauthenticate.h"
 
-class PingHandler : public HttpStack::Handler
-{
-public:
-  PingHandler(HttpStack::Request& req, SAS::TrailId trail) :
-    HttpStack::Handler(req, trail)
-  {};
-  void run();
-};
-
-class CallListHandler : public HttpStack::Handler
+class CallListHandler : public HttpStackUtils::Handler
 {
 public:
   struct Config
@@ -72,7 +64,7 @@ public:
   CallListHandler(HttpStack::Request& req,
                   const Config* cfg,
                   SAS::TrailId trail) :
-    HttpStack::Handler(req, trail),
+    HttpStackUtils::Handler(req, trail),
     _cfg(cfg),
     _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
                                          _cfg->_homestead_conn,

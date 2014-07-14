@@ -74,15 +74,3 @@ public:
 };
 
 MockHttpStack* HandlersTest::_httpstack = NULL;
-
-//
-// Ping test
-//
-TEST_F(HandlersTest, SimpleMainline)
-{
-  MockHttpStack::Request req(_httpstack, "/", "ping");
-  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
-  PingHandler* handler = new PingHandler(req, 0);
-  handler->run();
-  EXPECT_EQ("OK", req.content());
-}
