@@ -404,6 +404,9 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
     }
     else
     {
+      // Authentication successful. Increment the stored nonce count
+      digest->_nonce_count++;
+      _auth_store->set_digest(_impi, digest->_nonce, digest, _trail);
       SAS::Event event(_trail, SASEvent::AUTHENTICATION_ACCEPTED, 0);
       SAS::report_event(event);
     }

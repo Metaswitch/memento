@@ -57,8 +57,7 @@ public:
 
 private:
   long get_digest_and_parse(const std::string& path, std::string& digest, std::string& realm, SAS::TrailId trail);
-  typedef std::pair<std::string, std::string> UrlBody;
-  std::map<UrlBody, std::vector<std::string>> _results;
+  std::map<std::string, std::vector<std::string>> _results;
   std::map<std::string, long> _rcs;
 };
 

@@ -40,23 +40,40 @@
 #include "httpconnection.h"
 #include "sas.h"
 
+/// @class HomesteadConnection
+///
+/// Provides a connection to the Homstead service for retrieving digests
 class HomesteadConnection
 {
 public:
+  /// Constructor.
+  /// @param server   Homestead servers.
   HomesteadConnection(const std::string& server);
+
+  /// Destructor
   virtual ~HomesteadConnection();
 
+  /// get_digest_data
+  /// @param private_user_identity  A reference to the private user identity.
+  /// @param public_user_identity   A reference to the public user identity.
+  /// @param digest                 The retrieved digest (as a string)
+  /// @param realm                  The retrieved realm (as a string)             
   HTTPCode get_digest_data(const std::string& private_user_identity,
                            const std::string& public_user_identity,
                            std::string& digest,
                            std::string& realm,
                            SAS::TrailId trail);
 private:
+  /// get_digest_and_parse
+  /// @param path    The path for the homestead request
+  /// @param digest  The retrieved digest (as a string)
+  /// @param realm   The retrieved realm (as a string)
   virtual HTTPCode get_digest_and_parse(const std::string& path,
                                         std::string& digest,
                                         std::string& realm,
                                         SAS::TrailId trail);
 
+  /// Pointer to the underlying http connection
   HttpConnection* _http;
 };
 #endif

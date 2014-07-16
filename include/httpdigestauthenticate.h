@@ -1,5 +1,5 @@
 /**
- * @file httpdigestauthenticate.h  Definition of class for storing Authentication Vectors
+ * @file httpdigestauthenticate.h  
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -104,13 +104,52 @@ public:
 
 private:
 
+  /// check_auth_header
+  /// @param authorization_header  Authorization header from the request
+  /// @param auth_info             Reference to bool storing if the request contains authorization credentials
+  /// @param response              Pointer to response built from authorization header
   HTTPCode check_auth_header(std::string authorization_header, bool& auth_info, Response* response);
+
+  /// retrieve_digest_from_store.
+  /// @param www_auth_header       WWW-Authenticate header to populate
+  /// @param response              Pointer to response built from authorization header
   HTTPCode retrieve_digest_from_store(std::string& www_auth_header, Response* response);
+
+  /// request_digest_and_store
+  /// @param www_auth_header       WWW-Authenticate header to populate
+  /// @param include_stale         Whether the WWW-Authenticate should include a stale=TRUE parameter
+  /// @param response              Pointer to response built from authorization header
   HTTPCode request_digest_and_store(std::string& www_auth_header, bool include_stale, Response* response);
+
+  /// check_if_matches
+  /// @param digest                Pointer to Digest object built from stored digest
+  /// @param www_auth_header       WWW-Authenticate header to populate
+  /// @param response              Pointer to response built from authorization header
   HTTPCode check_if_matches(AuthStore::Digest* digest, std::string& www_auth_header, Response* response);
+
+  /// generate_digest
+  /// @param ha1                   ha1 retrieved from Homestead
+  /// @param realm                 Realm of the client request (home domain)
+  /// @param digest                Pointer to Digest object built from stored digest
   void generate_digest(std::string ha1, std::string realm, AuthStore::Digest* digest);
+
+  /// generate_www_auth_header
+  /// @param www_auth_header       WWW-Authenticate header to populate
+  /// @param include_stale         Whether the WWW-Authenticate should include a stale=TRUE parameter
+  /// @param digest                Pointer to Digest object built from stored digest
   void generate_www_auth_header(std::string& www_auth_header, bool include_stale, AuthStore::Digest* digest);
+
+  /// parse_auth_header
+  /// @param auth_header           Authorization header from the request
+  /// @param auth_info             Reference to bool storing if the request contains authorization credentials
+  /// @param response              Pointer to response built from authorization header
   HTTPCode parse_auth_header(std::string auth_header, bool& auth_info, Response* response);
+
+  /// set_members
+  /// @param impu                  Public ID
+  /// @param impi                  Private ID
+  /// @param method                Method of the request
+  /// @param trail                 SAS trail
   void set_members(std::string impu, std::string method, std::string impi, SAS::TrailId trail);
 
   AuthStore* _auth_store;
