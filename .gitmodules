@@ -37,3 +37,6 @@
 [submodule "modules/openssl"]
 	path = modules/openssl
 	url = git@github.com:openssl/openssl.git
+[submodule "modules/app-servers"]
+	path = modules/app-servers
+	url = git@github.com:Metaswitch/clearwater-app-servers.git
