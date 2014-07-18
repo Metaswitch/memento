@@ -34,8 +34,8 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_CALL_LIST_STORE_H__
-#define MOCK_CALL_LIST_STORE_H__
+#ifndef MOCK_CALL_LIST_STORE_H_
+#define MOCK_CALL_LIST_STORE_H_
 
 #include "call_list_store.h"
 #include "mock_cassandra_store.h"
@@ -46,23 +46,23 @@ public:
   virtual ~MockCallListStore() {};
 
   MOCK_METHOD3(new_write_call_record_op,
-               CallListStore::WriteCallRecord*(const std::string& impu,
-                                               const CallListStore::CallRecord& record,
-                                               const int32_t ttl));
+               CallListStore::WriteCallFragment*(const std::string& impu,
+                                                 const CallListStore::CallFragment& record,
+                                                 const int32_t ttl));
 
   MOCK_METHOD1(new_get_call_records_op,
-               CallListStore::GetCallRecords*(const std::string& impu));
+               CallListStore::GetCallFragments*(const std::string& impu));
 
   MOCK_METHOD2(new_delete_old_call_records_op,
-               CallListStore::DeleteOldCallRecords*(std::string& impu, tm& age));
+               CallListStore::DeleteOldCallFragments*(std::string& impu, tm& age));
 
   MOCK_METHOD3(write_call_record_sync,
                CassandraStore::ResultCode(const std::string& impu,
-                                          const CallListStore::CallRecord& record,
+                                          const CallListStore::CallFragment& record,
                                           const int32_t ttl));
   MOCK_METHOD2(get_call_records_sync,
                CassandraStore::ResultCode(const std::string& impu,
-                                          std::vector<CallListStore::CallRecord>& records));
+                                          std::vector<CallListStore::CallFragment>& records));
 
   MOCK_METHOD2(delete_old_call_records_sync,
                CassandraStore::ResultCode(const std::string& impu,

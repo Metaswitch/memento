@@ -2,7 +2,7 @@
  * @file call_list_store.h Call list cassandra store.
  *
  * Project Clearwater - IMS in the cloud.
- * Copyright (C) 2013  Metaswitch Networks Ltd
+ * Copyright (C) 2014  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,8 +34,8 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef CALL_LIST_STORE_H__
-#define CALL_LIST_STORE_H__
+#ifndef CALL_LIST_STORE_H_
+#define CALL_LIST_STORE_H_
 
 #include "cassandra_store.h"
 
@@ -43,7 +43,7 @@ namespace CallListStore
 {
 
 /// Structure representing a call record in the store.
-struct CallRecord
+struct CallFragment
 {
   enum Type
   {
@@ -60,36 +60,36 @@ struct CallRecord
 
 
 /// Operation that adds a new call record to the store.
-class WriteCallRecord : public CassandraStore::Operation
+class WriteCallFragment : public CassandraStore::Operation
 {
   /// Constructor.
   ///
   /// @param impu     - The IMPU to write a record for.
   /// @param record   - The record object to write.
   /// @param ttl      - The TTL (in seconds) for the column.
-  WriteCallRecord(const std::string& impu,
-                  const CallRecord& record,
-                  const int32_t ttl = 0);
-  virtual ~WriteCallRecord();
+  WriteCallFragment(const std::string& impu,
+                    const CallFragment& record,
+                    const int32_t ttl = 0);
+  virtual ~WriteCallFragment();
 
   bool perform();
 
 protected:
   const std::string _impu;
-  const CallRecord _record;
+  const CallFragment _record;
   const int32_t _ttl;
 };
 
 
 /// Operation that gets call records for a particular IMPU.
-class GetCallRecords : public CassandraStore::Operation
+class GetCallFragments : public CassandraStore::Operation
 {
   /// Constructor.
   /// @param impu     - The IMPU whose call records to retrieve.
-  GetCallRecords(std::string& impu);
+  GetCallFragments(std::string& impu);
 
   /// Virtual destructor.
-  virtual ~GetCallRecords();
+  virtual ~GetCallFragments();
 
   bool perform();
 
@@ -97,18 +97,18 @@ class GetCallRecords : public CassandraStore::Operation
   /// by timestamp, then by id, then by type.
   ///
   /// @return    - A *reference* to a vector of call records.
-  std::vector<CallRecord>& get_call_records();
+  std::vector<CallFragment>& get_call_records();
 
 protected:
   const std::string _impu;
 
-  std::vector<CallRecord> _records;
+  std::vector<CallFragment> _records;
 };
 
 
 /// Operation that deletes all records for an IMPU that occurred before a given
 /// timestamp.
-class DeleteOldCallRecords : public CassandraStore::Operation
+class DeleteOldCallFragments : public CassandraStore::Operation
 {
   /// Constructor
   ///
@@ -116,10 +116,10 @@ class DeleteOldCallRecords : public CassandraStore::Operation
   /// @param threshold  - The threshold time. Records with a timestamp that is
   ///                     earlier than this time will be deleted (but records
   ///                     with an equal timestamp will not).
-  DeleteOldCallRecords(std::string& impu, tm& age);
+  DeleteOldCallFragments(std::string& impu, tm& age);
 
   /// Virtual destructor.
-  virtual ~DeleteOldCallRecords();
+  virtual ~DeleteOldCallFragments();
 
   bool perform();
 
@@ -149,13 +149,13 @@ public:
   // These should be used in preference to creating operations directly (using
   // 'new') as this makes the store easier to mock out in UT.
   //
-  virtual WriteCallRecord*
+  virtual WriteCallFragment*
     new_write_call_record_op(const std::string& impu,
-                             const CallRecord& record,
+                             const CallFragment& record,
                              const int32_t ttl = 0);
-  virtual GetCallRecords*
+  virtual GetCallFragments*
     new_get_call_records_op(const std::string& impu);
-  virtual DeleteOldCallRecords*
+  virtual DeleteOldCallFragments*
     new_delete_old_call_records_op(const std::string& impu,
                                    const tm& age);
 
@@ -164,11 +164,11 @@ public:
   //
   virtual CassandraStore::ResultCode
     write_call_record_sync(const std::string& impu,
-                           const CallRecord& record,
+                           const CallFragment& record,
                            const int32_t ttl = 0);
   virtual CassandraStore::ResultCode
     get_call_records_sync(const std::string& impu,
-                          std::vector<CallRecord>& records);
+                          std::vector<CallFragment>& records);
   virtual CassandraStore::ResultCode
     delete_old_call_records_sync(const std::string& impu,
                                  const tm& threshold);

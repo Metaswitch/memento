@@ -1,5 +1,5 @@
 /**
- * @file call_list_store.cpp Memento call ist store implementation.
+ * @file call_list_store.cpp Memento call list store implementation.
  *
  * Project Clearwater - IMS in the cloud.
  * Copyright (C) 2013  Metaswitch Networks Ltd
@@ -36,7 +36,7 @@
 
 #include "call_list_store.h"
 
-const std::string KEYSPACE = "memento";
+const static std::string KEYSPACE = "memento";
 
 namespace CallListStore
 {
@@ -50,23 +50,23 @@ Store::~Store() {}
 // TODO
 //
 
-WriteCallRecord*
+WriteCallFragment*
 Store::new_write_call_record_op(const std::string& impu,
-                                const CallRecord& record,
+                                const CallFragment& record,
                                 const int32_t ttl)
 {
   return NULL;
 }
 
 
-GetCallRecords*
-Store:: new_get_call_records_op(const std::string& impu)
+GetCallFragments*
+Store::new_get_call_records_op(const std::string& impu)
 {
   return NULL;
 }
 
 
-DeleteOldCallRecords*
+DeleteOldCallFragments*
 Store::new_delete_old_call_records_op(const std::string& impu,
                                       const tm& age)
 {
@@ -76,7 +76,7 @@ Store::new_delete_old_call_records_op(const std::string& impu,
 
 CassandraStore::ResultCode
 Store::write_call_record_sync(const std::string& impu,
-                              const CallRecord& record,
+                              const CallFragment& record,
                               const int32_t ttl)
 {
   return CassandraStore::OK;
@@ -85,7 +85,7 @@ Store::write_call_record_sync(const std::string& impu,
 
 CassandraStore::ResultCode
 Store::get_call_records_sync(const std::string& impu,
-                             std::vector<CallRecord>& records)
+                             std::vector<CallFragment>& records)
 {
   return CassandraStore::OK;
 }
