@@ -44,17 +44,17 @@ HTTPDigestAuthenticate::HTTPDigestAuthenticate(AuthStore* auth_store,
                                                std::string home_domain) :
   _auth_store(auth_store),
   _homestead_conn(homestead_conn),
-  _home_domain(home_domain),
-  _response(NULL)
+  _home_domain(home_domain)
 {
 }
 
 HTTPDigestAuthenticate::~HTTPDigestAuthenticate()
 {
-  delete _response; _response = NULL;
 }
 
 // LCOV_EXCL_START - The components of this function are tested separately
+/// authenticate_request
+/// Authenticates a request based on the IMPU and authorization request
 HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
                                                       std::string authorization_header,
                                                       std::string& www_auth_header,
@@ -62,10 +62,11 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
                                                       SAS::TrailId trail)
 {
   set_members(impu, method, "", trail);
+  Response* response = new Response();
 
   // Check whether the request contains authorization information
   bool auth_info = false;
-  HTTPCode rc = check_auth_header(authorization_header, auth_info);
+  HTTPCode rc = check_auth_header(authorization_header, auth_info, response);
 
   // The authorization header was invalid
   if (rc != HTTP_OK)
@@ -80,7 +81,7 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
     SAS::Event event(trail, SASEvent::AUTHENTICATION_PRESENT, 0);
     SAS::report_event(event);
 
-    rc = retrieve_digest_from_store(www_auth_header);
+    rc = retrieve_digest_from_store(www_auth_header, response);
   }
   else
   {
@@ -88,14 +89,18 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
     event.add_var_param(authorization_header);
     SAS::report_event(event);
 
-    rc = request_digest_and_store(www_auth_header, false);
+    rc = request_digest_and_store(www_auth_header, false, response);
   }
+
+  delete response; response = NULL;
 
   return rc;
 }
 // LCOV_EXCL_STOP
 
-HTTPCode HTTPDigestAuthenticate::check_auth_header(std::string authorization_header, bool& auth_info)
+HTTPCode HTTPDigestAuthenticate::check_auth_header(std::string authorization_header,
+                                                   bool& auth_info,
+                                                   Response* response)
 {
   HTTPCode rc = HTTP_OK;
 
@@ -125,15 +130,15 @@ HTTPCode HTTPDigestAuthenticate::check_auth_header(std::string authorization_hea
     // qop, nc, cnonce, response, opaque or only a username.
     LOG_DEBUG("Authorization header present: %s", authorization_header.c_str());
 
-    rc = parse_auth_header(authorization_header, auth_info);
+    rc = parse_auth_header(authorization_header, auth_info, response);
 
     if (rc == HTTP_OK)
     {
       if (auth_info)
       {
-        if (_response->_qop != "auth")
+        if (response->_qop != "auth")
         {
-          LOG_DEBUG("Client requesting non-auth (%s) digest", _response->_qop.c_str());
+          LOG_DEBUG("Client requesting non-auth (%s) digest", response->_qop.c_str());
           return HTTP_BAD_RESULT;
         }
       }
@@ -145,7 +150,9 @@ HTTPCode HTTPDigestAuthenticate::check_auth_header(std::string authorization_hea
   return rc;
 }
 
-HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header, bool& auth_info)
+HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header,
+                                                   bool& auth_info,
+                                                   Response* response)
 {
   HTTPCode rc = HTTP_OK;
 
@@ -220,16 +227,15 @@ HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header, bool
       LOG_DEBUG("Authorization header valid and complete");
       _impi = username_entry->second;
       auth_info = true;
-      _response = new Response(username_entry->second,
-                               realm_entry->second,
-                               nonce_entry->second,
-                               uri_entry->second,
-                               qop_entry->second,
-                               nc_entry->second,
-                               cnonce_entry->second,
-                               response_entry->second,
-                               opaque_entry->second);
-
+      response->set_members(username_entry->second,
+                            realm_entry->second,
+                            nonce_entry->second,
+                            uri_entry->second,
+                            qop_entry->second,
+                            nc_entry->second,
+                            cnonce_entry->second,
+                            response_entry->second,
+                            opaque_entry->second);
   }
   else if ((username_entry != response_key_values.end()) &&
            (realm_entry == response_key_values.end()) &&
@@ -254,19 +260,20 @@ HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header, bool
   return rc;
 }
 
-HTTPCode HTTPDigestAuthenticate::retrieve_digest_from_store(std::string& www_auth_header)
+HTTPCode HTTPDigestAuthenticate::retrieve_digest_from_store(std::string& www_auth_header,
+                                                            Response* response)
 {
   LOG_DEBUG("Retrieve digest for IMPU: %s, IMPI: %s", _impu.c_str(), _impi.c_str());
   HTTPCode rc = HTTP_OK;
 
   AuthStore::Digest* digest;
-  bool success = _auth_store->get_digest(_impi, _response->_nonce, digest, _trail);
+  bool success = _auth_store->get_digest(_impi, response->_nonce, digest, _trail);
 
   if (success)
   {
     // Successfully retrieved digest, so check whether it matches
     // the response sent by the client
-    rc = check_if_matches(digest, www_auth_header);
+    rc = check_if_matches(digest, www_auth_header, response);
   }
   else
   {
@@ -275,7 +282,7 @@ HTTPCode HTTPDigestAuthenticate::retrieve_digest_from_store(std::string& www_aut
     SAS::Event event(_trail, SASEvent::AUTHENTICATION_OUT_OF_DATE, 0);
     SAS::report_event(event);
 
-    rc = request_digest_and_store(www_auth_header, true);
+    rc = request_digest_and_store(www_auth_header, true, response);
   }
 
   delete digest; digest = NULL;
@@ -284,7 +291,9 @@ HTTPCode HTTPDigestAuthenticate::retrieve_digest_from_store(std::string& www_aut
 
 // Request a digest from Homestead, store it in memcached, and generate
 // the WWW-Authenticate header.
-HTTPCode HTTPDigestAuthenticate::request_digest_and_store(std::string& www_auth_header, bool include_stale)
+HTTPCode HTTPDigestAuthenticate::request_digest_and_store(std::string& www_auth_header,
+                                                          bool include_stale,
+                                                          Response* response)
 {
   HTTPCode rc = HTTP_BAD_RESULT;
   std::string ha1;
@@ -326,20 +335,22 @@ HTTPCode HTTPDigestAuthenticate::request_digest_and_store(std::string& www_auth_
 //   HA1 is the digest returned from Homestead.
 //   HA2 = MD5(method : uri), e.g. MD5(GET:/org.projectclearwater.call-list/users/<IMPU>/call-list.xml)
 //   response = MD5(HA1 : nonce : nonce_count (provided by client) : cnonce : qop : HA2)
-HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest, std::string& www_auth_header)
+HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
+                                                  std::string& www_auth_header,
+                                                  Response* response)
 {
   HTTPCode rc = HTTP_OK;
 
-  if (digest->_opaque != _response->_opaque)
+  if (digest->_opaque != response->_opaque)
   {
     LOG_DEBUG("The opaque value in the request (%s) doesn't match the stored value (%s)",
-              _response->_opaque.c_str(), digest->_opaque.c_str());
+              response->_opaque.c_str(), digest->_opaque.c_str());
     return HTTP_BAD_RESULT;
   }
-  else if (_response->_realm != digest->_realm)
+  else if (response->_realm != digest->_realm)
   {
     LOG_DEBUG("Request not targeted at the stored domain. Target: %s, Realm: %s",
-              _response->_realm.c_str(), digest->_realm.c_str());
+              response->_realm.c_str(), digest->_realm.c_str());
     return HTTP_BAD_RESULT;
   }
 
@@ -350,7 +361,7 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest, std
   MD5_Init(&Md5Ctx);
   MD5_Update(&Md5Ctx, _method.c_str(), strlen(_method.c_str()));
   MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, _response->_uri.c_str(), strlen(_response->_uri.c_str()));
+  MD5_Update(&Md5Ctx, response->_uri.c_str(), strlen(response->_uri.c_str()));
   MD5_Final(ha2, &Md5Ctx);
   Utils::hashToHex(ha2, ha2_hex);
 
@@ -360,27 +371,27 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest, std
   MD5_Init(&Md5Ctx);
   MD5_Update(&Md5Ctx, digest->_ha1.c_str(), strlen(digest->_ha1.c_str()));
   MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, _response->_nonce.c_str(), strlen(_response->_nonce.c_str()));
+  MD5_Update(&Md5Ctx, response->_nonce.c_str(), strlen(response->_nonce.c_str()));
   MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, _response->_nc.c_str(), strlen(_response->_nc.c_str()));
+  MD5_Update(&Md5Ctx, response->_nc.c_str(), strlen(response->_nc.c_str()));
   MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, _response->_cnonce.c_str(), strlen(_response->_cnonce.c_str()));
+  MD5_Update(&Md5Ctx, response->_cnonce.c_str(), strlen(response->_cnonce.c_str()));
   MD5_Update(&Md5Ctx, ":", 1);
-  MD5_Update(&Md5Ctx, _response->_qop.c_str(), strlen(_response->_qop.c_str()));
+  MD5_Update(&Md5Ctx, response->_qop.c_str(), strlen(response->_qop.c_str()));
   MD5_Update(&Md5Ctx, ":", 1);
   MD5_Update(&Md5Ctx, ha2_hex, Utils::HEX_HASH_SIZE);
   MD5_Final(resp, &Md5Ctx);
   Utils::hashToHex(resp, resp_hex);
 
-  std::string response((const char*) resp_hex);
+  std::string stored_response((const char*) resp_hex);
 
-  if (_response->_response == response)
+  if (response->_response == stored_response)
   {
     LOG_DEBUG("Client response matches stored digest");
 
     // If the nonce count supplied isn't an int then this will return 0,
     // and the nonce will be treated as stale.
-    uint32_t client_count = atoi(_response->_nc.c_str());
+    uint32_t client_count = atoi(response->_nc.c_str());
 
     // Nonce count is stale. Request the digest from Homestead again.
     if (client_count < digest->_nonce_count)
@@ -389,10 +400,13 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest, std
       SAS::Event event(_trail, SASEvent::AUTHENTICATION_OUT_OF_DATE, 0);
       SAS::report_event(event);
 
-      rc = request_digest_and_store(www_auth_header, true);
+      rc = request_digest_and_store(www_auth_header, true, response);
     }
     else
     {
+      // Authentication successful. Increment the stored nonce count
+      digest->_nonce_count++;
+      _auth_store->set_digest(_impi, digest->_nonce, digest, _trail);
       SAS::Event event(_trail, SASEvent::AUTHENTICATION_ACCEPTED, 0);
       SAS::report_event(event);
     }

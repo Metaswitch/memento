@@ -42,17 +42,38 @@
 class AuthStore
 {
 public:
+  /// @class AuthStore::Digest
+  ///
+  /// Represents a Digest
   class Digest
   {
   public:
+    /// HA1 - supplied on client request
     std::string _ha1;
+
+    /// opaque - supplied on client request or generated
+    /// from the timestamp
     std::string _opaque;
+
+    /// nonce - supplied on client request or generated
+    /// from the timestamp
     std::string _nonce;
+
+    /// impi - Private ID
     std::string _impi;
+
+    /// realm - supplied on client request or defaults 
+    /// to the home domain
     std::string _realm;
+
+    /// nonce_count - supplied on client request and incremented
+    /// when the digest is examined
     uint32_t _nonce_count;
 
+    /// Default Constructor.
     Digest();
+
+    /// Destructor.
     ~Digest();
   };
 
@@ -65,14 +86,27 @@ public:
   /// Destructor.
   ~AuthStore();
 
-  bool set_digest(const std::string&, const std::string&, const Digest*, SAS::TrailId);
-  bool get_digest(const std::string&, const std::string&, Digest*&, SAS::TrailId);
+  /// set_digest.
+  /// @param impi   A reference to the private user identity.
+  /// @param nonce  A reference to the nonce.
+  /// @param digest A pointer to a Digest object to store
+  bool set_digest(const std::string& impi, const std::string& nonce, const Digest*, SAS::TrailId);
+
+  /// set_digest.
+  /// @param impi   A reference to the private user identity.
+  /// @param nonce  A reference to the nonce.
+  /// @param digest A Digest object to populate with the retrieved Digest. Caller is
+  ///               responsible for deleting
+  bool get_digest(const std::string& impi, const std::string& nonce, Digest*&, SAS::TrailId);
 
 private:
   std::string serialize_digest(const Digest* digest);
   Digest* deserialize_digest(const std::string& digest_s);
 
+  /// A pointer to the underlying data store.
   Store* _data_store;
+
+  /// Time to expire Digest record (controlled by configuration)
   int _expiry;
 };
 

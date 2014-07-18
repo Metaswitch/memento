@@ -24,6 +24,7 @@ TARGET_SOURCES := localstore.cpp \
                   log.cpp \
                   handlers.cpp \
                   httpstack.cpp \
+                  httpstack_utils.cpp \
                   accesslogger.cpp \
                   authstore.cpp \
                   httpconnection.cpp \
@@ -69,11 +70,13 @@ CPPFLAGS += -I${ROOT}/include \
             -I${ROOT}/usr/include \
             -I${ROOT}/modules/cpp-common/include \
             -I${ROOT}/modules/cpp-common/test_utils \
+            -I${ROOT}/modules/app-servers/include \
+            -I${ROOT}/modules/app-servers/test \
             -I${ROOT}/modules/sas-client/include \
             -I${ROOT}/modules/rapidjson/include
 
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
-VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils
+VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils:${ROOT}/modules/app-servers/test
 
 # Production build:
 #

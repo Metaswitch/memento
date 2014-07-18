@@ -73,6 +73,7 @@ bool AuthStore::set_digest(const std::string& impi,
 
     SAS::Event event(trail, SASEvent::AUTHSTORE_SET_FAILURE, 0);
     event.add_var_param(key);
+    event.add_var_param(data);
     SAS::report_event(event);
 
     return false;
@@ -81,6 +82,7 @@ bool AuthStore::set_digest(const std::string& impi,
 
   SAS::Event event(trail, SASEvent::AUTHSTORE_SET_SUCCESS, 0);
   event.add_var_param(key);
+  event.add_var_param(data);
   SAS::report_event(event);
 
   return true;
@@ -114,6 +116,7 @@ bool AuthStore::get_digest(const std::string& impi,
 
   SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
   event.add_var_param(key);
+  event.add_var_param(data);
   SAS::report_event(event);
 
   digest = deserialize_digest(data);

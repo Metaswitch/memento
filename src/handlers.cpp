@@ -37,15 +37,6 @@
 #include "handlers.h"
 #include "httpdigestauthenticate.h"
 
-// The poll_memento script pings memento to check it's still alive.
-// Handle the ping.
-void PingHandler::run()
-{
-  _req.add_content("OK");
-  send_http_reply(200);
-  delete this;
-}
-
 // This handler deals with requests to the call list URL
 void CallListHandler::run()
 {
