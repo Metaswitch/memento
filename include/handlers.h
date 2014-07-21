@@ -43,6 +43,7 @@
 #include "authstore.h"
 #include "homesteadconnection.h"
 #include "httpdigestauthenticate.h"
+#include "call_list_store.h"
 
 class CallListHandler : public HttpStackUtils::Handler
 {
@@ -51,13 +52,16 @@ public:
   {
     Config(AuthStore* auth_store,
            HomesteadConnection* homestead_conn,
+           CallListStore::Store* call_list_store,
            std::string home_domain) :
-      _auth_store(auth_store),
+    _auth_store(auth_store),
       _homestead_conn(homestead_conn),
+      _call_list_store(call_list_store),
       _home_domain(home_domain)
       {}
     AuthStore* _auth_store;
     HomesteadConnection* _homestead_conn;
+    CallListStore::Store* _call_list_store;
     std::string _home_domain;
   };
 

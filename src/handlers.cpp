@@ -36,6 +36,9 @@
 
 #include "handlers.h"
 #include "httpdigestauthenticate.h"
+#include "mementosasevent.h"
+#include "call_list_store.h"
+#include "call_list_xml.h"
 
 // This handler deals with requests to the call list URL
 void CallListHandler::run()
@@ -50,7 +53,7 @@ void CallListHandler::run()
   }
 
   LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
-  SAS::Event rx_event(trail, SASEvent::CALL_LIST_REQUEST_RX, 0);
+  SAS::Event rx_event(trail(), SASEvent::CALL_LIST_REQUEST_RX, 0);
   rx_event.add_var_param(_impu);
   SAS::report_event(rx_event);
 
@@ -76,13 +79,13 @@ void CallListHandler::run()
     return;
   }
 
-  std::vector<CallRecord> records;
-  CassandraStore::ResultCode rc = _store->get_call_records_sync(_impu, records);
+  std::vector<CallListStore::CallFragment> records;
+  CassandraStore::ResultCode db_rc = _cfg->_call_list_store->get_call_records_sync(_impu, records);
 
-  if (rc != OK)
+  if (db_rc != CassandraStore::OK)
   {
-    SAS::Event db_event(trail, SASEvent::CALL_LIST_DB_FAILED, 0);
-    db_event.add_var_param(rc);
+    SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_FAILED, 0);
+    db_event.add_static_param(rc);
     SAS::report_event(db_event);
 
     LOG_DEBUG("get_call_records_sync failed with result code %d", rc);
@@ -91,15 +94,15 @@ void CallListHandler::run()
     return;
   }
 
-  SAS::Event db_event(trail, SASEvent::CALL_LIST_DB_RETRIEVAL, 0);
+  SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL, 0);
   db_event.add_static_param(records.size());
   SAS::report_event(db_event);
 
   // Request has authenticated, so attempt to get the call lists.
-  std::string calllists = xml_from_call_lists(records);
+  std::string calllists = xml_from_call_records(records);
   _req.add_content(calllists);
 
-  SAS::Event tx_event(trail, SASEvent::CALL_LIST_RSP_TX, 0);
+  SAS::Event tx_event(trail(), SASEvent::CALL_LIST_RSP_TX, 0);
   tx_event.add_var_param(_impu);
   SAS::report_event(tx_event);
 
