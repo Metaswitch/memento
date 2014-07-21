@@ -50,6 +50,9 @@ void CallListHandler::run()
   }
 
   LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
+  SAS::Event rx_event(trail, SASEvent::CALL_LIST_REQUEST_RX, 0);
+  rx_event.add_var_param(_impu);
+  SAS::report_event(rx_event);
 
   std::string www_auth_header;
   std::string auth_header = _req.header("Authorization");
@@ -73,10 +76,33 @@ void CallListHandler::run()
     return;
   }
 
+  std::vector<CallRecord> records;
+  CassandraStore::ResultCode rc = _store->get_call_records_sync(_impu, records);
+
+  if (rc != OK)
+  {
+    SAS::Event db_event(trail, SASEvent::CALL_LIST_DB_FAILED, 0);
+    db_event.add_var_param(rc);
+    SAS::report_event(db_event);
+
+    LOG_DEBUG("get_call_records_sync failed with result code %d", rc);
+    send_http_reply(500);
+    delete this;
+    return;
+  }
+
+  SAS::Event db_event(trail, SASEvent::CALL_LIST_DB_RETRIEVAL, 0);
+  db_event.add_static_param(records.size());
+  SAS::report_event(db_event);
+
   // Request has authenticated, so attempt to get the call lists.
-  // DUMMY RESPONSE FOR NOW WITH AN EMPTY CALL LIST
-  std::string calllists = "<call-list></call-list>";
+  std::string calllists = xml_from_call_lists(records);
   _req.add_content(calllists);
+
+  SAS::Event tx_event(trail, SASEvent::CALL_LIST_RSP_TX, 0);
+  tx_event.add_var_param(_impu);
+  SAS::report_event(tx_event);
+
   send_http_reply(HTTP_OK);
   delete this;
   return;
