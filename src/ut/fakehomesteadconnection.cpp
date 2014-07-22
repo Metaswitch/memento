@@ -37,7 +37,9 @@
 #include "fakehomesteadconnection.hpp"
 #include "gtest/gtest.h"
 
-FakeHomesteadConnection::FakeHomesteadConnection() : HomesteadConnection("localhost")
+FakeHomesteadConnection::FakeHomesteadConnection() :
+  // Pass NULL in as the HTTP resolver.  This will never get invoked amnyway.
+  HomesteadConnection("narcissus", NULL)
 {
 }
 
