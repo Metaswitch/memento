@@ -40,23 +40,26 @@
 #include "sas.h"
 #include "homesteadconnection.h"
 #include "fakecurl.hpp"
+#include "fakehttpresolver.hpp"
 
 class HomesteadConnectionTest : public ::testing::Test
 {
+  FakeHttpResolver _resolver;
   HomesteadConnection _hc;
 
   HomesteadConnectionTest():
-    _hc("narcissus")
+    _resolver("10.42.42.42"),
+    _hc("narcissus", &_resolver)
   {
     fakecurl_responses.clear();
-    fakecurl_responses["http://narcissus/impi/privid1/av?public_id=pubid1"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
-    fakecurl_responses["http://narcissus/impi/privid2/av?public_id=pubid2"] = CURLE_HTTP_RETURNED_ERROR;
-    fakecurl_responses["http://narcissus/impi/privid3/av?public_id=pubid3"] = "{\"digest\"{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
-    fakecurl_responses["http://narcissus/impi/privid4/av?public_id=pubid4"] = "{\"digest1\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
-    fakecurl_responses["http://narcissus/impi/privid5/av?public_id=pubid5"] = "{\"digest\":{\"realm1\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
-    fakecurl_responses["http://narcissus/impi/privid6/av?public_id=pubid6"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop1\": \"auth\",\"ha1\": \"12345678\"}}";
-    fakecurl_responses["http://narcissus/impi/privid7/av?public_id=pubid7"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha11\": \"12345678\"}}";
-    fakecurl_responses["http://narcissus/impi/privid8/av?public_id=pubid8"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth1\",\"ha1\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid1/av?public_id=pubid1"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid2/av?public_id=pubid2"] = CURLE_HTTP_RETURNED_ERROR;
+    fakecurl_responses["http://10.42.42.42:80/impi/privid3/av?public_id=pubid3"] = "{\"digest\"{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid4/av?public_id=pubid4"] = "{\"digest1\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid5/av?public_id=pubid5"] = "{\"digest\":{\"realm1\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid6/av?public_id=pubid6"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop1\": \"auth\",\"ha1\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid7/av?public_id=pubid7"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha11\": \"12345678\"}}";
+    fakecurl_responses["http://10.42.42.42:80/impi/privid8/av?public_id=pubid8"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth1\",\"ha1\": \"12345678\"}}";
  }
 
   virtual ~HomesteadConnectionTest()

@@ -317,7 +317,19 @@ int main(int argc, char**argv)
                                               10.0, // Initial token fill rate (per sec).
                                               10.0); // Minimum token fill rate (pre sec).
 
-  HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name);
+  // Create a DNS resolver and an HTTP specific resolver.
+  int af = AF_INET;
+  struct in6_addr dummy_addr;
+  if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
+  {
+    LOG_DEBUG("Local host is an IPv6 address");
+    af = AF_INET6;
+  }
+
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
+  HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
+  HomesteadConnection* homestead_conn =
+    new HomesteadConnection(options.homestead_http_name, http_resolver);
 
   HttpStack* http_stack = HttpStack::get_instance();
 
@@ -361,6 +373,8 @@ int main(int argc, char**argv)
   }
 
   delete homestead_conn; homestead_conn = NULL;
+  delete http_resolver; http_resolver = NULL;
+  delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
   delete m_store; m_store = NULL;

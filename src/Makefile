@@ -31,7 +31,11 @@ TARGET_SOURCES := localstore.cpp \
                   homesteadconnection.cpp \
                   httpdigestauthenticate.cpp \
                   cassandra_store.cpp \
-                  call_list_store.cpp
+                  call_list_store.cpp \
+                  dnsparser.cpp \
+                  baseresolver.cpp \
+                  dnscachedresolver.cpp \
+                  httpresolver.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
