@@ -87,6 +87,7 @@ public:
 protected:
   const Config* _cfg;
   HTTPDigestAuthenticate* _auth_mod;
+  void respond_when_authenticated();
 
   std::string _impu;
 };

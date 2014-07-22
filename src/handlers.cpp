@@ -47,9 +47,11 @@ void CallListHandler::run()
 
   if (rc != HTTP_OK)
   {
+    // LCOV_EXCL_START
     send_http_reply(rc);
     delete this;
     return;
+    // LCOV_EXCL_STOP
   }
 
   LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
@@ -68,29 +70,31 @@ void CallListHandler::run()
     LOG_DEBUG("Authorization data missing or out of date, responding with 401");
     _req.add_header("WWW-Authenticate", www_auth_header);
     send_http_reply(rc);
-    delete this;
-    return;
   }
   else if (rc != HTTP_OK)
   {
     LOG_DEBUG("Authorization failed, responding with %d", rc);
     send_http_reply(rc);
-    delete this;
-    return;
+  } else {
+    respond_when_authenticated();
   }
+  delete this;
+  return;
+}
 
+void CallListHandler::respond_when_authenticated()
+{
   std::vector<CallListStore::CallFragment> records;
   CassandraStore::ResultCode db_rc = _cfg->_call_list_store->get_call_records_sync(_impu, records);
 
   if (db_rc != CassandraStore::OK)
   {
     SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_FAILED, 0);
-    db_event.add_static_param(rc);
+    db_event.add_static_param(db_rc);
     SAS::report_event(db_event);
 
-    LOG_DEBUG("get_call_records_sync failed with result code %d", rc);
+    LOG_DEBUG("get_call_records_sync failed with result code %d", db_rc);
     send_http_reply(500);
-    delete this;
     return;
   }
 
@@ -107,8 +111,6 @@ void CallListHandler::run()
   SAS::report_event(tx_event);
 
   send_http_reply(HTTP_OK);
-  delete this;
-  return;
 }
 
 HTTPCode CallListHandler::parse_request()
