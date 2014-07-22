@@ -317,7 +317,7 @@ int main(int argc, char**argv)
                                               10.0, // Initial token fill rate (per sec).
                                               10.0); // Minimum token fill rate (pre sec).
 
-  // Create a DNS resolver and am HTTP specific resolver.
+  // Create a DNS resolver and an HTTP specific resolver.
   int af = AF_INET;
   struct in6_addr dummy_addr;
   if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)

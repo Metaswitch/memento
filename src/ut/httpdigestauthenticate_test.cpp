@@ -53,10 +53,7 @@ using namespace std;
 /// Fixture for HTTPDigestAuthenticateTest.
 class HTTPDigestAuthenticateTest : public ::testing::Test
 {
-  HTTPDigestAuthenticateTest() :
-    _dns_resolver("127.0.0.1"),
-    _http_resolver(&_dns_resolver, AF_INET),
-    _http("narcissus", false, &_http_resolver, SASEvent::HttpLogLevel::PROTOCOL)
+  HTTPDigestAuthenticateTest()
   {
     _local_data_store = new LocalStore();
     _auth_store = new AuthStore(_local_data_store, 300);
@@ -73,10 +70,6 @@ class HTTPDigestAuthenticateTest : public ::testing::Test
     delete _auth_store; _auth_store = NULL;
     delete _local_data_store; _local_data_store = NULL;
   }
-
-  DnsCachedResolver _dns_resolver;
-  HttpResolver _http_resolver;
-  HttpConnection _http;
 
   LocalStore* _local_data_store;
   AuthStore* _auth_store;
