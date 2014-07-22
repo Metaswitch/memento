@@ -17,19 +17,19 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
 
     if ((ii->type == FragmentType::BEGIN) && !ids_to_records[record_id].empty() )
     {
-      LOG_WARNING("BEGIN marker found for call ??? but there is an earlier entry for this call ID");
+      LOG_WARNING("BEGIN marker found with ID %s but there is an earlier entry for this ID", ii->id.c_str());
     }
     else if ((ii->type == FragmentType::REJECTED) && !ids_to_records[record_id].empty())
     {
-      LOG_WARNING("REJECTED marker found for call ??? but there is an earlier entry for this call ID");
+      LOG_WARNING("REJECTED marker found with ID %s but there is an earlier entry for this ID", ii->id.c_str());
     }
     else if ((ii->type == FragmentType::END) && ids_to_records[record_id].empty())
     {
-      LOG_WARNING("END marker found for call ??? but there is no earlier entry for this call ID");
+      LOG_WARNING("END marker found with ID %s but there is no earlier entry for this ID", ii->id.c_str());
     }
     else if ((ii->type == FragmentType::END) && (completed_ids.find(ii->id) != completed_ids.end()))
     {
-      LOG_WARNING("END marker found for call ??? but there is already a complete record for this call ID");
+      LOG_WARNING("END marker found with ID %s but there is already a complete record for this ID", ii->id.c_str());
     }
     else
     {
