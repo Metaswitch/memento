@@ -104,16 +104,16 @@ TEST_F(HandlersTest, Mainline)
   record1.id = "a";
   record1.contents = (
     "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>1</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
+      "<URI>alice@example.com</URI>"
+      "<name>Alice Adams</name>"
+    "</to>"
+    "<from>"
+      "<URI>bob@example.com</URI>"
+      "<name>Bob Barker</name>"
+    "</from>"
+    "<answered>1</answered>"
+    "<outgoing>1</outgoing>"
+    "<start-time>2002-05-30T09:30:10</start-time>"
     "<answer-time>2002-05-30T09:30:20</answer-time>");
   record2.type = CallListStore::CallFragment::Type::END;
   record2.id = "a";
@@ -122,15 +122,15 @@ TEST_F(HandlersTest, Mainline)
   record3.id = "b";
   record3.contents = (
     "<to>"
-        "<URI>alice@example.net</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.net</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>0</answered>"
-      "<outgoing>1</outgoing>"
+      "<URI>alice@example.net</URI>"
+      "<name>Alice Adams</name>"
+    "</to>"
+    "<from>"
+      "<URI>bob@example.net</URI>"
+      "<name>Bob Barker</name>"
+    "</from>"
+    "<answered>0</answered>"
+    "<outgoing>1</outgoing>"
     "<start-time>2002-05-30T09:30:10</start-time>");
   records.push_back(record1);
   records.push_back(record3);
@@ -145,37 +145,38 @@ TEST_F(HandlersTest, Mainline)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls>"
-"<call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>1</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "<answer-time>2002-05-30T09:30:20</answer-time>"
-    "<end-time>2002-05-30T09:35:00</end-time>"
-                                  "</call>"
-"<call>"
-    "<to>"
-        "<URI>alice@example.net</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.net</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>0</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-                                  "</call>"
-                                  "</calls></call-list>")
-    , req.content());
+  EXPECT_EQ((
+              "<call-list><calls>"
+                "<call>"
+                  "<to>"
+                    "<URI>alice@example.com</URI>"
+                    "<name>Alice Adams</name>"
+                  "</to>"
+                  "<from>"
+                    "<URI>bob@example.com</URI>"
+                    "<name>Bob Barker</name>"
+                  "</from>"
+                  "<answered>1</answered>"
+                  "<outgoing>1</outgoing>"
+                  "<start-time>2002-05-30T09:30:10</start-time>"
+                  "<answer-time>2002-05-30T09:30:20</answer-time>"
+                  "<end-time>2002-05-30T09:35:00</end-time>"
+                "</call>"
+                "<call>"
+                  "<to>"
+                    "<URI>alice@example.net</URI>"
+                    "<name>Alice Adams</name>"
+                  "</to>"
+                  "<from>"
+                    "<URI>bob@example.net</URI>"
+                    "<name>Bob Barker</name>"
+                  "</from>"
+                  "<answered>0</answered>"
+                  "<outgoing>1</outgoing>"
+                  "<start-time>2002-05-30T09:30:10</start-time>"
+                "</call>"
+              "</calls></call-list>"),
+            req.content());
   delete handler;
 }
 
