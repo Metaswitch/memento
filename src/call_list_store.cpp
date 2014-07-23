@@ -36,18 +36,33 @@
 
 #include "call_list_store.h"
 
+// The keyspace that that call list store uses.
 const static std::string KEYSPACE = "memento";
+
+// The column family (table) that the call list store uses.
 const static std::string COLUMN_FAMILY = "call_lists";
 
+// String representations of the idfferent call fragment types. These are
+// encoded into the column names in the `call_lists` column family.
 const static std::string STR_BEGIN = "begin";
 const static std::string STR_END = "end";
 const static std::string STR_REJECTED = "rejected";
 
-const static std::string CALL_COLUMN_PREFIX = "call";
+// All call list fragements begin with this prefix. This is to allow the column
+// family to be easily extended to contain different types of columns in future
+// (e.g. metatdata related to the call list).
+const static std::string CALL_COLUMN_PREFIX = "call_";
 
 namespace CallListStore
 {
 
+namespace cass = org::apache::cassandra;
+
+/// Utility method for converting a call fragment type to the string
+/// representation used in cassandra.
+///
+/// @param type    - The type of fragment.
+/// @return        - The string representation.
 std::string fragment_type_to_string(CallFragment::Type type)
 {
   switch(type)
@@ -72,25 +87,42 @@ std::string fragment_type_to_string(CallFragment::Type type)
   }
 }
 
-CallFragment::Type fragment_type_from_string(const std::string& fragment_str)
+// Utility method for converting a call fragment string (as stored in
+// caassandra). into an enumerated type.
+//
+// @param fragment_str    - The string to convert.
+// @param type            - (out) The type of the fragment.
+//
+// @return                - True of the string was converted successfully, false
+//                          if the string is not recognized.
+bool fragment_type_from_string(const std::string& fragment_str,
+                               CallFragment::Type& type)
 {
+  bool success = true;
+
   if (fragment_str == STR_BEGIN)
   {
-    return CallFragment::BEGIN;
+    type = CallFragment::BEGIN;
   }
   else if (fragment_str == STR_END)
   {
-    return CallFragment::END;
+    type = CallFragment::END;
   }
   else if (fragment_str == STR_REJECTED)
   {
-    return CallFragment::REJECTED;
+    type = CallFragment::REJECTED;
   }
   else
   {
-    throw std::string("Unrecognized fragment type: ") + fragment_str;
+    success = false;
   }
+
+  return success;
 }
+
+//
+// Call list store methods.
+//
 
 Store::Store() : CassandraStore::Store(KEYSPACE) {}
 
@@ -100,10 +132,16 @@ Store::~Store() {}
 // Operation definitions.
 //
 
+
+/// Write a new call fragment to cassandra.
+///
+/// @param impu       - The IMPU that is involed in the call.
+/// @param fragment   - The fragment to write.
+/// @param ttl        - Cassandra time to live (in seconds) for the fragment.
 WriteCallFragment::WriteCallFragment(const std::string& impu,
                                      const CallFragment& fragment,
                                      const int32_t ttl) :
-  _impu(impu), _fragment(fragment), _ttl(ttl)
+  CassandraStore::Operation(), _impu(impu), _fragment(fragment), _ttl(ttl)
 {}
 
 WriteCallFragment::~WriteCallFragment()
@@ -112,15 +150,26 @@ WriteCallFragment::~WriteCallFragment()
 bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
                                 SAS::TrailId trail)
 {
+  LOG_DEBUG("Writing %s call fragment for IMPU '%s'",
+            fragment_type_to_string(_fragment.type).c_str(),
+            _impu.c_str());
+
+  // The column name is of the form:
+  //   call_<timestamp>_<id>_<type>
+  //
+  // For example:
+  //   call_20140722120000_12345_begin
   std::string column_name;
-  column_name.append(CALL_COLUMN_PREFIX).append("_")
+  column_name.append(CALL_COLUMN_PREFIX)
              .append(_fragment.timestamp).append("_")
              .append(_fragment.id).append("_")
              .append(fragment_type_to_string(_fragment.type));
 
+  // Map describing the columns to write.
   std::map<std::string, std::string> columns;
   columns[column_name] = _fragment.contents;
 
+  // Write to the supplied impu only.
   std::vector<std::string> keys;
   keys.push_back(_impu);
 
@@ -135,35 +184,121 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
 }
 
 WriteCallFragment*
-  Store::new_write_call_fragment_op(const std::string& impu,
-                                    const CallFragment& fragment,
-                                    const int32_t ttl)
+Store::new_write_call_fragment_op(const std::string& impu,
+                                  const CallFragment& fragment,
+                                  const int32_t ttl)
 {
   return new WriteCallFragment(impu, fragment, ttl);
 }
 
 
+/// Get all the call fragments for a given IMPU.
+///
+/// @param impu   - The IMPU whose fragments to retrieve.
+GetCallFragments::GetCallFragments(const std::string& impu) :
+  CassandraStore::Operation(), _impu(impu), _fragments()
+{}
 
+GetCallFragments::~GetCallFragments()
+{}
 
-
-
-
-
-
-GetCallFragments*
-  Store::new_get_call_fragments_op(const std::string& impu)
+bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
+                               SAS::TrailId trail)
 {
-  return NULL;
+  LOG_DEBUG("Get call fragments for IMPU: '%s'", _impu.c_str());
+
+  // Get all the call columns for the IMPU's cassandra row.
+  std::vector<cass::ColumnOrSuperColumn> columns;
+  ha_get_columns_with_prefix(client,
+                             COLUMN_FAMILY,
+                             _impu,
+                             CALL_COLUMN_PREFIX,
+                             columns);
+
+  for(std::vector<cass::ColumnOrSuperColumn>::const_iterator column_it = columns.begin();
+      column_it != columns.end();
+      ++column_it)
+  {
+    // The columns name is of the form call_<timestamp>_<id>_<type>. The call_
+    // prefix has already been stripped off, so just split the remaining string
+    // on underscores and access the elements.
+    std::vector<std::string> tokens;
+    Utils::split_string(column_it->column.name, '_', tokens);
+
+    std::string& timestamp_str = tokens[0];
+    std::string& id_str = tokens[1];
+    std::string& type_str = tokens[2];
+    CallFragment::Type type;
+    fragment_type_from_string(type_str, type);
+
+    // Now form a call fragment and add it to the output of the operation.
+    CallFragment fragment;
+    fragment.timestamp = timestamp_str;
+    fragment.id = id_str;
+    fragment.type = type;
+    fragment.contents = column_it->column.value;
+
+    _fragments.push_back(fragment);
+  }
+
+  LOG_DEBUG("Retrieved %d call fragments from the store", _fragments.size());
+
+  return true;
 }
 
+void GetCallFragments::get_result(std::vector<CallFragment>& fragments)
+{
+  fragments = _fragments;
+}
+
+GetCallFragments*
+Store::new_get_call_fragments_op(const std::string& impu)
+{
+  return new GetCallFragments(impu);
+}
+
+
+// Delete old call fragments for the givem IMPU.
+//
+// @param impu        - The IMPU in question.
+// @param threshold   - Time to delete up to. All records with an earlier
+//                      timestamp will be deleted.
+DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
+                                               const std::string& threshold) :
+  _impu(impu), _threshold(threshold)
+{}
+
+DeleteOldCallFragments::~DeleteOldCallFragments()
+{}
+
+bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
+                                     SAS::TrailId trail)
+{
+  // Delete all columns in the range "call_" to call_<Timestamp>". This covers
+  // all columns with a timestamp less than the specified value.
+  std::string start = CALL_COLUMN_PREFIX;
+  std::string finish = CALL_COLUMN_PREFIX + _threshold;
+
+  delete_slice(client,
+               COLUMN_FAMILY,
+               _impu,
+               start,
+               finish,
+               CassandraStore::Store::generate_timestamp());
+  return true;
+}
 
 DeleteOldCallFragments*
 Store::new_delete_old_call_fragments_op(const std::string& impu,
-                                        const std::string& timestamp)
+                                        const std::string& threshold)
 {
-  return NULL;
+  return new DeleteOldCallFragments(impu, threshold);
 }
 
+
+//
+// Wrappers for synchronous operations.
+//
 
 CassandraStore::ResultCode
 Store::write_call_fragment_sync(const std::string& impu,
@@ -172,16 +307,17 @@ Store::write_call_fragment_sync(const std::string& impu,
                                 SAS::TrailId trail)
 {
   CassandraStore::ResultCode result = CassandraStore::OK;
-  WriteCallFragment write_call_fragment(impu, fragment, ttl);
+  WriteCallFragment* op = new_write_call_fragment_op(impu, fragment, ttl);
 
-  if (!do_sync(&write_call_fragment, trail))
+  if (!do_sync(op, trail))
   {
-    result = write_call_fragment.get_result_code();
-    std::string error_text = write_call_fragment.get_error_text();
+    result = op->get_result_code();
+    std::string error_text = op->get_error_text();
     LOG_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
                 impu.c_str(), error_text.c_str(), result);
   }
 
+  delete op; op = NULL;
   return result;
 }
 
@@ -191,16 +327,41 @@ Store::get_call_fragments_sync(const std::string& impu,
                                std::vector<CallFragment>& fragments,
                                SAS::TrailId trail)
 {
-  return CassandraStore::OK;
+  CassandraStore::ResultCode result = CassandraStore::OK;
+  GetCallFragments* op = new_get_call_fragments_op(impu);
+
+  if (!do_sync(op, trail))
+  {
+    result = op->get_result_code();
+    std::string error_text = op->get_error_text();
+    LOG_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
+                impu.c_str(), error_text.c_str(), result);
+  }
+
+  op->get_result(fragments);
+
+  delete op; op = NULL;
+  return result;
 }
 
 
 CassandraStore::ResultCode
 Store::delete_old_call_fragments_sync(const std::string& impu,
-                                      const std::string& timestamp,
+                                      const std::string& threshold,
                                       SAS::TrailId trail)
 {
-  return CassandraStore::OK;
+  CassandraStore::ResultCode result = CassandraStore::OK;
+  DeleteOldCallFragments* op = new_delete_old_call_fragments_op(impu, threshold);
+
+  if (!do_sync(op, trail))
+  {
+    result = op->get_result_code();
+    std::string error_text = op->get_error_text();
+    LOG_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
+                impu.c_str(), error_text.c_str(), result);
+  }
+   delete op; op = NULL;
+   return result;
 }
 
 } // namespace CallListStore
