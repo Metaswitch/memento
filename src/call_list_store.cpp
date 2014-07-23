@@ -134,14 +134,15 @@ Store::~Store() {}
 
 
 /// Write a new call fragment to cassandra.
-///
-/// @param impu       - The IMPU that is involed in the call.
-/// @param fragment   - The fragment to write.
-/// @param ttl        - Cassandra time to live (in seconds) for the fragment.
 WriteCallFragment::WriteCallFragment(const std::string& impu,
                                      const CallFragment& fragment,
+                                     const int64_t cass_timestamp,
                                      const int32_t ttl) :
-  CassandraStore::Operation(), _impu(impu), _fragment(fragment), _ttl(ttl)
+  CassandraStore::Operation(),
+  _impu(impu),
+  _fragment(fragment),
+  _cass_timestamp(cass_timestamp),
+  _ttl(ttl)
 {}
 
 WriteCallFragment::~WriteCallFragment()
@@ -177,7 +178,7 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
               COLUMN_FAMILY,
               keys,
               columns,
-              CassandraStore::Store::generate_timestamp(),
+              _cass_timestamp,
               _ttl);
 
   return true;
@@ -186,15 +187,14 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
 WriteCallFragment*
 Store::new_write_call_fragment_op(const std::string& impu,
                                   const CallFragment& fragment,
+                                  const int64_t cass_timestamp,
                                   const int32_t ttl)
 {
-  return new WriteCallFragment(impu, fragment, ttl);
+  return new WriteCallFragment(impu, fragment, cass_timestamp, ttl);
 }
 
 
 /// Get all the call fragments for a given IMPU.
-///
-/// @param impu   - The IMPU whose fragments to retrieve.
 GetCallFragments::GetCallFragments(const std::string& impu) :
   CassandraStore::Operation(), _impu(impu), _fragments()
 {}
@@ -259,13 +259,10 @@ Store::new_get_call_fragments_op(const std::string& impu)
 
 
 // Delete old call fragments for the givem IMPU.
-//
-// @param impu        - The IMPU in question.
-// @param threshold   - Time to delete up to. All records with an earlier
-//                      timestamp will be deleted.
 DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
-                                               const std::string& threshold) :
-  _impu(impu), _threshold(threshold)
+                                               const std::string& threshold,
+                                               const int64_t cass_timestamp) :
+  _impu(impu), _threshold(threshold), _cass_timestamp(cass_timestamp)
 {}
 
 DeleteOldCallFragments::~DeleteOldCallFragments()
@@ -284,15 +281,16 @@ bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
                _impu,
                start,
                finish,
-               CassandraStore::Store::generate_timestamp());
+               _cass_timestamp);
   return true;
 }
 
 DeleteOldCallFragments*
 Store::new_delete_old_call_fragments_op(const std::string& impu,
-                                        const std::string& threshold)
+                                        const std::string& threshold,
+                                        const int64_t cass_timestamp)
 {
-  return new DeleteOldCallFragments(impu, threshold);
+  return new DeleteOldCallFragments(impu, threshold, cass_timestamp);
 }
 
 
@@ -303,11 +301,15 @@ Store::new_delete_old_call_fragments_op(const std::string& impu,
 CassandraStore::ResultCode
 Store::write_call_fragment_sync(const std::string& impu,
                                 const CallFragment& fragment,
+                                const int64_t cass_timestamp,
                                 const int32_t ttl,
                                 SAS::TrailId trail)
 {
   CassandraStore::ResultCode result = CassandraStore::OK;
-  WriteCallFragment* op = new_write_call_fragment_op(impu, fragment, ttl);
+  WriteCallFragment* op = new_write_call_fragment_op(impu,
+                                                     fragment,
+                                                     cass_timestamp,
+                                                     ttl);
 
   if (!do_sync(op, trail))
   {
@@ -348,10 +350,13 @@ Store::get_call_fragments_sync(const std::string& impu,
 CassandraStore::ResultCode
 Store::delete_old_call_fragments_sync(const std::string& impu,
                                       const std::string& threshold,
+                                      const int64_t cass_timestamp,
                                       SAS::TrailId trail)
 {
   CassandraStore::ResultCode result = CassandraStore::OK;
-  DeleteOldCallFragments* op = new_delete_old_call_fragments_op(impu, threshold);
+  DeleteOldCallFragments* op = new_delete_old_call_fragments_op(impu,
+                                                                threshold,
+                                                                cass_timestamp);
 
   if (!do_sync(op, trail))
   {

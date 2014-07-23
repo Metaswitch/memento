@@ -74,12 +74,14 @@ class WriteCallFragment : public CassandraStore::Operation
 public:
   /// Constructor.
   ///
-  /// @param impu     - The IMPU to write a fragment for.
-  /// @param fragment - The fragment object to write.
-  /// @param ttl      - The TTL (in seconds) for the column.
+  /// @param impu             - The IMPU to write a fragment for.
+  /// @param fragment         - The fragment object to write.
+  /// @param ttl              - The TTL (in seconds) for the column.
+  /// @param cass_timestamp   - The timestamp to use on the cassandra write.
   WriteCallFragment(const std::string& impu,
                     const CallFragment& record,
-                    const int32_t ttl = 0);
+                    const int64_t cass_timestamp,
+                    const int32_t ttl);
   virtual ~WriteCallFragment();
 
 protected:
@@ -87,6 +89,7 @@ protected:
 
   const std::string _impu;
   const CallFragment _fragment;
+  const int64_t _cass_timestamp;
   const int32_t _ttl;
 };
 
@@ -124,12 +127,15 @@ class DeleteOldCallFragments : public CassandraStore::Operation
 public:
   /// Constructor
   ///
-  /// @param impu       - The IMPU whose old fragments to delete.
-  /// @param threshold  - The threshold time (in the form YYYYMMDDHHMMSS).
-  ///                     Fragments with a timestamp that is earlier than this
-  ///                     time will be deleted (but fragments with an equal
-  ///                     timestamp will not).
-  DeleteOldCallFragments(const std::string& impu, const std::string& threshold);
+  /// @param impu             - The IMPU whose old fragments to delete.
+  /// @param threshold        - The threshold time (in the form YYYYMMDDHHMMSS).
+  ///                           Fragments with a timestamp that is earlier than
+  ///                           this time will be deleted (but fragments with an
+  ///                           equal timestamp will not).
+  /// @param cass_timestamp   - The timestamp to use on the cassandra write.
+  DeleteOldCallFragments(const std::string& impu,
+                         const std::string& threshold,
+                         const int64_t cass_timestamp);
 
   /// Virtual destructor.
   virtual ~DeleteOldCallFragments();
@@ -139,6 +145,7 @@ protected:
 
   const std::string _impu;
   const std::string _threshold;
+  const int64_t _cass_timestamp;
 };
 
 
@@ -165,12 +172,14 @@ public:
   virtual WriteCallFragment*
     new_write_call_fragment_op(const std::string& impu,
                                const CallFragment& fragment,
-                               const int32_t ttl = 0);
+                               const int64_t cass_timestamp,
+                               const int32_t ttl);
   virtual GetCallFragments*
     new_get_call_fragments_op(const std::string& impu);
   virtual DeleteOldCallFragments*
     new_delete_old_call_fragments_op(const std::string& impu,
-                                     const std::string& threshold);
+                                     const std::string& threshold,
+                                     const int64_t cass_timestamp);
 
   //
   // Utility methods to perform synchronous operations more easily.
@@ -178,6 +187,7 @@ public:
   virtual CassandraStore::ResultCode
     write_call_fragment_sync(const std::string& impu,
                              const CallFragment& fragment,
+                             const int64_t cass_timestamp,
                              const int32_t ttl,
                              SAS::TrailId trail);
   virtual CassandraStore::ResultCode
@@ -187,6 +197,7 @@ public:
   virtual CassandraStore::ResultCode
     delete_old_call_fragments_sync(const std::string& impu,
                                    const std::string& threshold,
+                                   const int64_t cass_timestamp,
                                    SAS::TrailId trail);
 };
 

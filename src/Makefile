@@ -43,6 +43,7 @@ TARGET_SOURCES_TEST := test_main.cpp \
                        test_interposer.cpp \
                        handlers_test.cpp \
                        authstore_test.cpp \
+                       call_list_store_test.cpp \
                        homesteadconnection_test.cpp \
                        httpdigestauthenticate_test.cpp \
                        fakelogger.cpp \
