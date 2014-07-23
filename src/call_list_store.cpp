@@ -35,6 +35,7 @@
  */
 
 #include "call_list_store.h"
+#include "mementosasevent.h"
 
 // The keyspace that that call list store uses.
 const static std::string KEYSPACE = "memento";
@@ -120,6 +121,18 @@ bool fragment_type_from_string(const std::string& fragment_str,
   return success;
 }
 
+void sas_log_cassandra_failure(const SAS::TrailId trail,
+                               const int event_id,
+                               const CassandraStore:: ResultCode status,
+                               const std::string& description,
+                               uint32_t instance_id = 0)
+{
+  SAS::Event ev(trail, event_id, instance_id);
+  ev.add_static_param(status);
+  ev.add_var_param(description);
+  SAS::report_event(ev);
+}
+
 //
 // Call list store methods.
 //
@@ -132,8 +145,10 @@ Store::~Store() {}
 // Operation definitions.
 //
 
+//
+// Write a new call fragment to cassandra.
+//
 
-/// Write a new call fragment to cassandra.
 WriteCallFragment::WriteCallFragment(const std::string& impu,
                                      const CallFragment& fragment,
                                      const int64_t cass_timestamp,
@@ -151,9 +166,19 @@ WriteCallFragment::~WriteCallFragment()
 bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
                                 SAS::TrailId trail)
 {
+  // Log the start of the write.
   LOG_DEBUG("Writing %s call fragment for IMPU '%s'",
             fragment_type_to_string(_fragment.type).c_str(),
             _impu.c_str());
+
+  { // New scope to avoid accidentally operating on the wrong SAS event.
+    SAS::Event ev(trail, SASEvent::CALL_LIST_WRITE_STARTED, 0);
+    ev.add_static_param(_fragment.type);
+    ev.add_var_param(_impu);
+    ev.add_var_param(_fragment.timestamp);
+    ev.add_var_param(_fragment.contents);
+    SAS::report_event(ev);
+  }
 
   // The column name is of the form:
   //   call_<timestamp>_<id>_<type>
@@ -181,7 +206,23 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
               _cass_timestamp,
               _ttl);
 
+  { // New scope to avoid accidentally operating on the wrong SAS event.
+    SAS::Event ev(trail, SASEvent::CALL_LIST_WRITE_OK, 0);
+    SAS::report_event(ev);
+  }
+
   return true;
+}
+
+void WriteCallFragment::unhandled_exception(CassandraStore:: ResultCode status,
+                                            std::string& description,
+                                            SAS::TrailId trail)
+{
+  CassandraStore::Operation::unhandled_exception(status, description, trail);
+  sas_log_cassandra_failure(trail,
+                            SASEvent::CALL_LIST_WRITE_FAILED,
+                            status,
+                            description);
 }
 
 WriteCallFragment*
@@ -193,8 +234,10 @@ Store::new_write_call_fragment_op(const std::string& impu,
   return new WriteCallFragment(impu, fragment, cass_timestamp, ttl);
 }
 
+//
+// Get all the call fragments for a given IMPU.
+//
 
-/// Get all the call fragments for a given IMPU.
 GetCallFragments::GetCallFragments(const std::string& impu) :
   CassandraStore::Operation(), _impu(impu), _fragments()
 {}
@@ -205,7 +248,14 @@ GetCallFragments::~GetCallFragments()
 bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
                                SAS::TrailId trail)
 {
+  // Log the start of the read
   LOG_DEBUG("Get call fragments for IMPU: '%s'", _impu.c_str());
+
+  { // New scope to avoid accidentally operating on the wrong SAS event.
+    SAS::Event ev(trail, SASEvent::CALL_LIST_READ_STARTED, 0);
+    ev.add_var_param(_impu);
+    SAS::report_event(ev);
+  }
 
   // Get all the call columns for the IMPU's cassandra row.
   std::vector<cass::ColumnOrSuperColumn> columns;
@@ -243,7 +293,26 @@ bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
 
   LOG_DEBUG("Retrieved %d call fragments from the store", _fragments.size());
 
+  { // New scope to avoid accidentally operating on the wrong SAS event.
+    SAS::Event ev(trail, SASEvent::CALL_LIST_READ_OK, 0);
+    ev.add_static_param(_fragments.size());
+    ev.add_var_param(columns.front().column.name);
+    ev.add_var_param(columns.back().column.name);
+    SAS::report_event(ev);
+  }
+
   return true;
+}
+
+void GetCallFragments::unhandled_exception(CassandraStore::ResultCode status,
+                                           std::string& description,
+                                           SAS::TrailId trail)
+{
+  CassandraStore::Operation::unhandled_exception(status, description, trail);
+  sas_log_cassandra_failure(trail,
+                            SASEvent::CALL_LIST_READ_FAILED,
+                            status,
+                            description);
 }
 
 void GetCallFragments::get_result(std::vector<CallFragment>& fragments)
@@ -257,8 +326,10 @@ Store::new_get_call_fragments_op(const std::string& impu)
   return new GetCallFragments(impu);
 }
 
-
+//
 // Delete old call fragments for the givem IMPU.
+//
+
 DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
                                                const std::string& threshold,
                                                const int64_t cass_timestamp) :
@@ -271,6 +342,17 @@ DeleteOldCallFragments::~DeleteOldCallFragments()
 bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
                                      SAS::TrailId trail)
 {
+  LOG_DEBUG("Deleting all call fragments earlier than %s for IMPU '%s'",
+            _threshold.c_str(),
+            _impu.c_str());
+
+  { // New scope to avoid accidentally operating on the wrong SAS event.
+    SAS::Event ev(trail, SASEvent::CALL_LIST_TRIM_STARTED, 0);
+    ev.add_var_param(_impu);
+    ev.add_var_param(_threshold);
+    SAS::report_event(ev);
+  }
+
   // Delete all columns in the range "call_" to call_<Timestamp>". This covers
   // all columns with a timestamp less than the specified value.
   std::string start = CALL_COLUMN_PREFIX;
@@ -282,7 +364,26 @@ bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
                start,
                finish,
                _cass_timestamp);
+
+  LOG_DEBUG("Successfully deleted call fragments");
+
+  { // New scope to avoid accidentally operating on the wrong SAS event.
+    SAS::Event ev(trail, SASEvent::CALL_LIST_TRIM_OK, 0);
+    SAS::report_event(ev);
+  }
+
   return true;
+}
+
+void DeleteOldCallFragments::unhandled_exception(CassandraStore::ResultCode status,
+                                                 std::string& description,
+                                                 SAS::TrailId trail)
+{
+  CassandraStore::Operation::unhandled_exception(status, description, trail);
+  sas_log_cassandra_failure(trail,
+                            SASEvent::CALL_LIST_TRIM_FAILED,
+                            status,
+                            description);
 }
 
 DeleteOldCallFragments*

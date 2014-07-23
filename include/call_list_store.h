@@ -45,11 +45,14 @@ namespace CallListStore
 /// Structure representing a call record fragment in the store.
 struct CallFragment
 {
+  // Types of call fragment. These are logged to SAS so:
+  // -  Each element must have an explicit value.
+  // -  If you change the enum you must also update the resource bundle.
   enum Type
   {
-    BEGIN,
-    END,
-    REJECTED
+    BEGIN = 0,
+    END = 1,
+    REJECTED = 2
   };
 
   /// Timestamp representing the time that the call started. In the form
@@ -86,6 +89,9 @@ public:
 
 protected:
   bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  void unhandled_exception(CassandraStore::ResultCode status,
+                           std::string& description,
+                           SAS::TrailId trail);
 
   const std::string _impu;
   const CallFragment _fragment;
@@ -113,6 +119,9 @@ public:
 
 protected:
   bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  void unhandled_exception(CassandraStore::ResultCode status,
+                           std::string& description,
+                           SAS::TrailId trail);
 
   const std::string _impu;
 
@@ -142,6 +151,9 @@ public:
 
 protected:
   bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  void unhandled_exception(CassandraStore::ResultCode status,
+                           std::string& description,
+                           SAS::TrailId trail);
 
   const std::string _impu;
   const std::string _threshold;
