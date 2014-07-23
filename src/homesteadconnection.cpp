@@ -40,17 +40,18 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
-HomesteadConnection::HomesteadConnection(const std::string& server) :
+HomesteadConnection::HomesteadConnection(const std::string& server,
+                                         HttpResolver* resolver) :
   _http(new HttpConnection(server,
                            false,
+                           resolver,
                            SASEvent::HttpLogLevel::PROTOCOL))
 {
 }
 
 HomesteadConnection::~HomesteadConnection()
 {
-  delete _http;
-  _http = NULL;
+  delete _http; _http = NULL;
 }
 
 /// Retrieve user's digest data.
