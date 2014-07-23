@@ -65,6 +65,8 @@ server {
         }
         location /org.projectclearwater.call-list {
                 proxy_pass http://localhost:11888;
+                gzip on;
+                gzip_types *;
         }
 }
 
