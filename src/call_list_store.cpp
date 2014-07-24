@@ -82,14 +82,13 @@ std::string fragment_type_to_string(CallFragment::Type type)
       // be passed a value in the enumeration, and we have already handled all
       // of them.
       LOG_ERROR("Unexpected call fragment type %d", (int)type);
-      assert(!"Unexpected call fragment type");
-      return STR_BEGIN;
+      return (std::string("UNKNOWN (") + std::to_string(type) + std::string(")"));
       // LCOV_EXCL_STOP
   }
 }
 
 // Utility method for converting a call fragment string (as stored in
-// caassandra). into an enumerated type.
+// caassandra) into an enumerated type.
 //
 // @param fragment_str    - The string to convert.
 // @param type            - (out) The type of the fragment.
