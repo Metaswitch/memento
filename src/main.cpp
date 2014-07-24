@@ -333,7 +333,7 @@ int main(int argc, char**argv)
 
   HttpStack* http_stack = HttpStack::get_instance();
 
-  CallListHandler::Config call_list_config(auth_store, homestead_conn, options.home_domain);
+  CallListHandler::Config call_list_config(auth_store, homestead_conn, new CallListStore::Store(), options.home_domain);
 
   HttpStackUtils::PingController ping_controller;
   HttpStackUtils::SpawningController<CallListHandler, CallListHandler::Config> call_list_controller(&call_list_config);

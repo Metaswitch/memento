@@ -32,6 +32,7 @@ TARGET_SOURCES := localstore.cpp \
                   httpdigestauthenticate.cpp \
                   cassandra_store.cpp \
                   call_list_store.cpp \
+                  call_list_xml.cpp \
                   dnsparser.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
