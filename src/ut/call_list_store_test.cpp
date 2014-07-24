@@ -42,8 +42,10 @@
 
 #include "mock_cassandra_store.h"
 #include "cass_test_utils.h"
+#include "mock_sas.h"
 
 #include "call_list_store.h"
+#include "mementosasevent.h"
 
 using namespace CassTestUtils;
 
@@ -95,6 +97,7 @@ TEST_F(CallListStoreFixture, WriteFragmentMainline)
   const std::string ID = "0123456789ABCDEF";
   const std::string CONTENT = "<xml>";
   const std::string EXPECT_COL_PREFIX = "call_20140723150400_0123456789ABCDEF_";
+  CassandraStore::ResultCode rc;
 
   CallListStore::CallFragment frag;
   frag.timestamp = CALL_TIMESTAMP;
@@ -111,13 +114,48 @@ TEST_F(CallListStoreFixture, WriteFragmentMainline)
   EXPECT_CALL(_client, batch_mutate(
                          MutationMap("call_lists", "kermit", columns, 1000, 3600),
                          _));
-
-  CassandraStore::ResultCode rc =
-    _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
-
+  rc = _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
   EXPECT_EQ(rc, CassandraStore::OK);
 
-  // TODO Also check it can write end and rejected records.
+  // ... and end records ...
+  columns.clear();
+  columns[EXPECT_COL_PREFIX + "end"] = "<xml>";
+  frag.type = CallListStore::CallFragment::END;
+
+  EXPECT_CALL(_client, batch_mutate(
+                         MutationMap("call_lists", "kermit", columns, 1000, 3600),
+                         _));
+  rc = _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
+  EXPECT_EQ(rc, CassandraStore::OK);
+
+  // ... and rejected records.
+  columns.clear();
+  columns[EXPECT_COL_PREFIX + "rejected"] = "<xml>";
+  frag.type = CallListStore::CallFragment::REJECTED;
+
+  EXPECT_CALL(_client, batch_mutate(
+                         MutationMap("call_lists", "kermit", columns, 1000, 3600),
+                         _));
+  rc = _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
+  EXPECT_EQ(rc, CassandraStore::OK);
+}
+
+
+TEST_F(CallListStoreFixture, WriteFragmentError)
+{
+  CassandraStore::ResultCode rc;
+
+  CallListStore::CallFragment frag;
+  frag.timestamp = "20140101130101";
+  frag.id = "0123456789ABCDEF";
+  frag.type = CallListStore::CallFragment::BEGIN;
+  frag.contents = "<xml>";
+
+  cass::InvalidRequestException ire;
+  EXPECT_CALL(_client, batch_mutate(_, _)).WillOnce(Throw(ire));
+
+  rc = _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
+  EXPECT_EQ(rc, CassandraStore::INVALID_REQUEST);
 }
 
 
@@ -154,7 +192,8 @@ TEST_F(CallListStoreFixture, GetFragmentsMainline)
   // We should have all 3 records back.
   EXPECT_EQ(fetched_fragments.size(), 3u);
 
-  // Check the 3 records that came back.
+  // Check the 3 records that came back.  Note that the records are returned to
+  // the user in the same order that they were returned from cassandra.
   EXPECT_EQ(fetched_fragments[0].timestamp, "20140101130100");
   EXPECT_EQ(fetched_fragments[0].id, "0000000000000000");
   EXPECT_EQ(fetched_fragments[0].type, CallListStore::CallFragment::BEGIN);
@@ -169,6 +208,41 @@ TEST_F(CallListStoreFixture, GetFragmentsMainline)
   EXPECT_EQ(fetched_fragments[2].id, "0000000000000001");
   EXPECT_EQ(fetched_fragments[2].type, CallListStore::CallFragment::REJECTED);
   EXPECT_EQ(fetched_fragments[2].contents, "<rejected-record>");
+}
+
+
+TEST_F(CallListStoreFixture, GetFragmentsError)
+{
+  std::vector<CallListStore::CallFragment> fetched_fragments;
+
+  CassandraStore::RowNotFoundException rnfe("call_lists", "kermit");
+  EXPECT_CALL(_client, get_slice(_, _, _, _, _)).WillOnce(Throw(rnfe));
+
+  CassandraStore::ResultCode rc =
+    _store.get_call_fragments_sync("kermit", fetched_fragments, FAKE_TRAIL);
+  EXPECT_EQ(rc, CassandraStore::NOT_FOUND);
+}
+
+
+// Check that if an empty slice is returned from cassandra that this is treated
+// as a not found error.
+TEST_F(CallListStoreFixture, EmptySlice)
+{
+  std::vector<CallListStore::CallFragment> fetched_fragments;
+
+  EXPECT_CALL(_client, get_slice(_,
+                                 "kermit",
+                                 ColumnPathForTable("call_lists"),
+                                 ColumnsWithPrefix("call_"),
+                                 _))
+   .WillOnce(SetArgReferee<0>(empty_slice));
+
+  // Now actually invoke the store.
+  CassandraStore::ResultCode rc =
+    _store.get_call_fragments_sync("kermit", fetched_fragments, FAKE_TRAIL);
+
+  // Check that returned "not found"
+  EXPECT_EQ(rc, CassandraStore::NOT_FOUND);
 }
 
 
@@ -187,6 +261,107 @@ TEST_F(CallListStoreFixture, DeleteOldFragmentsMainline)
     _store.delete_old_call_fragments_sync("kermit", CALL_TIMESTAMP, 1000, FAKE_TRAIL);
 
   EXPECT_EQ(rc, CassandraStore::OK);
+}
+
+
+TEST_F(CallListStoreFixture, DeleteOldFragmentsError)
+{
+  cass::InvalidRequestException ire;
+  EXPECT_CALL(_client, batch_mutate(_, _)).WillOnce(Throw(ire));
+
+  CassandraStore::ResultCode rc =
+    _store.delete_old_call_fragments_sync("kermit", "20140101130100", 1000, FAKE_TRAIL);
+  EXPECT_EQ(rc, CassandraStore::INVALID_REQUEST);
+}
+
+
+TEST_F(CallListStoreFixture, SasLogging)
+{
+  mock_sas_collect_messages(true);
+
+  // Call list fragment for writing.
+  CallListStore::CallFragment frag;
+  frag.timestamp = "20140101130101";
+  frag.id = "0123456789ABCDEF";
+  frag.type = CallListStore::CallFragment::BEGIN;
+  frag.contents = "<xml>";
+
+  // Column to return when getting fragments.
+  std::map<std::string, std::string> columns;
+  columns["call_20140101130100_0000000000000000_begin"] = "<begin-record>";
+  slice_t slice;
+  make_slice(slice, columns);
+
+  // Exception used to trigger errors.
+  cass::InvalidRequestException ire;
+
+  std::vector<CallListStore::CallFragment> fetched_fragments;
+
+  //
+  // TESTS START HERE
+  //
+
+  // Write a fragment. Check we get start and OK events.
+  EXPECT_CALL(_client, batch_mutate(_, _));
+  _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
+
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_WRITE_STARTED);
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_WRITE_OK);
+  EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_WRITE_FAILED);
+
+  mock_sas_discard_messages();
+
+  // Failing to write a fragment.  Check we get start and failed events.
+  EXPECT_CALL(_client, batch_mutate(_, _)).WillOnce(Throw(ire));
+  _store.write_call_fragment_sync("kermit", frag, 1000, 3600, FAKE_TRAIL);
+
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_WRITE_STARTED);
+  EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_WRITE_OK);
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_WRITE_FAILED);
+
+  mock_sas_discard_messages();
+
+  // Get some fragments, check we get start and OK events.
+  EXPECT_CALL(_client, get_slice(_, _, _, _, _)).WillOnce(SetArgReferee<0>(slice));
+  _store.get_call_fragments_sync("kermit", fetched_fragments, FAKE_TRAIL);
+
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_READ_STARTED);
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_READ_OK);
+  EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_READ_FAILED);
+
+  mock_sas_discard_messages();
+
+  // Fail to get any fragments, check we get start and failed events.
+  EXPECT_CALL(_client, get_slice(_, _, _, _, _)).WillOnce(SetArgReferee<0>(empty_slice));
+  _store.get_call_fragments_sync("kermit", fetched_fragments, FAKE_TRAIL);
+
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_READ_STARTED);
+  EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_READ_OK);
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_READ_FAILED);
+
+  mock_sas_discard_messages();
+
+  // Delete old fragments. Check we get start and OK events.
+  EXPECT_CALL(_client, batch_mutate(_, _));
+  _store.delete_old_call_fragments_sync("kermit", "20140101130101", 1000, FAKE_TRAIL);
+
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_STARTED);
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_OK);
+  EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_TRIM_FAILED);
+
+  mock_sas_discard_messages();
+
+  // Fail to delete old fragments. Check we get start and failure events.
+  EXPECT_CALL(_client, batch_mutate(_, _)).WillOnce(Throw(ire));
+  _store.delete_old_call_fragments_sync("kermit", "20140101130101", 1000, FAKE_TRAIL);
+
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_STARTED);
+  EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_TRIM_OK);
+  EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_FAILED);
+
+  mock_sas_discard_messages();
+
+  mock_sas_collect_messages(false);
 }
 
 #endif
