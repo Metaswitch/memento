@@ -47,11 +47,9 @@ void CallListHandler::run()
 
   if (rc != HTTP_OK)
   {
-    // LCOV_EXCL_START
     send_http_reply(rc);
     delete this;
     return;
-    // LCOV_EXCL_STOP
   }
 
   LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
@@ -102,7 +100,7 @@ void CallListHandler::respond_when_authenticated()
     SAS::report_event(db_err_event);
 
     LOG_DEBUG("get_call_records_sync failed with result code %d", db_rc);
-    send_http_reply(500);
+    send_http_reply(HTTP_SERVER_ERROR);
     return;
   }
 
@@ -113,6 +111,7 @@ void CallListHandler::respond_when_authenticated()
 
   // Request has authenticated, so attempt to get the call lists.
   std::string calllists = xml_from_call_records(records, trail());
+  _req.add_header("Content-Type", "application/vnd.projectclearwater.call-list+xml");
   _req.add_content(calllists);
 
   SAS::Event tx_event(trail(), SASEvent::CALL_LIST_RSP_TX, 0);
@@ -129,5 +128,9 @@ HTTPCode CallListHandler::parse_request()
 
   _impu = path.substr(prefix.length(), path.find_first_of("/", prefix.length()) - prefix.length());
 
+  if (_req.method() != htp_method_GET)
+  {
+    return HTTP_BADMETHOD;
+  }
   return HTTP_OK;
 }
