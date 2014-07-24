@@ -45,28 +45,36 @@ class MockCallListStore : public MockCassandraStore<CallListStore::Store>
 public:
   virtual ~MockCallListStore() {};
 
-  MOCK_METHOD3(new_write_call_record_op,
+  MOCK_METHOD3(new_write_call_fragment_op,
                CallListStore::WriteCallFragment*(const std::string& impu,
-                                                 const CallListStore::CallFragment& record,
+                                                 const CallListStore::CallFragment& fragment,
+                                                 const int64_t cass_timestamp,
                                                  const int32_t ttl));
 
-  MOCK_METHOD1(new_get_call_records_op,
+  MOCK_METHOD1(new_get_call_fragments_op,
                CallListStore::GetCallFragments*(const std::string& impu));
 
-  MOCK_METHOD2(new_delete_old_call_records_op,
-               CallListStore::DeleteOldCallFragments*(std::string& impu, tm& age));
+  MOCK_METHOD2(new_delete_old_call_fragments_op,
+               CallListStore::DeleteOldCallFragments*(const std::string& impu,
+                                                      const std::string& threshold,
+                                                      const int64_t cass_timestamp));
 
-  MOCK_METHOD3(write_call_record_sync,
+  MOCK_METHOD3(write_call_fragment_sync,
                CassandraStore::ResultCode(const std::string& impu,
-                                          const CallListStore::CallFragment& record,
-                                          const int32_t ttl));
-  MOCK_METHOD2(get_call_records_sync,
+                                          const CallListStore::CallFragment& fragment,
+                                          const int64_t cass_timestamp,
+                                          const int32_t ttl,
+                                          SAS::TrailId trail));
+  MOCK_METHOD2(get_call_fragments_sync,
                CassandraStore::ResultCode(const std::string& impu,
-                                          std::vector<CallListStore::CallFragment>& records));
+                                          std::vector<CallListStore::CallFragment>& fragments,
+                                          SAS::TrailId trail));
 
-  MOCK_METHOD2(delete_old_call_records_sync,
+  MOCK_METHOD2(delete_old_call_fragments_sync,
                CassandraStore::ResultCode(const std::string& impu,
-                                          const tm& threshold));
+                                          const std::string& threshold,
+                                          const int64_t cass_timestamp,
+                                          SAS::TrailId trail));
 };
 
 #endif
