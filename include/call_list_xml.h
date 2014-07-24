@@ -7,6 +7,6 @@
 #include <map>
 #include <string>
 
-std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>& records);
+std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>& records, SAS::TrailId trail);
 
 #endif

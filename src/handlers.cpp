@@ -87,25 +87,32 @@ void CallListHandler::run()
 void CallListHandler::respond_when_authenticated()
 {
   std::vector<CallListStore::CallFragment> records;
+
+  SAS::Event db_start_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_START, 0);
+  db_start_event.add_var_param(_impu);
+  SAS::report_event(db_start_event);
+
   CassandraStore::ResultCode db_rc = _cfg->_call_list_store->get_call_records_sync(_impu, records);
 
   if (db_rc != CassandraStore::OK)
   {
-    SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_FAILED, 0);
-    db_event.add_static_param(db_rc);
-    SAS::report_event(db_event);
+    SAS::Event db_err_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_FAILED, 0);
+    db_err_event.add_static_param(db_rc);
+    db_err_event.add_var_param(_impu);
+    SAS::report_event(db_err_event);
 
     LOG_DEBUG("get_call_records_sync failed with result code %d", db_rc);
     send_http_reply(500);
     return;
   }
 
-  SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL, 0);
+  SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_SUCCESS, 0);
   db_event.add_static_param(records.size());
+  db_event.add_var_param(_impu);
   SAS::report_event(db_event);
 
   // Request has authenticated, so attempt to get the call lists.
-  std::string calllists = xml_from_call_records(records);
+  std::string calllists = xml_from_call_records(records, trail());
   _req.add_content(calllists);
 
   SAS::Event tx_event(trail(), SASEvent::CALL_LIST_RSP_TX, 0);

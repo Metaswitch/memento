@@ -216,21 +216,9 @@ TEST_F(HandlersTest, DuplicatedBegin)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls><call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>1</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "<answer-time>2002-05-30T09:30:20</answer-time>"
-    "<end-time>2002-05-30T09:35:00</end-time>"
-    "</call></calls></call-list>")
+  // Invalid records are ignored
+  EXPECT_EQ( ("<call-list><calls>"
+    "</calls></call-list>")
     , req.content());
   delete handler;
 }
@@ -271,22 +259,10 @@ TEST_F(HandlersTest, DuplicatedEnd)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls><call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>1</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "<answer-time>2002-05-30T09:30:20</answer-time>"
-    "<end-time>2002-05-30T09:35:00</end-time>"
-    "</call></calls></call-list>")
+  EXPECT_EQ(("<call-list><calls>"
+    "</calls></call-list>")
     , req.content());
+
   delete handler;
 }
 
@@ -321,20 +297,9 @@ TEST_F(HandlersTest, DuplicatedRejected)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls><call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>0</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "</call></calls></call-list>")
-    , req.content());
+  EXPECT_EQ(("<call-list><calls>"
+             "</calls></call-list>"), req.content());
+
   delete handler;
 }
 
@@ -374,9 +339,9 @@ TEST_F(HandlersTest, WrongOrder)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls>"
-    "</calls></call-list>")
-    , req.content());
+  EXPECT_EQ(("<call-list><calls>"
+             "</calls></call-list>")
+            , req.content());
   delete handler;
 }
 
@@ -413,6 +378,112 @@ TEST_F(HandlersTest, MissingEnd)
   EXPECT_EQ("<call-list><calls></calls></call-list>", req.content());
   delete handler;
 }
+
+TEST_F(HandlersTest, BadXML)
+{
+  std::vector<CallListStore::CallFragment> records;
+  CallListStore::CallFragment record1;
+  record1.type = CallListStore::CallFragment::Type::REJECTED;
+  record1.id = "a";
+  record1.contents = (
+    "<to>"
+        "<URI>alice@example.com</URI>"
+        "<name>Alice Adams</name>"
+      "</to>"
+      "<from>"
+        "<URI>bob@example.com</URI>"
+        "<name>Bob Barker</name>"
+      "</from>"
+      "<answered>0</answered>"
+      "<outgoing>1</outgoing>"
+      "<start-time>2002-05-30T09:30:10</start-time"); // Missing >
+  records.push_back(record1);
+  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+
+  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+
+  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+    .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
+
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  handler->respond_when_authenticated();
+
+  EXPECT_EQ("<call-list><calls></calls></call-list>", req.content());
+  delete handler;
+}
+
+TEST_F(HandlersTest, BadXMLEnd)
+{
+  std::vector<CallListStore::CallFragment> records;
+  CallListStore::CallFragment record1;
+  CallListStore::CallFragment record2;
+  CallListStore::CallFragment record3;
+  CallListStore::CallFragment record4;
+  record1.type = CallListStore::CallFragment::Type::BEGIN;
+  record1.id = "a";
+  record1.contents = (
+    "<to>"
+      "<URI>alice@example.com</URI>"
+      "<name>Alice Adams</name>"
+    "</to>"
+    "<from>"
+      "<URI>bob@example.com</URI>"
+      "<name>Bob Barker</name>"
+    "</from>"
+    "<answered>1</answered>"
+    "<outgoing>1</outgoing>"
+    "<start-time>2002-05-30T09:30:10</start-time>"
+    "<answer-time>2002-05-30T09:30:20</answer-time>");
+  record2.type = CallListStore::CallFragment::Type::END;
+  record2.id = "a";
+  record2.contents = "<end-time>2002-05-30T09:35:00</end-time"; // Missing >
+  record3.type = CallListStore::CallFragment::Type::REJECTED;
+  record3.id = "b";
+  record3.contents = (
+    "<to>"
+      "<URI>alice@example.net</URI>"
+      "<name>Alice Adams</name>"
+    "</to>"
+    "<from>"
+      "<URI>bob@example.net</URI>"
+      "<name>Bob Barker</name>"
+    "</from>"
+    "<answered>0</answered>"
+    "<outgoing>1</outgoing>"
+    "<start-time>2002-05-30T09:30:10</start-time>");
+  records.push_back(record1);
+  records.push_back(record3);
+  records.push_back(record2);
+  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+
+  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+
+  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+    .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
+
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  handler->respond_when_authenticated();
+
+  EXPECT_EQ((
+              "<call-list><calls>"
+                "<call>"
+                  "<to>"
+                    "<URI>alice@example.net</URI>"
+                    "<name>Alice Adams</name>"
+                  "</to>"
+                  "<from>"
+                    "<URI>bob@example.net</URI>"
+                    "<name>Bob Barker</name>"
+                  "</from>"
+                  "<answered>0</answered>"
+                  "<outgoing>1</outgoing>"
+                  "<start-time>2002-05-30T09:30:10</start-time>"
+                "</call>"
+              "</calls></call-list>"),
+            req.content());
+  delete handler;
+}
+
 
 TEST_F(HandlersTest, NotFound)
 {
