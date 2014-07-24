@@ -38,7 +38,7 @@
 #include "httpdigestauthenticate.h"
 
 // This handler deals with requests to the call list URL
-void CallListHandler::run()
+void CallListTask::run()
 {
   HTTPCode rc = parse_request();
 
@@ -82,7 +82,7 @@ void CallListHandler::run()
   return;
 }
 
-HTTPCode CallListHandler::parse_request()
+HTTPCode CallListTask::parse_request()
 {
   const std::string prefix = "/org.projectclearwater.call-list/users/";
   std::string path = _req.path();
