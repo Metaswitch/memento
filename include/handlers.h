@@ -62,8 +62,8 @@ public:
   };
 
   CallListTask(HttpStack::Request& req,
-                  const Config* cfg,
-                  SAS::TrailId trail) :
+               const Config* cfg,
+               SAS::TrailId trail) :
     HttpStackUtils::Task(req, trail),
     _cfg(cfg),
     _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
