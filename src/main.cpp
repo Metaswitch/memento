@@ -333,7 +333,8 @@ int main(int argc, char**argv)
 
   HttpStack* http_stack = HttpStack::get_instance();
 
-  CallListHandler::Config call_list_config(auth_store, homestead_conn, new CallListStore::Store(), options.home_domain);
+  CallListStore::Store* call_list_store = new CallListStore::Store()
+  CallListHandler::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain);
 
   HttpStackUtils::PingController ping_controller;
   HttpStackUtils::SpawningController<CallListHandler, CallListHandler::Config> call_list_controller(&call_list_config);
@@ -377,6 +378,7 @@ int main(int argc, char**argv)
   delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
+  delete call_list_store; call_list_store = NULL;
   delete m_store; m_store = NULL;
 
   SAS::term();

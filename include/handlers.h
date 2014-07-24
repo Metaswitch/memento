@@ -54,7 +54,7 @@ public:
            HomesteadConnection* homestead_conn,
            CallListStore::Store* call_list_store,
            std::string home_domain) :
-    _auth_store(auth_store),
+      _auth_store(auth_store),
       _homestead_conn(homestead_conn),
       _call_list_store(call_list_store),
       _home_domain(home_domain)

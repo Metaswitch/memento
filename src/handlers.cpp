@@ -75,7 +75,9 @@ void CallListHandler::run()
   {
     LOG_DEBUG("Authorization failed, responding with %d", rc);
     send_http_reply(rc);
-  } else {
+  }
+  else
+  {
     respond_when_authenticated();
   }
   delete this;
