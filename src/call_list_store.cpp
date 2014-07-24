@@ -78,13 +78,13 @@ std::string fragment_type_to_string(CallFragment::Type type)
       return STR_REJECTED;
 
     default:
-      // LCOV_START - We should never reach this code.  The function must be
-      // passed a value in the enumeration, and we have already handled all of
-      // them.
+      // LCOV_EXCL_START - We should never reach this code.  The function must
+      // be passed a value in the enumeration, and we have already handled all
+      // of them.
       LOG_ERROR("Unexpected call fragment type %d", (int)type);
       assert(!"Unexpected call fragment type");
       return STR_BEGIN;
-      // LCOV_STOP
+      // LCOV_EXCL_STOP
   }
 }
 
@@ -115,7 +115,10 @@ bool fragment_type_from_string(const std::string& fragment_str,
   }
   else
   {
+    // LCOV_EXCL_START Should not hit this as the call list store does not
+    // write values with a unrecognized fragment type string.
     success = false;
+    // LCOV_EXCL_STOP
   }
 
   return success;
@@ -219,6 +222,9 @@ void WriteCallFragment::unhandled_exception(CassandraStore:: ResultCode status,
                                             SAS::TrailId trail)
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
+
+  LOG_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
+              _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_WRITE_FAILED,
                             status,
@@ -309,6 +315,9 @@ void GetCallFragments::unhandled_exception(CassandraStore::ResultCode status,
                                            SAS::TrailId trail)
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
+
+  LOG_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
+              _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_READ_FAILED,
                             status,
@@ -333,7 +342,10 @@ Store::new_get_call_fragments_op(const std::string& impu)
 DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
                                                const std::string& threshold,
                                                const int64_t cass_timestamp) :
-  _impu(impu), _threshold(threshold), _cass_timestamp(cass_timestamp)
+  CassandraStore::Operation(),
+  _impu(impu),
+  _threshold(threshold),
+  _cass_timestamp(cass_timestamp)
 {}
 
 DeleteOldCallFragments::~DeleteOldCallFragments()
@@ -380,6 +392,9 @@ void DeleteOldCallFragments::unhandled_exception(CassandraStore::ResultCode stat
                                                  SAS::TrailId trail)
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
+
+  LOG_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
+              _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_TRIM_FAILED,
                             status,
@@ -406,19 +421,13 @@ Store::write_call_fragment_sync(const std::string& impu,
                                 const int32_t ttl,
                                 SAS::TrailId trail)
 {
-  CassandraStore::ResultCode result = CassandraStore::OK;
   WriteCallFragment* op = new_write_call_fragment_op(impu,
                                                      fragment,
                                                      cass_timestamp,
                                                      ttl);
 
-  if (!do_sync(op, trail))
-  {
-    result = op->get_result_code();
-    std::string error_text = op->get_error_text();
-    LOG_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
-                impu.c_str(), error_text.c_str(), result);
-  }
+  do_sync(op, trail);
+  CassandraStore::ResultCode result = op->get_result_code();
 
   delete op; op = NULL;
   return result;
@@ -430,18 +439,14 @@ Store::get_call_fragments_sync(const std::string& impu,
                                std::vector<CallFragment>& fragments,
                                SAS::TrailId trail)
 {
-  CassandraStore::ResultCode result = CassandraStore::OK;
   GetCallFragments* op = new_get_call_fragments_op(impu);
 
-  if (!do_sync(op, trail))
+  if (do_sync(op, trail))
   {
-    result = op->get_result_code();
-    std::string error_text = op->get_error_text();
-    LOG_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
-                impu.c_str(), error_text.c_str(), result);
+    op->get_result(fragments);
   }
 
-  op->get_result(fragments);
+  CassandraStore::ResultCode result = op->get_result_code();
 
   delete op; op = NULL;
   return result;
@@ -454,20 +459,14 @@ Store::delete_old_call_fragments_sync(const std::string& impu,
                                       const int64_t cass_timestamp,
                                       SAS::TrailId trail)
 {
-  CassandraStore::ResultCode result = CassandraStore::OK;
   DeleteOldCallFragments* op = new_delete_old_call_fragments_op(impu,
                                                                 threshold,
                                                                 cass_timestamp);
+  do_sync(op, trail);
+  CassandraStore::ResultCode result = op->get_result_code();
 
-  if (!do_sync(op, trail))
-  {
-    result = op->get_result_code();
-    std::string error_text = op->get_error_text();
-    LOG_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
-                impu.c_str(), error_text.c_str(), result);
-  }
-   delete op; op = NULL;
-   return result;
+  delete op; op = NULL;
+  return result;
 }
 
 } // namespace CallListStore
