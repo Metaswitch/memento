@@ -16,7 +16,7 @@ DEB_NAMES := memento-libs memento-libs-dbg memento memento-dbg
 INCLUDE_DIR := ${INSTALL_DIR}/include
 LIB_DIR := ${INSTALL_DIR}/lib
 
-SUBMODULES := c-ares libevhtp libmemcached thrift cassandra sas-client openssl
+SUBMODULES := c-ares libevhtp libmemcached thrift cassandra sas-client openssl pjsip
 
 include $(patsubst %, ${MK_DIR}/%.mk, ${SUBMODULES})
 include ${MK_DIR}/memento.mk
@@ -30,14 +30,22 @@ testall: $(patsubst %, %_test, ${SUBMODULES}) test
 clean: $(patsubst %, %_clean, ${SUBMODULES}) memento_clean
 	rm -rf ${ROOT}/usr
 	rm -rf ${ROOT}/build
+	rm -rf ${ROOT}/*.a
 
 distclean: $(patsubst %, %_distclean, ${SUBMODULES}) memento_distclean
 	rm -rf ${ROOT}/usr
 	rm -rf ${ROOT}/build
+	rm -rf ${ROOT}/*.a
 
 include build-infra/cw-deb.mk
 
 .PHONY: deb
 deb: build deb-only
 
-.PHONY: all build test clean distclean
+.PHONY: object
+object: libmemento.a
+
+libmemento.a: build
+	ar cr libmemento.a build/obj/memento/*.o
+
+.PHONY: all build test clean distclean object

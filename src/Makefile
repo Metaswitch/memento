@@ -35,7 +35,11 @@ TARGET_SOURCES := localstore.cpp \
                   dnsparser.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
-                  httpresolver.cpp
+                  httpresolver.cpp \
+                  call_list_store_processor.cpp \
+                  mementoappserver.cpp \
+                  base64.cpp \
+                  unique.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
@@ -83,6 +87,8 @@ CPPFLAGS += -I${ROOT}/include \
             -I${ROOT}/modules/sas-client/include \
             -I${ROOT}/modules/rapidjson/include
 
+CPPFLAGS += $(shell PKG_CONFIG_PATH=${ROOT}/usr/lib/pkgconfig pkg-config --cflags libpjproject)
+
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils:${ROOT}/modules/app-servers/test
 
@@ -121,6 +127,8 @@ LDFLAGS += -lzmq \
            -lboost_date_time \
            -lthrift \
            -lcassandra
+
+LDFLAGS += $(shell PKG_CONFIG_PATH=${ROOT}/usr/lib/pkgconfig pkg-config --libs libpjproject)
 
 # Test build uses just-built libraries, which may not be installed
 LDFLAGS_TEST += -Wl,-rpath=$(ROOT)/usr/lib
