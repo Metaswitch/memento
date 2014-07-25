@@ -47,8 +47,10 @@ class HomesteadConnection
 {
 public:
   /// Constructor.
-  /// @param server   Homestead servers.
-  HomesteadConnection(const std::string& server);
+  /// @param server     The homestead cluster name to use.
+  /// @param resolver   HTTP resolver to use to query homestead.
+  HomesteadConnection(const std::string& server,
+                      HttpResolver* resolver);
 
   /// Destructor
   virtual ~HomesteadConnection();
@@ -57,7 +59,7 @@ public:
   /// @param private_user_identity  A reference to the private user identity.
   /// @param public_user_identity   A reference to the public user identity.
   /// @param digest                 The retrieved digest (as a string)
-  /// @param realm                  The retrieved realm (as a string)             
+  /// @param realm                  The retrieved realm (as a string)
   HTTPCode get_digest_data(const std::string& private_user_identity,
                            const std::string& public_user_identity,
                            std::string& digest,
@@ -73,7 +75,7 @@ private:
                                         std::string& realm,
                                         SAS::TrailId trail);
 
-  /// Pointer to the underlying http connection
+  /// Pointer to the underlying http connection manager.
   HttpConnection* _http;
 };
 #endif

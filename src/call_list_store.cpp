@@ -1,8 +1,8 @@
 /**
- * @file handlers.cpp handlers for memento
+ * @file call_list_store.cpp Memento call list store implementation.
  *
- * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2014 Metaswitch Networks Ltd
+ * Project Clearwater - IMS in the cloud.
+ * Copyright (C) 2013  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,60 +34,68 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include "handlers.h"
-#include "httpdigestauthenticate.h"
+#include "call_list_store.h"
 
-// This handler deals with requests to the call list URL
-void CallListTask::run()
+const static std::string KEYSPACE = "memento";
+
+namespace CallListStore
 {
-  HTTPCode rc = parse_request();
 
-  if (rc != HTTP_OK)
-  {
-    send_http_reply(rc);
-    delete this;
-    return;
-  }
+Store::Store() : CassandraStore::Store(KEYSPACE) {}
 
-  LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
 
-  std::string www_auth_header;
-  std::string auth_header = _req.header("Authorization");
-  std::string method = _req.method_as_str();
+Store::~Store() {}
 
-  rc = _auth_mod->authenticate_request(_impu, auth_header, www_auth_header, method, trail());
+//
+// TODO
+//
 
-  if (rc == HTTP_UNAUTHORIZED)
-  {
-    LOG_DEBUG("Authorization data missing or out of date, responding with 401");
-    _req.add_header("WWW-Authenticate", www_auth_header);
-    send_http_reply(rc);
-    delete this;
-    return;
-  }
-  else if (rc != HTTP_OK)
-  {
-    LOG_DEBUG("Authorization failed, responding with %d", rc);
-    send_http_reply(rc);
-    delete this;
-    return;
-  }
-
-  // Request has authenticated, so attempt to get the call lists.
-  // DUMMY RESPONSE FOR NOW WITH AN EMPTY CALL LIST
-  std::string calllists = "<call-list></call-list>";
-  _req.add_content(calllists);
-  send_http_reply(HTTP_OK);
-  delete this;
-  return;
+WriteCallFragment*
+Store::new_write_call_record_op(const std::string& impu,
+                                const CallFragment& record,
+                                const int32_t ttl)
+{
+  return NULL;
 }
 
-HTTPCode CallListTask::parse_request()
+
+GetCallFragments*
+Store::new_get_call_records_op(const std::string& impu)
 {
-  const std::string prefix = "/org.projectclearwater.call-list/users/";
-  std::string path = _req.path();
-
-  _impu = path.substr(prefix.length(), path.find_first_of("/", prefix.length()) - prefix.length());
-
-  return HTTP_OK;
+  return NULL;
 }
+
+
+DeleteOldCallFragments*
+Store::new_delete_old_call_records_op(const std::string& impu,
+                                      const tm& age)
+{
+  return NULL;
+}
+
+
+CassandraStore::ResultCode
+Store::write_call_record_sync(const std::string& impu,
+                              const CallFragment& record,
+                              const int32_t ttl)
+{
+  return CassandraStore::OK;
+}
+
+
+CassandraStore::ResultCode
+Store::get_call_records_sync(const std::string& impu,
+                             std::vector<CallFragment>& records)
+{
+  return CassandraStore::OK;
+}
+
+
+CassandraStore::ResultCode
+Store::delete_old_call_records_sync(const std::string& impu,
+                                    const tm& threshold)
+{
+  return CassandraStore::OK;
+}
+
+} // namespace CallListStore

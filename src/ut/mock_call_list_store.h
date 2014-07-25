@@ -1,8 +1,8 @@
 /**
- * @file handlers.cpp handlers for memento
+ * @file mock_call_list_store.h Mock call list store object.
  *
- * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2014 Metaswitch Networks Ltd
+ * Project Clearwater - IMS in the cloud.
+ * Copyright (C) 2013  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,60 +34,40 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include "handlers.h"
-#include "httpdigestauthenticate.h"
+#ifndef MOCK_CALL_LIST_STORE_H_
+#define MOCK_CALL_LIST_STORE_H_
 
-// This handler deals with requests to the call list URL
-void CallListTask::run()
+#include "call_list_store.h"
+#include "mock_cassandra_store.h"
+
+class MockCallListStore : public MockCassandraStore<CallListStore::Store>
 {
-  HTTPCode rc = parse_request();
+public:
+  virtual ~MockCallListStore() {};
 
-  if (rc != HTTP_OK)
-  {
-    send_http_reply(rc);
-    delete this;
-    return;
-  }
+  MOCK_METHOD3(new_write_call_record_op,
+               CallListStore::WriteCallFragment*(const std::string& impu,
+                                                 const CallListStore::CallFragment& record,
+                                                 const int32_t ttl));
 
-  LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
+  MOCK_METHOD1(new_get_call_records_op,
+               CallListStore::GetCallFragments*(const std::string& impu));
 
-  std::string www_auth_header;
-  std::string auth_header = _req.header("Authorization");
-  std::string method = _req.method_as_str();
+  MOCK_METHOD2(new_delete_old_call_records_op,
+               CallListStore::DeleteOldCallFragments*(std::string& impu, tm& age));
 
-  rc = _auth_mod->authenticate_request(_impu, auth_header, www_auth_header, method, trail());
+  MOCK_METHOD3(write_call_record_sync,
+               CassandraStore::ResultCode(const std::string& impu,
+                                          const CallListStore::CallFragment& record,
+                                          const int32_t ttl));
+  MOCK_METHOD2(get_call_records_sync,
+               CassandraStore::ResultCode(const std::string& impu,
+                                          std::vector<CallListStore::CallFragment>& records));
 
-  if (rc == HTTP_UNAUTHORIZED)
-  {
-    LOG_DEBUG("Authorization data missing or out of date, responding with 401");
-    _req.add_header("WWW-Authenticate", www_auth_header);
-    send_http_reply(rc);
-    delete this;
-    return;
-  }
-  else if (rc != HTTP_OK)
-  {
-    LOG_DEBUG("Authorization failed, responding with %d", rc);
-    send_http_reply(rc);
-    delete this;
-    return;
-  }
+  MOCK_METHOD2(delete_old_call_records_sync,
+               CassandraStore::ResultCode(const std::string& impu,
+                                          const tm& threshold));
+};
 
-  // Request has authenticated, so attempt to get the call lists.
-  // DUMMY RESPONSE FOR NOW WITH AN EMPTY CALL LIST
-  std::string calllists = "<call-list></call-list>";
-  _req.add_content(calllists);
-  send_http_reply(HTTP_OK);
-  delete this;
-  return;
-}
+#endif
 
-HTTPCode CallListTask::parse_request()
-{
-  const std::string prefix = "/org.projectclearwater.call-list/users/";
-  std::string path = _req.path();
-
-  _impu = path.substr(prefix.length(), path.find_first_of("/", prefix.length()) - prefix.length());
-
-  return HTTP_OK;
-}

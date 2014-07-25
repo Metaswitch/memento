@@ -29,7 +29,13 @@ TARGET_SOURCES := localstore.cpp \
                   authstore.cpp \
                   httpconnection.cpp \
                   homesteadconnection.cpp \
-                  httpdigestauthenticate.cpp
+                  httpdigestauthenticate.cpp \
+                  cassandra_store.cpp \
+                  call_list_store.cpp \
+                  dnsparser.cpp \
+                  baseresolver.cpp \
+                  dnscachedresolver.cpp \
+                  httpresolver.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
@@ -110,7 +116,9 @@ LDFLAGS += -lzmq \
            -lpthread \
            -lcares \
            -lboost_regex \
-           -lboost_date_time
+           -lboost_date_time \
+           -lthrift \
+           -lcassandra
 
 # Test build uses just-built libraries, which may not be installed
 LDFLAGS_TEST += -Wl,-rpath=$(ROOT)/usr/lib

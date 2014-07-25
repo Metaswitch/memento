@@ -317,15 +317,27 @@ int main(int argc, char**argv)
                                               10.0, // Initial token fill rate (per sec).
                                               10.0); // Minimum token fill rate (pre sec).
 
-  HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name);
+  // Create a DNS resolver and an HTTP specific resolver.
+  int af = AF_INET;
+  struct in6_addr dummy_addr;
+  if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
+  {
+    LOG_DEBUG("Local host is an IPv6 address");
+    af = AF_INET6;
+  }
+
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
+  HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
+  HomesteadConnection* homestead_conn =
+    new HomesteadConnection(options.homestead_http_name, http_resolver);
 
   HttpStack* http_stack = HttpStack::get_instance();
 
-  CallListHandler::Config call_list_config(auth_store, homestead_conn, options.home_domain);
+  CallListTask::Config call_list_config(auth_store, homestead_conn, options.home_domain);
 
-  HttpStackUtils::PingController ping_controller;
-  HttpStackUtils::SpawningController<CallListHandler, CallListHandler::Config> call_list_controller(&call_list_config);
-  HttpStackUtils::ControllerThreadPool pool(options.http_worker_threads);
+  HttpStackUtils::PingHandler ping_handler;
+  HttpStackUtils::SpawningHandler<CallListTask, CallListTask::Config> call_list_handler(&call_list_config);
+  HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads);
 
   try
   {
@@ -335,9 +347,9 @@ int main(int argc, char**argv)
                           options.http_threads,
                           access_logger,
                           load_monitor);
-    http_stack->register_controller("^/ping$", &ping_controller);
-    http_stack->register_controller("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
-                                    pool.wrap(&call_list_controller));
+    http_stack->register_handler("^/ping$", &ping_handler);
+    http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
+                                    pool.wrap(&call_list_handler));
     http_stack->start();
   }
   catch (HttpStack::Exception& e)
@@ -361,6 +373,8 @@ int main(int argc, char**argv)
   }
 
   delete homestead_conn; homestead_conn = NULL;
+  delete http_resolver; http_resolver = NULL;
+  delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
   delete m_store; m_store = NULL;
