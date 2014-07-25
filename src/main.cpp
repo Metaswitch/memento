@@ -49,6 +49,7 @@
 #include "sas.h"
 #include "load_monitor.h"
 #include "authstore.h"
+#include "mementosaslogger.h"
 
 struct options
 {
@@ -336,8 +337,9 @@ int main(int argc, char**argv)
   CallListStore::Store* call_list_store = new CallListStore::Store();
   CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain);
 
+  MementoSasLogger sas_logger;
   HttpStackUtils::PingHandler ping_handler;
-  HttpStackUtils::SpawningHandler<CallListTask, CallListTask::Config> call_list_handler(&call_list_config);
+  HttpStackUtils::SpawningHandler<CallListTask, CallListTask::Config> call_list_handler(&call_list_config, &sas_logger);
   HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads);
 
   try
