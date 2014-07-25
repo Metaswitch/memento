@@ -4,6 +4,8 @@ require 'date'
 
 module Memento
 
+  EXPECTED_CONTENT_TYPE = "application/vnd.projectclearwater.call-list+xml"
+
   class Call
     attr_reader :to_uri, :to_name, :from_uri, :from_name, :answered, :outgoing, :start_time, :answered_time, :end_time
 
@@ -49,24 +51,18 @@ module Memento
     end
   end
 
-  class CallList
-    def initialize xmlnode
-      @calls = xmlnode.xpath("//calls/call").collect { |call_xml| Call.new call_xml }
-    end
-
-    def [](n)
-      @calls[n]
-    end
-
-    def size
-      @calls.size
+  class CallList < Array
+    def self.from_xml xmlnode
+      call_list = CallList.new
+      xmlnode.xpath("//calls/call").each { |call_xml| call_list << Call.new(call_xml) }
+      call_list
     end
 
     def to_s
-      if @calls.empty?
+      if self.empty?
         "No calls"
       else
-        @calls.collect { |call| call.to_s }.join("\n")
+        self.collect { |call| call.to_s }.join("\n")
       end
     end
   end
@@ -78,16 +74,16 @@ module Memento
       @resource = RestClient::Resource.new "https://#{memento_server}/org.projectclearwater.call-list/users/#{sip_uri}/call-list.xml", :verify_ssl => false, :user => username, :password => password
     end
 
-    def get_call_list debug=false
-      response = @resource.get "Accept-Encoding" => "gzip"
+    def get_call_list encoding="gzip", debug=false
+      response = @resource.get "Accept-Encoding" => encoding
       puts response.headers if debug
       puts response.body if debug
       xml = Nokogiri.XML(response.body, nil, nil, Nokogiri::XML::ParseOptions::PEDANTIC)
       fail xml.errors.to_s unless xml.errors.empty?
       fail @@schema.validate(xml).to_s unless @@schema.valid? xml
-      fail "Response is not gzip-encoded!" if (response.headers[:content_encoding] != "gzip")
-      fail "Content-Type is #{response.headers[:content_type]}, not 'application/vnd.projectclearwater.call-list+xml'" unless (response.headers[:content_type] == "application/vnd.projectclearwater.call-list+xml")
-      CallList.new xml
+      fail "Response is not encoded as #{encoding}!" if (response.headers[:content_encoding] != encoding)
+      fail "Content-Type is #{response.headers[:content_type]}, not #{EXPECTED_CONTENT_TYPE}" unless (response.headers[:content_type] == EXPECTED_CONTENT_TYPE)
+      CallList.from_xml xml
     end
   end
 end
