@@ -58,7 +58,7 @@ public:
   LocalStore* _store;
   AuthStore* _auth_store;
   MockCallListStore* _call_store;
-  CallListHandler::Config* _cfg;
+  CallListTask::Config* _cfg;
 
 
   HandlersTest()
@@ -66,7 +66,7 @@ public:
     _store = new LocalStore();
     _auth_store = new AuthStore(_store, 20);
     _call_store = new MockCallListStore();
-    _cfg = new CallListHandler::Config(_auth_store, NULL, _call_store, "localhost");
+    _cfg = new CallListTask::Config(_auth_store, NULL, _call_store, "localhost");
 
   }
   virtual ~HandlersTest()
@@ -137,7 +137,7 @@ TEST_F(HandlersTest, Mainline)
   records.push_back(record2);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -208,7 +208,7 @@ TEST_F(HandlersTest, DuplicatedBegin)
   records.push_back(record2);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -251,7 +251,7 @@ TEST_F(HandlersTest, DuplicatedEnd)
   records.push_back(record2);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -289,7 +289,7 @@ TEST_F(HandlersTest, DuplicatedRejected)
   records.push_back(record1);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -331,7 +331,7 @@ TEST_F(HandlersTest, WrongOrder)
   records.push_back(record1);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -367,7 +367,7 @@ TEST_F(HandlersTest, MissingEnd)
   records.push_back(record1);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -383,7 +383,7 @@ TEST_F(HandlersTest, NotFound)
 {
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
     .WillOnce(Return(CassandraStore::ResultCode::NOT_FOUND));

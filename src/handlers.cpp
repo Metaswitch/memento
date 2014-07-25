@@ -41,7 +41,7 @@
 #include "call_list_xml.h"
 
 // This handler deals with requests to the call list URL
-void CallListHandler::run()
+void CallListTask::run()
 {
   HTTPCode rc = parse_request();
 
@@ -82,7 +82,7 @@ void CallListHandler::run()
   return;
 }
 
-void CallListHandler::respond_when_authenticated()
+void CallListTask::respond_when_authenticated()
 {
   std::vector<CallListStore::CallFragment> records;
 
@@ -120,7 +120,7 @@ void CallListHandler::respond_when_authenticated()
   send_http_reply(HTTP_OK);
 }
 
-HTTPCode CallListHandler::parse_request()
+HTTPCode CallListTask::parse_request()
 {
   const std::string prefix = "/org.projectclearwater.call-list/users/";
   std::string path = _req.path();
