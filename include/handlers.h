@@ -44,7 +44,7 @@
 #include "homesteadconnection.h"
 #include "httpdigestauthenticate.h"
 
-class CallListHandler : public HttpStackUtils::Handler
+class CallListTask : public HttpStackUtils::Task
 {
 public:
   struct Config
@@ -61,17 +61,17 @@ public:
     std::string _home_domain;
   };
 
-  CallListHandler(HttpStack::Request& req,
-                  const Config* cfg,
-                  SAS::TrailId trail) :
-    HttpStackUtils::Handler(req, trail),
+  CallListTask(HttpStack::Request& req,
+               const Config* cfg,
+               SAS::TrailId trail) :
+    HttpStackUtils::Task(req, trail),
     _cfg(cfg),
     _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
                                          _cfg->_homestead_conn,
                                          _cfg->_home_domain))
   {};
 
-  ~CallListHandler()
+  ~CallListTask()
   {
     delete _auth_mod; _auth_mod = NULL;
   }
