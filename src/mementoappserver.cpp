@@ -49,7 +49,6 @@ static const int MAX_TOKENS = 20;
 static float INITIAL_TOKEN_RATE = 100.0;
 static float MIN_TOKEN_RATE = 10.0;
 
-//
 static const int MAX_CALL_ENTRY_LENGTH = 4096;
 static const char* TIMESTAMP_PATTERN = "%Y%m%d%H%M%S";
 static const char* XML_PATTERN = "%Y-%m-%dT%H:%M:%S";
@@ -76,9 +75,16 @@ MementoAppServer::MementoAppServer(const std::string& _service_name,
                                    const int call_list_ttl) :
   AppServer(_service_name),
   _home_domain(home_domain),
-  _load_monitor(new LoadMonitor(TARGET_LATENCY, MAX_TOKENS, INITIAL_TOKEN_RATE, MIN_TOKEN_RATE)),
-  _call_list_store(new CallListStore::Store()), //LCOV_EXCL_LINE //TODO why isn't this covered?!? try printing a pointer
-  _call_list_store_processor(new CallListStoreProcessor(_load_monitor, _call_list_store, max_call_list_length, memento_threads, call_list_ttl))
+  _load_monitor(new LoadMonitor(TARGET_LATENCY,
+                                MAX_TOKENS,
+                                INITIAL_TOKEN_RATE,
+                                MIN_TOKEN_RATE)),
+  _call_list_store(new CallListStore::Store()), //LCOV_EXCL_LINE
+  _call_list_store_processor(new CallListStoreProcessor(_load_monitor,
+                                                        _call_list_store,
+                                                        max_call_list_length,
+                                                        memento_threads,
+                                                        call_list_ttl))
 {
 }
 
@@ -112,7 +118,6 @@ AppServerTsx* MementoAppServer::get_app_tsx(AppServerTsxHelper* helper,
 
   MementoAppServerTsx* memento_tsx = new MementoAppServerTsx(helper);
   memento_tsx->set_members(_load_monitor,
-                           _call_list_store,
                            _call_list_store_processor,
 			   _home_domain);
   return memento_tsx;
@@ -138,12 +143,10 @@ MementoAppServerTsx::MementoAppServerTsx(AppServerTsxHelper* helper) :
 MementoAppServerTsx::~MementoAppServerTsx() {}
 
 void MementoAppServerTsx::set_members(LoadMonitor* load_monitor,
-                                      CallListStore::Store* call_list_store,
                                       CallListStoreProcessor* call_list_store_processor,
                                       std::string& home_domain)
 {
   _load_monitor = load_monitor;
-  _call_list_store = call_list_store;
   _call_list_store_processor = call_list_store_processor;
   _home_domain = home_domain;
 }
@@ -156,7 +159,9 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
   _start_time = localtime(&rawtime);
 
   // Is the call originating or terminating?
-  pjsip_route_hdr* hroute = (pjsip_route_hdr*)pjsip_msg_find_hdr(req, PJSIP_H_ROUTE, NULL);
+  pjsip_route_hdr* hroute = (pjsip_route_hdr*)pjsip_msg_find_hdr(req,
+                                                                 PJSIP_H_ROUTE,
+                                                                 NULL);
 
   if (hroute != NULL)
   {
@@ -216,24 +221,26 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
   // Add a unique ID containing the IMPU to the record route header.
   // This has the format:
   //     <YYYYMMDDHHMMSS>_<unique_id>-<base64 encoded impu>@memento.<home domain>
-  _unique_id = create_formatted_timestamp(_start_time, TIMESTAMP_PATTERN).
-     append("_").append(std::to_string(Utils::generate_unique_integer(0,0)));
+  std::string timestamp = create_formatted_timestamp(_start_time, TIMESTAMP_PATTERN);
+  _unique_id = std::to_string(Utils::generate_unique_integer(0,0));
   std::string encoded_impu = base64_encode(reinterpret_cast<const unsigned char*>
                                             (_impu.c_str()), _impu.length());
   std::string decoded_impu = base64_decode(encoded_impu);
+  std::string prefix = timestamp.append("_").append(_unique_id).append("-").
+                append(encoded_impu).append("@memento.").append(_home_domain);
 
-  std::string prefix = _unique_id.append("-").append(encoded_impu).
-                                    append("@memento.").append(_home_domain);
   add_to_dialog(prefix);
   forward_request(req);
 }
 
 void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 {
-  // TODO Test this
+  // Get the prefix containing the unique id, start time and IMPU from
+  // the top route header.
   std::string header = "";
+  pjsip_route_hdr* first_route_hdr = (pjsip_route_hdr*) pjsip_msg_find_hdr(
+                                                    req, PJSIP_H_ROUTE, NULL);
 
-  pjsip_route_hdr* first_route_hdr = (pjsip_route_hdr*) pjsip_msg_find_hdr(req, PJSIP_H_ROUTE, NULL);
   if (first_route_hdr)
   {
     pjsip_uri* route_uri = first_route_hdr->name_addr.uri;
@@ -251,7 +258,8 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 
   if (prefix.size() != 2)
   {
-    LOG_WARNING("Invalid HEADER, can't pull out the %s", header.c_str());
+    LOG_WARNING("Invalid header (%s), can't find unique ID", header.c_str());
+    forward_request(req);
     return;
   }
 
@@ -262,7 +270,8 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 
   if (unique_id.size() != 2)
   {
-    LOG_WARNING("Invalid HEADER, can't pull out the %s", prefix[0].c_str());
+    LOG_WARNING("Invalid header (%s), can't find timestamp", header.c_str());
+    forward_request(req);
     return;
   }
 
@@ -273,7 +282,8 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 
   if (impu.size() != 2)
   {
-    LOG_WARNING("Invalid HEADER, can't pull out the %s", prefix[1].c_str());
+    LOG_WARNING("Invalid header (%s), can't find IMPU", header.c_str());
+    forward_request(req);
     return;
   }
 
@@ -293,9 +303,10 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
   rapidxml::xml_document<> doc;
   std::string end_timestamp = create_formatted_timestamp(ct, XML_PATTERN);
 
-  rapidxml::xml_node<>* root = doc.allocate_node(rapidxml::node_element,
-                                                 MementoXML::END_TIME,
-                                                 doc.allocate_string(end_timestamp.c_str()));
+  rapidxml::xml_node<>* root = doc.allocate_node(
+                                  rapidxml::node_element,
+                                  MementoXML::END_TIME,
+                                  doc.allocate_string(end_timestamp.c_str()));
   doc.append_node(root);
 
   char contents[MAX_CALL_ENTRY_LENGTH] = {0};
@@ -325,12 +336,14 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   if (_stored_entry)
   {
     LOG_DEBUG("Already received a final response, no further processing");
+    forward_response(rsp);
     return;
   }
 
   if (rsp->line.status.code < 200)
   {
     // Non-final response; do nothing
+    forward_response(rsp);
     return;
   }
   else
@@ -355,34 +368,40 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   rapidxml::xml_document<> doc;
 
   // Fill in the 'to' values from the callee values.
-  rapidxml::xml_node<>* to = doc.allocate_node(rapidxml::node_element, MementoXML::TO);
-  rapidxml::xml_node<>* to_uri = doc.allocate_node(rapidxml::node_element,
-						   MementoXML::URI,
-						   doc.allocate_string(_callee_uri.c_str()));
+  rapidxml::xml_node<>* to = doc.allocate_node(rapidxml::node_element,
+                                               MementoXML::TO);
+  rapidxml::xml_node<>* to_uri = doc.allocate_node(
+                                      rapidxml::node_element,
+                                      MementoXML::URI,
+                                      doc.allocate_string(_callee_uri.c_str()));
   to->append_node(to_uri);
 
   if (_callee_name != "")
   {
-    rapidxml::xml_node<>* to_name = doc.allocate_node(rapidxml::node_element,
-						      MementoXML::NAME,
-						      doc.allocate_string(_callee_name.c_str()));
+    rapidxml::xml_node<>* to_name = doc.allocate_node(
+                                      rapidxml::node_element,
+				      MementoXML::NAME,
+                                      doc.allocate_string(_callee_name.c_str()));
     to->append_node(to_name);
   }
 
   doc.append_node(to);
 
   // Fill in the 'from' values from the caller values.
-  rapidxml::xml_node<>* from = doc.allocate_node(rapidxml::node_element, MementoXML::FROM);
-  rapidxml::xml_node<>* from_uri = doc.allocate_node(rapidxml::node_element,
-						     MementoXML::URI,
-                                                     doc.allocate_string(_caller_uri.c_str()));
+  rapidxml::xml_node<>* from = doc.allocate_node(rapidxml::node_element,
+                                                 MementoXML::FROM);
+  rapidxml::xml_node<>* from_uri = doc.allocate_node(
+                                        rapidxml::node_element,
+					MementoXML::URI,
+                                        doc.allocate_string(_caller_uri.c_str()));
   from->append_node(from_uri);
 
   if (_caller_name != "")
   {
-    rapidxml::xml_node<>* from_name = doc.allocate_node(rapidxml::node_element,
-							MementoXML::NAME,
-							doc.allocate_string(_caller_name.c_str()));
+    rapidxml::xml_node<>* from_name = doc.allocate_node(
+                                        rapidxml::node_element,
+					MementoXML::NAME,
+					doc.allocate_string(_caller_name.c_str()));
     from->append_node(from_name);
   }
 
@@ -390,16 +409,19 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 
   // Set outgoing to 0 if the call is incoming, and 1 otherwise.
   std::string incoming_str = _incoming ? "0" : "1";
-  rapidxml::xml_node<>* incoming = doc.allocate_node(rapidxml::node_element,
-						     MementoXML::OUTGOING,
-						     doc.allocate_string(incoming_str.c_str()));
+  rapidxml::xml_node<>* incoming = doc.allocate_node(
+                                         rapidxml::node_element,
+					 MementoXML::OUTGOING,
+                                         doc.allocate_string(incoming_str.c_str()));
   doc.append_node(incoming);
 
-  std::string start_timestamp = create_formatted_timestamp(_start_time, XML_PATTERN);
+  std::string start_timestamp = create_formatted_timestamp(_start_time,
+                                                           XML_PATTERN);
   // Set the start time.
-  rapidxml::xml_node<>* start_time = doc.allocate_node(rapidxml::node_element,
-                                                       MementoXML::START_TIME,
-                                                       doc.allocate_string(start_timestamp.c_str()));
+  rapidxml::xml_node<>* start_time = doc.allocate_node(
+                                      rapidxml::node_element,
+                                      MementoXML::START_TIME,
+                                      doc.allocate_string(start_timestamp.c_str()));
   doc.append_node(start_time);
 
   CallListStore::CallFragment::Type type = CallListStore::CallFragment::Type::BEGIN;
@@ -407,7 +429,9 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   if (rsp->line.status.code >= 300)
   {
     // If the call was rejected, set answered to 1.
-    rapidxml::xml_node<>* answered = doc.allocate_node(rapidxml::node_element, MementoXML::ANSWERED, "1");
+    rapidxml::xml_node<>* answered = doc.allocate_node(rapidxml::node_element,
+                                                       MementoXML::ANSWERED,
+                                                       "1");
     doc.append_node(answered);
     type = CallListStore::CallFragment::Type::REJECTED;
   }
@@ -415,16 +439,19 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   {
     // If the call was rejected, set answered to 0. Also fill in the answer time
     // with the current time.
-    rapidxml::xml_node<>* answered = doc.allocate_node(rapidxml::node_element, MementoXML::ANSWERED, "0");
+    rapidxml::xml_node<>* answered = doc.allocate_node(rapidxml::node_element,
+                                                       MementoXML::ANSWERED,
+                                                       "0");
     doc.append_node(answered);
 
     time_t currenttime;
     time(&currenttime);
     tm* ct = localtime(&currenttime);
     std::string answer_timestamp = create_formatted_timestamp(ct, XML_PATTERN);
-    rapidxml::xml_node<>* answer_time = doc.allocate_node(rapidxml::node_element,
-                                                          MementoXML::ANSWER_TIME,
-                                                          doc.allocate_string(answer_timestamp.c_str()));
+    rapidxml::xml_node<>* answer_time = doc.allocate_node(
+                                      rapidxml::node_element,
+                                      MementoXML::ANSWER_TIME,
+                                      doc.allocate_string(answer_timestamp.c_str()));
     doc.append_node(answer_time);
   }
 

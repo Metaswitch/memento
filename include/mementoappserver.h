@@ -9,7 +9,6 @@
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version, along with the "Special Exception" for use of
  * the program along with SSL, set forth below. This program is distributed
-w
  * in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
  * A PARTICULAR PURPOSE.  See the GNU General Public License for more
@@ -92,10 +91,6 @@ public:
   virtual AppServerTsx* get_app_tsx(AppServerTsxHelper* helper,
                                     pjsip_msg* req);
 
-  /// Returns the name of this service.
-//  const std::string service_name() { return _service_name; }
-
-
 private:
 
   /// The name of this service.
@@ -107,14 +102,14 @@ private:
   /// Load monitor.
   LoadMonitor* _load_monitor;
 
-  /// Call list store processor. TODO update comment
+  /// Underlying Call list store processor.
   CallListStore::Store* _call_list_store;
 
   /// Call list store processor.
   CallListStoreProcessor* _call_list_store_processor;
 };
 
-/// The MementoAppServerTsx class subcis an abstract base class used to handle the
+/// The MementoAppServerTsx class subclasses AppServerTsx and provides
 /// application-server-specific processing of a single transaction.  It
 /// encapsulates a ServiceTsx, which it calls through to to perform the
 /// underlying service-related processing.
@@ -126,14 +121,14 @@ public:
   virtual ~MementoAppServerTsx();
 
   /// Called for an initial request (dialog-initiating or out-of-dialog) with
-  /// the original received request for the transaction.  
-  /// This method stores information about the INVITE, and adds itself as a 
-  /// Record-Route header. 
+  /// the original received request for the transaction.
+  /// This method stores information about the INVITE, and adds itself as a
+  /// Record-Route header.
   /// @param req           - The received initial request.
   virtual void on_initial_request(pjsip_msg* req);
 
   /// Called for an in-dialog request with the original received request for
-  /// the transaction.  On return the request will be forwarded within 
+  /// the transaction.  On return the request will be forwarded within
   /// the dialog.
   /// @param req           - The received in-dialog request.
   virtual void on_in_dialog_request(pjsip_msg* req);
@@ -153,21 +148,25 @@ public:
   ///                        the response was received.
   virtual void on_response(pjsip_msg* rsp, int fork_id);
 
+  /// Populates the MementoAppServerTsx
   void set_members(LoadMonitor* load_monitor,
-                   CallListStore::Store* call_list_store,
                    CallListStoreProcessor* call_list_store_processor,
                    std::string& home_domain);
+
   /// Constructor.
   MementoAppServerTsx(AppServerTsxHelper* helper);
 
 private:
-  /// Creates a formatted string YYYYMMDDHHMMSS from a tm
-  /// @param      - The time to convert
+  /// Creates a formatted string from a tm
+  /// @param timestamp - The time to convert
+  /// @param pattern   - The format to use
   std::string create_formatted_timestamp(tm* timestamp, const char* pattern);
 
+  // Converts a URI to a string
   std::string uri_to_string(pjsip_uri_context_e context,
                             const pjsip_uri* uri);
 
+  // Converts a PJ_STR to a string
   std::string pj_str_to_string(const pj_str_t* pjstr);
 
   /// Transaction context to use for underlying service-related processing.
@@ -179,12 +178,8 @@ private:
   /// Flag for whether the call is incoming or outgoing
   bool _incoming;
 
-  /// Start time of the call (as measured from receipt of a 200 OK). Stored as
-  /// ms from the epoch as a string? // TODO is this the best?
+  /// Start time of the call
   tm* _start_time;
-
-  std::string _start_time_xml;
-  std::string _start_time_store;
 
   /// Caller name (can be empty)
   std::string _caller_name;
@@ -198,7 +193,7 @@ private:
   /// Callee URI
   std::string _callee_uri;
 
-  /// Flag for whether a response has already been received on this 
+  /// Flag for whether a response has already been received on this
   /// transaction
   bool _stored_entry;
 
@@ -206,13 +201,11 @@ private:
   /// and a random number.
   std::string _unique_id;
 
-  /// IMPU of the call list owner - TODO make snappier. 
+  /// IMPU of the call list owner
   std::string _impu;
 
+  /// Load monitor
   LoadMonitor* _load_monitor;
-
-  /// Call list store processor. TODO update comment
-  CallListStore::Store* _call_list_store;
 
   /// Call list store processor.
   CallListStoreProcessor* _call_list_store_processor;

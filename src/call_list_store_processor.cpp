@@ -33,7 +33,6 @@
  * under which the OpenSSL Project distributes the OpenSSL toolkit software,
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
-
 #include "call_list_store_processor.h"
 
 /// Constructor.
@@ -102,11 +101,12 @@ void CallListStoreProcessor::CallListStoreProcessorThreadPool::process_work(Call
   call_fragment.timestamp = cle->timestamp;
   uint64_t cass_timestamp = atoi(cle->timestamp.c_str());
 
-  CassandraStore::ResultCode rc = _call_list_store->write_call_fragment_sync(cle->impu,
-                                                                             call_fragment,
-                                                                             cass_timestamp,
-                                                                             _call_list_ttl,
-                                                                             cle->trail);
+  CassandraStore::ResultCode rc = _call_list_store->write_call_fragment_sync(
+                                                    cle->impu,
+                                                    call_fragment,
+                                                    cass_timestamp,
+                                                    _call_list_ttl,
+                                                    cle->trail);
 
 
   if (rc == CassandraStore::OK)
@@ -114,7 +114,7 @@ void CallListStoreProcessor::CallListStoreProcessorThreadPool::process_work(Call
     // Reduce the number of stored calls (if necessary)
     perform_call_trim(cle->impu, cass_timestamp, cle->trail);
 
-    // Finally, record the latency of the request (only for
+    // Record the latency of the request (only for
     // successful requests).
     unsigned long latency_us = 0;
 
@@ -128,7 +128,7 @@ void CallListStoreProcessor::CallListStoreProcessorThreadPool::process_work(Call
   {
     // The write failed - log this and don't retry
     LOG_ERROR("Writing call list entry for IMPU: %s failed with rc %d",
-                                                        cle->impu.c_str(), rc);
+                                                cle->impu.c_str(), rc);
   }
 
   delete cle; cle = NULL;
@@ -185,12 +185,14 @@ bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_record_co
   // Check whether trimming is needed every 1 in (max_call_list_length / 10)
   // calls.
   int n = _max_call_list_length / 10;
+
   if (_max_call_list_length % 10 != 0)
   {
     n++;
   }
 
   int random_choice = rand() % n;
+
   return (random_choice == 0);
 }
 
