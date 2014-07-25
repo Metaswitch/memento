@@ -46,13 +46,12 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
 {
   std::map<std::string, std::vector<CallListStore::CallFragment> > ids_to_records;
 
-  // Re-order into a map sorted by record ID
+  // Group all entries by time and record ID
   for (std::vector<CallListStore::CallFragment>::const_iterator ii = records.begin();
        ii != records.end();
        ii++)
   {
-    //std::string record_id = ((ii->timestamp) + "_" + (ii->id));
-    std::string record_id = ii->id;
+    std::string record_id = ((ii->timestamp) + "_" + (ii->id));
     ids_to_records[record_id].push_back(*ii);
   }
 
@@ -78,7 +77,8 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
       else
       {
         SAS::Event invalid_record(trail, SASEvent::CALL_LIST_DB_INVALID_RECORD_1, 0);
-        invalid_record.add_var_param(record_id);
+        invalid_record.add_var_param(record_fragments[0].id);
+        invalid_record.add_var_param(record_fragments[0].timestamp);
         invalid_record.add_static_param(record_fragments[0].type);
         SAS::report_event(invalid_record);
 
@@ -97,7 +97,8 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
       else
       {
         SAS::Event invalid_record(trail, SASEvent::CALL_LIST_DB_INVALID_RECORD_2, 0);
-        invalid_record.add_var_param(record_id);
+        invalid_record.add_var_param(record_fragments[0].id);
+        invalid_record.add_var_param(record_fragments[0].timestamp);
         invalid_record.add_static_param(record_fragments[0].type);
         invalid_record.add_static_param(record_fragments[1].type);
         SAS::report_event(invalid_record);
@@ -109,7 +110,18 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
     else
     {
       SAS::Event invalid_record(trail, SASEvent::CALL_LIST_DB_INVALID_RECORD, 0);
-      invalid_record.add_var_param(record_id);
+      // record_fragments should always be nonempty at this point, but
+      // just in case
+      if (!record_fragments.empty())
+      {
+        invalid_record.add_var_param(record_fragments[0].id);
+        invalid_record.add_var_param(record_fragments[0].timestamp);
+      }
+      else
+      {
+        invalid_record.add_var_param(record_id);
+        invalid_record.add_var_param(record_id);
+      }
       invalid_record.add_static_param(record_fragments.size());
       SAS::report_event(invalid_record);
 

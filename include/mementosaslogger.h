@@ -34,7 +34,8 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#pragma once
+#ifndef MEMENTOSASLOGGER_H_
+#define MEMENTOSASLOGGER_H_
 
 #include "sas.h"
 #include "httpstack.h"
@@ -53,3 +54,5 @@ public:
                              int rc,
                              uint32_t instance_id = 0);
 };
+
+#endif

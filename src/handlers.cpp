@@ -86,10 +86,6 @@ void CallListTask::respond_when_authenticated()
 {
   std::vector<CallListStore::CallFragment> records;
 
-  SAS::Event db_start_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_START, 0);
-  db_start_event.add_var_param(_impu);
-  SAS::report_event(db_start_event);
-
   CassandraStore::ResultCode db_rc = _cfg->_call_list_store->get_call_records_sync(_impu, records);
 
   if (db_rc != CassandraStore::OK)
