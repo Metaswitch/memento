@@ -37,10 +37,6 @@ TARGET_SOURCES := localstore.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
                   httpresolver.cpp \
-                  call_list_store_processor.cpp \
-                  mementoappserver.cpp \
-                  base64.cpp \
-                  unique.cpp
 	          mementosaslogger.cpp \
                   call_list_store_processor.cpp \
                   mementoappserver.cpp \
