@@ -1,8 +1,8 @@
 /**
- * @file call_list_xml.h XML processing for call lists.
+ * @file mementosaslogger.cpp SAS logger for memento
  *
- * Project Clearwater - IMS in the cloud.
- * Copyright (C) 2014  Metaswitch Networks Ltd
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2014 Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,22 +34,13 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
+#include "mementosaslogger.h"
 
-#ifndef CALL_LIST_STORE_XML_H_
-#define CALL_LIST_STORE_XML_H_
+void MementoSasLogger::sas_log_tx_http_rsp(SAS::TrailId trail,
+                                           HttpStack::Request& req,
+                                           int rc,
+                                           uint32_t instance_id)
+{
+  log_rsp_event(trail, req, rc, instance_id, SASEvent::HttpLogLevel::PROTOCOL, true);
+}
 
-#include "call_list_store.h"
-#include "log.h"
-#include <vector>
-#include <map>
-#include <string>
-
-/// Converts a list of CallFragments retrieved from the store into
-/// valid XML.
-///
-/// @param records  - The list of records to generate XML from. No
-///                   ordering is assumed.
-/// @param trail    - The SAS trail ID for logging.
-std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>& records, SAS::TrailId trail);
-
-#endif

@@ -58,7 +58,7 @@ public:
   LocalStore* _store;
   AuthStore* _auth_store;
   MockCallListStore* _call_store;
-  CallListHandler::Config* _cfg;
+  CallListTask::Config* _cfg;
 
 
   HandlersTest()
@@ -66,7 +66,7 @@ public:
     _store = new LocalStore();
     _auth_store = new AuthStore(_store, 20);
     _call_store = new MockCallListStore();
-    _cfg = new CallListHandler::Config(_auth_store, NULL, _call_store, "localhost");
+    _cfg = new CallListTask::Config(_auth_store, NULL, _call_store, "localhost");
 
   }
   virtual ~HandlersTest()
@@ -137,7 +137,7 @@ TEST_F(HandlersTest, Mainline)
   records.push_back(record2);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -208,7 +208,7 @@ TEST_F(HandlersTest, DuplicatedBegin)
   records.push_back(record2);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -216,21 +216,9 @@ TEST_F(HandlersTest, DuplicatedBegin)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls><call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>1</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "<answer-time>2002-05-30T09:30:20</answer-time>"
-    "<end-time>2002-05-30T09:35:00</end-time>"
-    "</call></calls></call-list>")
+  // Invalid records are ignored
+  EXPECT_EQ( ("<call-list><calls>"
+    "</calls></call-list>")
     , req.content());
   delete handler;
 }
@@ -263,7 +251,7 @@ TEST_F(HandlersTest, DuplicatedEnd)
   records.push_back(record2);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -271,22 +259,10 @@ TEST_F(HandlersTest, DuplicatedEnd)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls><call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>1</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "<answer-time>2002-05-30T09:30:20</answer-time>"
-    "<end-time>2002-05-30T09:35:00</end-time>"
-    "</call></calls></call-list>")
+  EXPECT_EQ(("<call-list><calls>"
+    "</calls></call-list>")
     , req.content());
+
   delete handler;
 }
 
@@ -313,7 +289,7 @@ TEST_F(HandlersTest, DuplicatedRejected)
   records.push_back(record1);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -321,20 +297,9 @@ TEST_F(HandlersTest, DuplicatedRejected)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls><call>"
-    "<to>"
-        "<URI>alice@example.com</URI>"
-        "<name>Alice Adams</name>"
-      "</to>"
-      "<from>"
-        "<URI>bob@example.com</URI>"
-        "<name>Bob Barker</name>"
-      "</from>"
-      "<answered>0</answered>"
-      "<outgoing>1</outgoing>"
-      "<start-time>2002-05-30T09:30:10</start-time>"
-    "</call></calls></call-list>")
-    , req.content());
+  EXPECT_EQ(("<call-list><calls>"
+             "</calls></call-list>"), req.content());
+
   delete handler;
 }
 
@@ -366,7 +331,7 @@ TEST_F(HandlersTest, WrongOrder)
   records.push_back(record1);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -374,9 +339,9 @@ TEST_F(HandlersTest, WrongOrder)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->respond_when_authenticated();
 
-  EXPECT_EQ(  record1.contents = ("<call-list><calls>"
-    "</calls></call-list>")
-    , req.content());
+  EXPECT_EQ(("<call-list><calls>"
+             "</calls></call-list>")
+            , req.content());
   delete handler;
 }
 
@@ -402,7 +367,7 @@ TEST_F(HandlersTest, MissingEnd)
   records.push_back(record1);
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
@@ -418,7 +383,7 @@ TEST_F(HandlersTest, NotFound)
 {
   MockHttpStack::Request req(_httpstack, "/", "digest", "");
 
-  CallListHandler* handler = new CallListHandler(req, _cfg, 0);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
 
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(Return(CassandraStore::ResultCode::NOT_FOUND));

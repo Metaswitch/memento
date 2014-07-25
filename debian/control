@@ -35,5 +35,5 @@ Description: Debugging symbols for memento's libraries
 
 Package: memento-nginx
 Architecture: any
-Depends: clearwater-infrastructure, clearwater-nginx
+Depends: clearwater-infrastructure, clearwater-nginx, memento
 Description: Integrates Memento with nginx

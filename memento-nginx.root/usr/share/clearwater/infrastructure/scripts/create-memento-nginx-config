@@ -60,6 +60,9 @@ server {
         ssl_ciphers  ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP;
         ssl_prefer_server_ciphers   on;
 
+        # <memento_hostname>/ping tests memento through nginx. localhost/ping
+        # is used to just test nginx. This is defined in the ping site which
+        # is installed with the clearwater-nginx package.
         location /ping {
                 proxy_pass http://localhost:11888;
         }
@@ -73,7 +76,7 @@ server {
 server {
         listen      80;
         server_name $memento_hostname;
-        return 301 https://$host$request_uri;
+        return 301 https://\$host\$request_uri;
 }
 EOF
 

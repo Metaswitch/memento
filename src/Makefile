@@ -36,7 +36,8 @@ TARGET_SOURCES := localstore.cpp \
                   dnsparser.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
-                  httpresolver.cpp
+                  httpresolver.cpp \
+	          mementosaslogger.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 

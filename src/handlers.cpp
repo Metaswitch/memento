@@ -41,17 +41,15 @@
 #include "call_list_xml.h"
 
 // This handler deals with requests to the call list URL
-void CallListHandler::run()
+void CallListTask::run()
 {
   HTTPCode rc = parse_request();
 
   if (rc != HTTP_OK)
   {
-    // LCOV_EXCL_START
     send_http_reply(rc);
     delete this;
     return;
-    // LCOV_EXCL_STOP
   }
 
   LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
@@ -75,14 +73,16 @@ void CallListHandler::run()
   {
     LOG_DEBUG("Authorization failed, responding with %d", rc);
     send_http_reply(rc);
-  } else {
+  }
+  else
+  {
     respond_when_authenticated();
   }
   delete this;
   return;
 }
 
-void CallListHandler::respond_when_authenticated()
+void CallListTask::respond_when_authenticated()
 {
   std::vector<CallListStore::CallFragment> records;
   CassandraStore::ResultCode db_rc =
@@ -90,21 +90,23 @@ void CallListHandler::respond_when_authenticated()
 
   if (db_rc != CassandraStore::OK)
   {
-    SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_FAILED, 0);
-    db_event.add_static_param(db_rc);
-    SAS::report_event(db_event);
+    SAS::Event db_err_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_FAILED, 0);
+    db_err_event.add_var_param(_impu);
+    SAS::report_event(db_err_event);
 
     LOG_DEBUG("get_call_records_sync failed with result code %d", db_rc);
-    send_http_reply(500);
+    send_http_reply(HTTP_SERVER_ERROR);
     return;
   }
 
-  SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL, 0);
+  SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_SUCCESS, 0);
   db_event.add_static_param(records.size());
+  db_event.add_var_param(_impu);
   SAS::report_event(db_event);
 
   // Request has authenticated, so attempt to get the call lists.
-  std::string calllists = xml_from_call_records(records);
+  std::string calllists = xml_from_call_records(records, trail());
+  _req.add_header("Content-Type", "application/vnd.projectclearwater.call-list+xml");
   _req.add_content(calllists);
 
   SAS::Event tx_event(trail(), SASEvent::CALL_LIST_RSP_TX, 0);
@@ -114,12 +116,16 @@ void CallListHandler::respond_when_authenticated()
   send_http_reply(HTTP_OK);
 }
 
-HTTPCode CallListHandler::parse_request()
+HTTPCode CallListTask::parse_request()
 {
   const std::string prefix = "/org.projectclearwater.call-list/users/";
   std::string path = _req.path();
 
   _impu = path.substr(prefix.length(), path.find_first_of("/", prefix.length()) - prefix.length());
 
+  if (_req.method() != htp_method_GET)
+  {
+    return HTTP_BADMETHOD;
+  }
   return HTTP_OK;
 }

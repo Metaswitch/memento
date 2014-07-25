@@ -49,6 +49,7 @@
 #include "sas.h"
 #include "load_monitor.h"
 #include "authstore.h"
+#include "mementosaslogger.h"
 
 struct options
 {
@@ -345,11 +346,12 @@ int main(int argc, char**argv)
 
   HttpStack* http_stack = HttpStack::get_instance();
 
-  CallListHandler::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain);
+  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain);
 
-  HttpStackUtils::PingController ping_controller;
-  HttpStackUtils::SpawningController<CallListHandler, CallListHandler::Config> call_list_controller(&call_list_config);
-  HttpStackUtils::ControllerThreadPool pool(options.http_worker_threads);
+  MementoSasLogger sas_logger;
+  HttpStackUtils::PingHandler ping_handler;
+  HttpStackUtils::SpawningHandler<CallListTask, CallListTask::Config> call_list_handler(&call_list_config, &sas_logger);
+  HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads);
 
   try
   {
@@ -359,9 +361,9 @@ int main(int argc, char**argv)
                           options.http_threads,
                           access_logger,
                           load_monitor);
-    http_stack->register_controller("^/ping$", &ping_controller);
-    http_stack->register_controller("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
-                                    pool.wrap(&call_list_controller));
+    http_stack->register_handler("^/ping$", &ping_handler);
+    http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
+                                    pool.wrap(&call_list_handler));
     http_stack->start();
   }
   catch (HttpStack::Exception& e)
@@ -393,6 +395,7 @@ int main(int argc, char**argv)
   delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
+  delete call_list_store; call_list_store = NULL;
   delete m_store; m_store = NULL;
 
   SAS::term();
