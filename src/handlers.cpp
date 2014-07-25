@@ -95,7 +95,6 @@ void CallListHandler::respond_when_authenticated()
   if (db_rc != CassandraStore::OK)
   {
     SAS::Event db_err_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_FAILED, 0);
-    db_err_event.add_static_param(db_rc);
     db_err_event.add_var_param(_impu);
     SAS::report_event(db_err_event);
 
