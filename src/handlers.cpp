@@ -36,6 +36,9 @@
 
 #include "handlers.h"
 #include "httpdigestauthenticate.h"
+#include "mementosasevent.h"
+#include "call_list_store.h"
+#include "call_list_xml.h"
 
 // This handler deals with requests to the call list URL
 void CallListTask::run()
@@ -50,6 +53,9 @@ void CallListTask::run()
   }
 
   LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
+  SAS::Event rx_event(trail(), SASEvent::CALL_LIST_REQUEST_RX, 0);
+  rx_event.add_var_param(_impu);
+  SAS::report_event(rx_event);
 
   std::string www_auth_header;
   std::string auth_header = _req.header("Authorization");
@@ -62,24 +68,52 @@ void CallListTask::run()
     LOG_DEBUG("Authorization data missing or out of date, responding with 401");
     _req.add_header("WWW-Authenticate", www_auth_header);
     send_http_reply(rc);
-    delete this;
-    return;
   }
   else if (rc != HTTP_OK)
   {
     LOG_DEBUG("Authorization failed, responding with %d", rc);
     send_http_reply(rc);
-    delete this;
+  }
+  else
+  {
+    respond_when_authenticated();
+  }
+  delete this;
+  return;
+}
+
+void CallListTask::respond_when_authenticated()
+{
+  std::vector<CallListStore::CallFragment> records;
+  CassandraStore::ResultCode db_rc =
+    _cfg->_call_list_store->get_call_fragments_sync(_impu, records, trail());
+
+  if (db_rc != CassandraStore::OK)
+  {
+    SAS::Event db_err_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_FAILED, 0);
+    db_err_event.add_var_param(_impu);
+    SAS::report_event(db_err_event);
+
+    LOG_DEBUG("get_call_records_sync failed with result code %d", db_rc);
+    send_http_reply(HTTP_SERVER_ERROR);
     return;
   }
 
+  SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_SUCCESS, 0);
+  db_event.add_static_param(records.size());
+  db_event.add_var_param(_impu);
+  SAS::report_event(db_event);
+
   // Request has authenticated, so attempt to get the call lists.
-  // DUMMY RESPONSE FOR NOW WITH AN EMPTY CALL LIST
-  std::string calllists = "<call-list></call-list>";
+  std::string calllists = xml_from_call_records(records, trail());
+  _req.add_header("Content-Type", "application/vnd.projectclearwater.call-list+xml");
   _req.add_content(calllists);
+
+  SAS::Event tx_event(trail(), SASEvent::CALL_LIST_RSP_TX, 0);
+  tx_event.add_var_param(_impu);
+  SAS::report_event(tx_event);
+
   send_http_reply(HTTP_OK);
-  delete this;
-  return;
 }
 
 HTTPCode CallListTask::parse_request()
@@ -89,5 +123,9 @@ HTTPCode CallListTask::parse_request()
 
   _impu = path.substr(prefix.length(), path.find_first_of("/", prefix.length()) - prefix.length());
 
+  if (_req.method() != htp_method_GET)
+  {
+    return HTTP_BADMETHOD;
+  }
   return HTTP_OK;
 }

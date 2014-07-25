@@ -1,8 +1,8 @@
 /**
- * @file handlers.h
+ * @file mementosaslogger.cpp SAS logger for memento
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2014  Metaswitch Networks Ltd
+ * Copyright (C) 2014 Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,62 +34,25 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef HANDLERS_H__
-#define HANDLERS_H__
+#ifndef MEMENTOSASLOGGER_H_
+#define MEMENTOSASLOGGER_H_
 
-#include "httpstack.h"
-#include "httpstack_utils.h"
 #include "sas.h"
-#include "authstore.h"
-#include "homesteadconnection.h"
-#include "httpdigestauthenticate.h"
-#include "call_list_store.h"
+#include "httpstack.h"
 
-class CallListTask : public HttpStackUtils::Task
+class MementoSasLogger : public HttpStack::SasLogger
 {
 public:
-  struct Config
-  {
-    Config(AuthStore* auth_store,
-           HomesteadConnection* homestead_conn,
-           CallListStore::Store* call_list_store,
-           std::string home_domain) :
-      _auth_store(auth_store),
-      _homestead_conn(homestead_conn),
-      _call_list_store(call_list_store),
-      _home_domain(home_domain)
-      {}
-    AuthStore* _auth_store;
-    HomesteadConnection* _homestead_conn;
-    CallListStore::Store* _call_list_store;
-    std::string _home_domain;
-  };
-
-  CallListTask(HttpStack::Request& req,
-               const Config* cfg,
-               SAS::TrailId trail) :
-    HttpStackUtils::Task(req, trail),
-    _cfg(cfg),
-    _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
-                                         _cfg->_homestead_conn,
-                                         _cfg->_home_domain))
-  {};
-
-  ~CallListTask()
-  {
-    delete _auth_mod; _auth_mod = NULL;
-  }
-
-  void run();
-  HTTPCode parse_request();
-  HTTPCode authenticate_request();
-
-protected:
-  const Config* _cfg;
-  HTTPDigestAuthenticate* _auth_mod;
-  void respond_when_authenticated();
-
-  std::string _impu;
+    // Log a transmitted HTTP response, omitting the body.
+    //
+    // @param trail SAS trail ID to log on.
+    // @param req request to log.
+    // @param rc the HTTP response code.
+    // @instance_id unique instance ID for the event.
+    void sas_log_tx_http_rsp(SAS::TrailId trail,
+                             HttpStack::Request& req,
+                             int rc,
+                             uint32_t instance_id = 0);
 };
 
 #endif

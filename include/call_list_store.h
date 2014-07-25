@@ -42,90 +42,122 @@
 namespace CallListStore
 {
 
-/// Structure representing a call record in the store.
+/// Structure representing a call record fragment in the store.
 struct CallFragment
 {
+  // Types of call fragment. These are logged to SAS so:
+  // -  Each element must have an explicit value.
+  // -  If you change the enum you must also update the resource bundle.
   enum Type
   {
-    BEGIN,
-    END,
-    REJECTED
+    BEGIN = 0,
+    END = 1,
+    REJECTED = 2
   };
 
-  tm timestamp;
+  /// Timestamp representing the time that the call started. In the form
+  /// YYYYMMDDHHMMSS.
+  std::string timestamp;
+
+  /// Application specific ID for the call. This is transparent to the store.
   std::string id;
+
+  /// The type of fragment.
   Type type;
+
+  /// The contents of the fragment in cassandra.  This is transparent to the
+  /// store.
   std::string contents;
 };
 
 
-/// Operation that adds a new call record to the store.
+/// Operation that adds a new call record fragment to the store.
 class WriteCallFragment : public CassandraStore::Operation
 {
+public:
   /// Constructor.
   ///
-  /// @param impu     - The IMPU to write a record for.
-  /// @param record   - The record object to write.
-  /// @param ttl      - The TTL (in seconds) for the column.
+  /// @param impu             - The IMPU to write a fragment for.
+  /// @param fragment         - The fragment object to write.
+  /// @param ttl              - The TTL (in seconds) for the column.
+  /// @param cass_timestamp   - The timestamp to use on the cassandra write.
   WriteCallFragment(const std::string& impu,
                     const CallFragment& record,
-                    const int32_t ttl = 0);
+                    const int64_t cass_timestamp,
+                    const int32_t ttl);
   virtual ~WriteCallFragment();
 
-  bool perform();
-
 protected:
+  bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  void unhandled_exception(CassandraStore::ResultCode status,
+                           std::string& description,
+                           SAS::TrailId trail);
+
   const std::string _impu;
-  const CallFragment _record;
+  const CallFragment _fragment;
+  const int64_t _cass_timestamp;
   const int32_t _ttl;
 };
 
 
-/// Operation that gets call records for a particular IMPU.
+/// Operation that gets call fragments for a particular IMPU.
 class GetCallFragments : public CassandraStore::Operation
 {
+public:
   /// Constructor.
-  /// @param impu     - The IMPU whose call records to retrieve.
-  GetCallFragments(std::string& impu);
+  /// @param impu     - The IMPU whose call fragments to retrieve.
+  GetCallFragments(const std::string& impu);
 
   /// Virtual destructor.
   virtual ~GetCallFragments();
 
-  bool perform();
-
-  /// Get the fetched call records.  These are guaranteed to be ordered first
+  /// Get the fetched call fragments.  These are guaranteed to be ordered first
   /// by timestamp, then by id, then by type.
   ///
-  /// @return    - A *reference* to a vector of call records.
-  std::vector<CallFragment>& get_call_records();
+  /// @param fragments  - (out) A vector of call fragments.
+  void get_result(std::vector<CallFragment>& fragments);
 
 protected:
+  bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  void unhandled_exception(CassandraStore::ResultCode status,
+                           std::string& description,
+                           SAS::TrailId trail);
+
   const std::string _impu;
 
-  std::vector<CallFragment> _records;
+  std::vector<CallFragment> _fragments;
 };
 
 
-/// Operation that deletes all records for an IMPU that occurred before a given
+/// Operation that deletes all fragments for an IMPU that occurred before a given
 /// timestamp.
 class DeleteOldCallFragments : public CassandraStore::Operation
 {
+public:
   /// Constructor
   ///
-  /// @param impu       - The IMPU whose old records to delete.
-  /// @param threshold  - The threshold time. Records with a timestamp that is
-  ///                     earlier than this time will be deleted (but records
-  ///                     with an equal timestamp will not).
-  DeleteOldCallFragments(std::string& impu, tm& age);
+  /// @param impu             - The IMPU whose old fragments to delete.
+  /// @param threshold        - The threshold time (in the form YYYYMMDDHHMMSS).
+  ///                           Fragments with a timestamp that is earlier than
+  ///                           this time will be deleted (but fragments with an
+  ///                           equal timestamp will not).
+  /// @param cass_timestamp   - The timestamp to use on the cassandra write.
+  DeleteOldCallFragments(const std::string& impu,
+                         const std::string& threshold,
+                         const int64_t cass_timestamp);
 
   /// Virtual destructor.
   virtual ~DeleteOldCallFragments();
 
-  bool perform();
-
 protected:
+  bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  void unhandled_exception(CassandraStore::ResultCode status,
+                           std::string& description,
+                           SAS::TrailId trail);
+
   const std::string _impu;
-  const tm _age;
+  const std::string _threshold;
+  const int64_t _cass_timestamp;
 };
 
 
@@ -150,28 +182,35 @@ public:
   // 'new') as this makes the store easier to mock out in UT.
   //
   virtual WriteCallFragment*
-    new_write_call_record_op(const std::string& impu,
-                             const CallFragment& record,
-                             const int32_t ttl = 0);
+    new_write_call_fragment_op(const std::string& impu,
+                               const CallFragment& fragment,
+                               const int64_t cass_timestamp,
+                               const int32_t ttl);
   virtual GetCallFragments*
-    new_get_call_records_op(const std::string& impu);
+    new_get_call_fragments_op(const std::string& impu);
   virtual DeleteOldCallFragments*
-    new_delete_old_call_records_op(const std::string& impu,
-                                   const tm& age);
+    new_delete_old_call_fragments_op(const std::string& impu,
+                                     const std::string& threshold,
+                                     const int64_t cass_timestamp);
 
   //
   // Utility methods to perform synchronous operations more easily.
   //
   virtual CassandraStore::ResultCode
-    write_call_record_sync(const std::string& impu,
-                           const CallFragment& record,
-                           const int32_t ttl = 0);
+    write_call_fragment_sync(const std::string& impu,
+                             const CallFragment& fragment,
+                             const int64_t cass_timestamp,
+                             const int32_t ttl,
+                             SAS::TrailId trail);
   virtual CassandraStore::ResultCode
-    get_call_records_sync(const std::string& impu,
-                          std::vector<CallFragment>& records);
+    get_call_fragments_sync(const std::string& impu,
+                            std::vector<CallFragment>& fragments,
+                            SAS::TrailId trail);
   virtual CassandraStore::ResultCode
-    delete_old_call_records_sync(const std::string& impu,
-                                 const tm& threshold);
+    delete_old_call_fragments_sync(const std::string& impu,
+                                   const std::string& threshold,
+                                   const int64_t cass_timestamp,
+                                   SAS::TrailId trail);
 };
 
 } // namespace CallListStore

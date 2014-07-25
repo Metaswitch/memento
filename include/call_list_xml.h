@@ -1,7 +1,7 @@
 /**
- * @file handlers.h
+ * @file call_list_xml.h XML processing for call lists.
  *
- * Project Clearwater - IMS in the Cloud
+ * Project Clearwater - IMS in the cloud.
  * Copyright (C) 2014  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -34,62 +34,22 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef HANDLERS_H__
-#define HANDLERS_H__
 
-#include "httpstack.h"
-#include "httpstack_utils.h"
-#include "sas.h"
-#include "authstore.h"
-#include "homesteadconnection.h"
-#include "httpdigestauthenticate.h"
+#ifndef CALL_LIST_STORE_XML_H_
+#define CALL_LIST_STORE_XML_H_
+
 #include "call_list_store.h"
+#include "log.h"
+#include <vector>
+#include <map>
+#include <string>
 
-class CallListTask : public HttpStackUtils::Task
-{
-public:
-  struct Config
-  {
-    Config(AuthStore* auth_store,
-           HomesteadConnection* homestead_conn,
-           CallListStore::Store* call_list_store,
-           std::string home_domain) :
-      _auth_store(auth_store),
-      _homestead_conn(homestead_conn),
-      _call_list_store(call_list_store),
-      _home_domain(home_domain)
-      {}
-    AuthStore* _auth_store;
-    HomesteadConnection* _homestead_conn;
-    CallListStore::Store* _call_list_store;
-    std::string _home_domain;
-  };
-
-  CallListTask(HttpStack::Request& req,
-               const Config* cfg,
-               SAS::TrailId trail) :
-    HttpStackUtils::Task(req, trail),
-    _cfg(cfg),
-    _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
-                                         _cfg->_homestead_conn,
-                                         _cfg->_home_domain))
-  {};
-
-  ~CallListTask()
-  {
-    delete _auth_mod; _auth_mod = NULL;
-  }
-
-  void run();
-  HTTPCode parse_request();
-  HTTPCode authenticate_request();
-
-protected:
-  const Config* _cfg;
-  HTTPDigestAuthenticate* _auth_mod;
-  void respond_when_authenticated();
-
-  std::string _impu;
-};
+/// Converts a list of CallFragments retrieved from the store into
+/// valid XML.
+///
+/// @param records  - The list of records to generate XML from. No
+///                   ordering is assumed.
+/// @param trail    - The SAS trail ID for logging.
+std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>& records, SAS::TrailId trail);
 
 #endif

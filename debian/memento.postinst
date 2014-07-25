@@ -92,6 +92,8 @@ case "$1" in
             $SCRIPT
         done
 
+        /usr/share/clearwater/cassandra-schemas/memento.sh
+
         # Restart memento.  Always do this by terminating memento so monit will
         # restart it more-or-less immediately.  (monit restart seems to have
         # significant lag.)

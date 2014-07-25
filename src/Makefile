@@ -32,10 +32,12 @@ TARGET_SOURCES := localstore.cpp \
                   httpdigestauthenticate.cpp \
                   cassandra_store.cpp \
                   call_list_store.cpp \
+                  call_list_xml.cpp \
                   dnsparser.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
-                  httpresolver.cpp
+                  httpresolver.cpp \
+	          mementosaslogger.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
@@ -43,11 +45,13 @@ TARGET_SOURCES_TEST := test_main.cpp \
                        test_interposer.cpp \
                        handlers_test.cpp \
                        authstore_test.cpp \
+                       call_list_store_test.cpp \
                        homesteadconnection_test.cpp \
                        httpdigestauthenticate_test.cpp \
                        fakelogger.cpp \
                        fakecurl.cpp \
-                       fakehomesteadconnection.cpp
+                       fakehomesteadconnection.cpp \
+                       mock_sas.cpp
 
 TARGET_EXTRA_OBJS_TEST := gmock-all.o \
                           gtest-all.o
