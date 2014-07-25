@@ -331,9 +331,21 @@ int main(int argc, char**argv)
   HomesteadConnection* homestead_conn =
     new HomesteadConnection(options.homestead_http_name, http_resolver);
 
+  // Create and start the call list store.
+  CallListStore::Store* call_list_store = new CallListStore::Store();
+  call_list_store->initialize();
+  call_list_store->configure("localhost", 9160);
+  CassandraStore::ResultCode store_rc = call_list_store->start();
+
+  if (store_rc != CassandraStore::OK)
+  {
+    LOG_ERROR("Unable to create call list store (RC = %d)", store_rc);
+    exit(3);
+  }
+
   HttpStack* http_stack = HttpStack::get_instance();
 
-  CallListHandler::Config call_list_config(auth_store, homestead_conn, new CallListStore::Store(), options.home_domain);
+  CallListHandler::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain);
 
   HttpStackUtils::PingController ping_controller;
   HttpStackUtils::SpawningController<CallListHandler, CallListHandler::Config> call_list_controller(&call_list_config);
@@ -372,7 +384,11 @@ int main(int argc, char**argv)
     LOG_ERROR("Failed to stop HttpStack stack - function %s, rc %d", e._func, e._rc);
   }
 
+  call_list_store->stop();
+  call_list_store->wait_stopped();
+
   delete homestead_conn; homestead_conn = NULL;
+  delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
   delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;

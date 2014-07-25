@@ -139,7 +139,7 @@ TEST_F(HandlersTest, Mainline)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -210,7 +210,7 @@ TEST_F(HandlersTest, DuplicatedBegin)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -265,7 +265,7 @@ TEST_F(HandlersTest, DuplicatedEnd)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -315,7 +315,7 @@ TEST_F(HandlersTest, DuplicatedRejected)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -368,7 +368,7 @@ TEST_F(HandlersTest, WrongOrder)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -404,7 +404,7 @@ TEST_F(HandlersTest, MissingEnd)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(DoAll(SetArgReferee<1>(records), Return(CassandraStore::ResultCode::OK)));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
@@ -420,7 +420,7 @@ TEST_F(HandlersTest, NotFound)
 
   CallListHandler* handler = new CallListHandler(req, _cfg, 0);
 
-  EXPECT_CALL(*_call_store, get_call_records_sync(_, _))
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(Return(CassandraStore::ResultCode::NOT_FOUND));
 
   EXPECT_CALL(*_httpstack, send_reply(_, 500, _));

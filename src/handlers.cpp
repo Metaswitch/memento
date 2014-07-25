@@ -85,7 +85,8 @@ void CallListHandler::run()
 void CallListHandler::respond_when_authenticated()
 {
   std::vector<CallListStore::CallFragment> records;
-  CassandraStore::ResultCode db_rc = _cfg->_call_list_store->get_call_records_sync(_impu, records);
+  CassandraStore::ResultCode db_rc =
+    _cfg->_call_list_store->get_call_fragments_sync(_impu, records, trail());
 
   if (db_rc != CassandraStore::OK)
   {
