@@ -88,7 +88,10 @@ void CallListTask::respond_when_authenticated()
   CassandraStore::ResultCode db_rc =
     _cfg->_call_list_store->get_call_fragments_sync(_impu, records, trail());
 
-  if (db_rc != CassandraStore::OK)
+  // We know this is a valid subscriber because of authentication, so
+  // NOT_FOUND just means they haven't made any calls and should still
+  // get a non-error response.
+  if ((db_rc != CassandraStore::OK) && (db_rc != CassandraStore::NOT_FOUND))
   {
     SAS::Event db_err_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_FAILED, 0);
     db_err_event.add_var_param(_impu);

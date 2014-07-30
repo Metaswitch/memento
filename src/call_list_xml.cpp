@@ -119,8 +119,8 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
       }
       else
       {
-        invalid_record.add_var_param(record_id);
-        invalid_record.add_var_param(record_id);
+        invalid_record.add_var_param(record_id); // LCOV_EXCL_LINE
+        invalid_record.add_var_param(record_id); // LCOV_EXCL_LINE
       }
       invalid_record.add_static_param(record_fragments.size());
       SAS::report_event(invalid_record);

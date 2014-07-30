@@ -388,6 +388,22 @@ TEST_F(HandlersTest, NotFound)
   EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
     .WillOnce(Return(CassandraStore::ResultCode::NOT_FOUND));
 
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  handler->respond_when_authenticated();
+
+  EXPECT_EQ("<call-list><calls></calls></call-list>", req.content());
+  delete handler;
+}
+
+TEST_F(HandlersTest, DbError)
+{
+  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
+
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
+    .WillOnce(Return(CassandraStore::ResultCode::RESOURCE_ERROR));
+
   EXPECT_CALL(*_httpstack, send_reply(_, 500, _));
   handler->respond_when_authenticated();
 
