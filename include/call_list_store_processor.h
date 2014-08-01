@@ -57,9 +57,9 @@ public:
   ~CallListStoreProcessor();
 
   /// This function constructs a Cassandra request to write a call to the
-  /// call list store, It runs synchronously, so must be done in a
-  /// separate thread to the memento processing (as that's on the call
-  /// path).
+  /// call list store. It runs synchronously, so must be done in a
+  /// separate thread to avoid introducing unnecessary latencies in the
+  /// call path.
   /// @param impu       IMPU
   /// @param timestamp  Timestamp of call list entry
   /// @param id         Id of call list entry
@@ -73,7 +73,7 @@ public:
                                      std::string xml,
                                      SAS::TrailId trail);
 
-  struct CallListEntry
+  struct CallListRequest
   {
     Utils::StopWatch stop_watch;
     std::string impu;
@@ -85,9 +85,9 @@ public:
   };
 
 private:
-  /// @class CallListStoreProcessorThreadPool
+  /// @class Pool
   /// The thread pool used by the call list store processor
-  class CallListStoreProcessorThreadPool : public ThreadPool<CallListStoreProcessor::CallListEntry*>
+  class Pool : public ThreadPool<CallListStoreProcessor::CallListRequest*>
   {
   public:
     /// Constructor.
@@ -97,39 +97,35 @@ private:
     /// @param call_list_ttl        TTL of call list store entries.
     /// @param num_threads          Number of memento worker threads to start
     /// @param max_queue            Max queue size to allow.
-    CallListStoreProcessorThreadPool(CallListStore::Store* call_list_store,
-                                     LoadMonitor* load_monitor,
-                                     const int max_call_list_length,
-				     const int call_list_ttl,
-                                     unsigned int num_threads,
-                                     unsigned int max_queue = 0);
+    Pool(CallListStore::Store* call_list_store,
+         LoadMonitor* load_monitor,
+         const int max_call_list_length,
+         const int call_list_ttl,
+         unsigned int num_threads,
+         unsigned int max_queue = 0);
 
     /// Destructor
-    virtual ~CallListStoreProcessorThreadPool();
+    virtual ~Pool();
 
   private:
     /// Called by worker threads when they pull work off the queue.
-    virtual void process_work(CallListStoreProcessor::CallListEntry*&);
+    virtual void process_work(CallListStoreProcessor::CallListRequest*&);
 
-    /// Performs call trim calculations
+    /// Performs call trim processing
     /// @param impu            IMPU.
+    /// @param timestamp       Timestamp to pass to call list store
     /// @param cass_timestamp  Cassandra timestamp
     /// @param trail           SAS trail
     void perform_call_trim(std::string impu,
+                           std::string timestamp,
                            uint64_t cass_timestamp,
                            SAS::TrailId trail);
 
-    /// Checks whether the call records should be retrieved from the call
-    /// list store. Returns false if there's no maximum limit.
-    /// @returns    - whether the call records should be retrieved from
-    ///               the call list store.
-    bool is_call_record_count_needed();
-
-    /// Requests the stored calls from Cassandra. If the number of stored calls
-    /// is too high, sets a timestamp to delete before to reduce the call
-    /// list length.
+    /// Works out if a trim is needed to reduce the length of an IMPU's
+    /// call list. If it is required, this function also outputs the cut
+    /// off time.
     /// @param impu            IMPU.
-    /// @param timestamp       Timestamp to pass to call list store
+    /// @param timestamp       (out) Timestamp to pass to call list store
     /// @param trail           SAS trail
     bool is_call_trim_needed(std::string impu,
                              std::string& timestamp,
@@ -148,10 +144,10 @@ private:
     int _call_list_ttl;
   };
 
-  friend class CallListStoreProcessorThreadPool;
+  friend class Pool;
 
   ///  Thread pool
-  CallListStoreProcessorThreadPool* _thread_pool;
+  Pool* _thread_pool;
 };
 
 #endif

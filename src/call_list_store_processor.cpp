@@ -41,11 +41,11 @@ CallListStoreProcessor::CallListStoreProcessor(LoadMonitor* load_monitor,
                                                const int max_call_list_length,
                                                const int memento_threads,
                                                const int call_list_ttl) :
-  _thread_pool(new CallListStoreProcessorThreadPool(call_list_store,
-                                                    load_monitor,
-                                                    max_call_list_length,
-                                                    call_list_ttl,
-                                                    memento_threads))
+  _thread_pool(new Pool(call_list_store,
+                        load_monitor,
+                        max_call_list_length,
+                        call_list_ttl,
+                        memento_threads))
 {
   _thread_pool->start();
 }
@@ -53,127 +53,122 @@ CallListStoreProcessor::CallListStoreProcessor(LoadMonitor* load_monitor,
 /// Destructor.
 CallListStoreProcessor::~CallListStoreProcessor()
 {
-  _thread_pool->stop();
-
   if (_thread_pool != NULL)
   {
+    _thread_pool->stop();
     _thread_pool->join();
     delete _thread_pool; _thread_pool = NULL;
   }
 }
 
 /// Creates a call list entry and adds it to the queue.
-void CallListStoreProcessor::write_call_list_entry(std::string impu,
-                                                   std::string timestamp,
-                                                   std::string id,
-                                                   CallListStore::CallFragment::Type type,
-                                                   std::string xml,
-                                                   SAS::TrailId trail)
+void CallListStoreProcessor::write_call_list_entry(
+                                      std::string impu,
+                                      std::string timestamp,
+                                      std::string id,
+                                      CallListStore::CallFragment::Type type,
+                                      std::string xml,
+                                      SAS::TrailId trail)
 {
   // Create stop watch to time how long between the CallListStoreProcessor
   // receives the request, and a worker thread finishes processing it.
-  Utils::StopWatch stop_watch;
-  stop_watch.start();
 
   // Create a call list entry and populate it
-  CallListEntry* cle = new CallListStoreProcessor::CallListEntry();
+  CallListRequest* clr = new CallListStoreProcessor::CallListRequest();
 
-  cle->impu = impu;
-  cle->impu = impu;
-  cle->timestamp = timestamp;
-  cle->id = id;
-  cle->type = type;
-  cle->contents = xml;
-  cle->trail = trail;
-  cle->stop_watch = stop_watch;
+  clr->impu = impu;
+  clr->timestamp = timestamp;
+  clr->id = id;
+  clr->type = type;
+  clr->contents = xml;
+  clr->trail = trail;
+  clr->stop_watch.start();
 
-  _thread_pool->add_work(cle);
+  _thread_pool->add_work(clr);
 }
 
 // Write the call list entry to the call list store
-void CallListStoreProcessor::CallListStoreProcessorThreadPool::process_work(CallListStoreProcessor::CallListEntry*& cle)
+void CallListStoreProcessor::Pool::process_work(
+                                  CallListStoreProcessor::CallListRequest*& clr)
 {
   // Create the CallFragment
   CallListStore::CallFragment call_fragment;
-  call_fragment.type = cle->type;
-  call_fragment.id = cle->id;
-  call_fragment.contents = cle->contents;
-  call_fragment.timestamp = cle->timestamp;
-  uint64_t cass_timestamp = atoi(cle->timestamp.c_str());
+  call_fragment.type = clr->type;
+  call_fragment.id = clr->id;
+  call_fragment.contents = clr->contents;
+  call_fragment.timestamp = clr->timestamp;
+
+  // Create the cassandra timestamp
+  uint64_t cass_timestamp = CallListStore::Store::generate_timestamp();
 
   CassandraStore::ResultCode rc = _call_list_store->write_call_fragment_sync(
-                                                    cle->impu,
+                                                    clr->impu,
                                                     call_fragment,
                                                     cass_timestamp,
                                                     _call_list_ttl,
-                                                    cle->trail);
+                                                    clr->trail);
 
 
   if (rc == CassandraStore::OK)
   {
     // Reduce the number of stored calls (if necessary)
-    perform_call_trim(cle->impu, cass_timestamp, cle->trail);
+    std::string timestamp;
 
-    // Record the latency of the request (only for
-    // successful requests).
-    unsigned long latency_us = 0;
-
-    if (cle->stop_watch.read(latency_us))
+    if (is_call_trim_needed(clr->impu, timestamp, clr->trail))
     {
-      LOG_DEBUG("Request latency = %ldus", latency_us);
-      _load_monitor->request_complete(latency_us);
+      perform_call_trim(clr->impu, timestamp, cass_timestamp, clr->trail);
     }
   }
   else
   {
     // The write failed - log this and don't retry
     LOG_ERROR("Writing call list entry for IMPU: %s failed with rc %d",
-                                                cle->impu.c_str(), rc);
+                                                clr->impu.c_str(), rc);
   }
 
-  delete cle; cle = NULL;
+  // Record the latency of the request
+  unsigned long latency_us = 0;
+
+  if (clr->stop_watch.read(latency_us))
+  {
+    LOG_DEBUG("Request latency = %ldus", latency_us);
+    _load_monitor->request_complete(latency_us);
+  }
+
+  delete clr; clr = NULL;
 }
 
 // If the number of stored calls is greater than 110% of the max_call_list_length
 // then delete older calls to bring the stored number below the threshold again.
 // Checking the number of stored calls is done on average every
 // 1 (max_call_list_length / 10) calls.
-void CallListStoreProcessor::CallListStoreProcessorThreadPool::perform_call_trim(
-                                                               std::string impu,
-                                                               uint64_t cass_timestamp,
-                                                               SAS::TrailId trail)
+void CallListStoreProcessor::Pool::perform_call_trim(std::string impu,
+                                                     std::string timestamp,
+                                                     uint64_t cass_timestamp,
+                                                     SAS::TrailId trail)
 {
-  // Check whether the call records should be checked on this call.
-  if (is_call_record_count_needed())
+  // Delete the old records
+  CassandraStore::ResultCode rc =
+          _call_list_store->delete_old_call_fragments_sync(impu,
+                                                           timestamp,
+                                                           cass_timestamp++,
+                                                           trail);
+  if (rc != CassandraStore::OK)
   {
-    std::string timestamp;
-
-    // Check whether a trim of the stored calls is needed.
-    if (is_call_trim_needed(impu, timestamp, trail))
-    {
-      // Delete the old records
-      SAS::Event event(trail, SASEvent::CALL_LIST_TRIM_NEEDED, 0);
-      event.add_var_param(impu);
-      event.add_var_param(timestamp);
-      SAS::report_event(event);
-
-      CassandraStore::ResultCode rc =
-              _call_list_store->delete_old_call_fragments_sync(impu,
-                                                               timestamp,
-                                                               cass_timestamp,
-                                                               trail);
-
-      if (rc != CassandraStore::OK)
-      {
-        // The delete failed - log this and don't retry
-        LOG_ERROR("Deleting call list entries for IMPU: %s failed with rc %d",
-                                                              impu.c_str(), rc);
-      }
-    }
+    // The delete failed - log this and don't retry
+    LOG_ERROR("Deleting call list entries for IMPU: %s failed with rc %d",
+                                                          impu.c_str(), rc);
   }
 }
-/// Check if we should be trimming the number of calls stored.
-bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_record_count_needed()
+
+/// Determines whether the any call records need deleting from the call list
+/// store
+/// Requests the stored calls from Cassandra. If the number of stored calls
+/// is too high, returns a timestamp to delete before to reduce the call
+/// list length.
+bool CallListStoreProcessor::Pool::is_call_trim_needed(std::string impu,
+                                                       std::string& timestamp,
+                                                       SAS::TrailId trail)
 {
   if (_max_call_list_length == 0)
   {
@@ -183,7 +178,7 @@ bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_record_co
   }
 
   // Check whether trimming is needed every 1 in (max_call_list_length / 10)
-  // calls.
+  // calls. Round up.
   int n = _max_call_list_length / 10;
 
   if (_max_call_list_length % 10 != 0)
@@ -191,21 +186,11 @@ bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_record_co
     n++;
   }
 
-  int random_choice = rand() % n;
+  if ((rand() % n) != 0)
+  {
+    return false; // LCOV_EXCL_LINE
+  }
 
-  return (random_choice == 0);
-}
-
-/// Determines whether the any call records need deleting from the call list
-/// store
-/// Requests the stored calls from Cassandra. If the number of stored calls
-/// is too high, returns a timestamp to delete before to reduce the call
-/// list length.
-bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_trim_needed(
-                                                               std::string impu,
-                                                               std::string& timestamp,
-                                                               SAS::TrailId trail)
-{
   bool call_trim_needed = false;
 
   std::vector<CallListStore::CallFragment> records;
@@ -238,10 +223,16 @@ bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_trim_need
       // Sort the timestamps. Return the timestamp of the newest entry
       // to be deleted
       int num_to_delete = timestamps.size() - _max_call_list_length;
-      std::sort(timestamps.begin(), timestamps.end());
       timestamp = timestamps[num_to_delete - 1];
       LOG_DEBUG("Need to remove %d calls entries from before %s",
                                               num_to_delete, timestamp.c_str());
+
+      SAS::Event event(trail, SASEvent::CALL_LIST_TRIM_NEEDED, 0);
+      event.add_var_param(impu);
+      event.add_static_param(timestamps.size());
+      event.add_static_param(_max_call_list_length);
+      event.add_var_param(timestamp);
+      SAS::report_event(event);
 
       call_trim_needed = true;
     }
@@ -256,13 +247,13 @@ bool CallListStoreProcessor::CallListStoreProcessorThreadPool::is_call_trim_need
   return call_trim_needed;
 }
 
-CallListStoreProcessor::CallListStoreProcessorThreadPool::CallListStoreProcessorThreadPool(CallListStore::Store* call_list_store,
-                                                                                           LoadMonitor* load_monitor,
-                                                                                           const int max_call_list_length,
-                                                                                           const int call_list_ttl,
-                                                                                           unsigned int num_threads,
-                                                                                           unsigned int max_queue) :
-  ThreadPool<CallListStoreProcessor::CallListEntry*>(num_threads, max_queue),
+CallListStoreProcessor::Pool::Pool(CallListStore::Store* call_list_store,
+                                   LoadMonitor* load_monitor,
+                                   const int max_call_list_length,
+                                   const int call_list_ttl,
+                                   unsigned int num_threads,
+                                   unsigned int max_queue) :
+  ThreadPool<CallListStoreProcessor::CallListRequest*>(num_threads, max_queue),
   _call_list_store(call_list_store),
   _load_monitor(load_monitor),
   _max_call_list_length(max_call_list_length),
@@ -270,5 +261,5 @@ CallListStoreProcessor::CallListStoreProcessorThreadPool::CallListStoreProcessor
 {}
 
 
-CallListStoreProcessor::CallListStoreProcessorThreadPool::~CallListStoreProcessorThreadPool()
+CallListStoreProcessor::Pool::~Pool()
 {}

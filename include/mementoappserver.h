@@ -53,12 +53,12 @@ class MementoAppServer;
 class MementoAppServerTsx;
 
 /// The MementoAppServer implements the Memento service, and subclasses
-/// the abstrat AppServer class.
+/// the abstract AppServer class.
 ///
 /// Sprout calls the get_app_tsx method on MementoAppServer when
 ///
 /// -  an IFC triggers with ServiceName containing a host name of the form
-///    memento@<homedomain>;
+///    memento.<homedomain>;
 /// -  a request is received for a dialog where the service previously called
 ///    add_to_dialog.
 ///
@@ -72,6 +72,7 @@ public:
   /// @param  memento_thread        - Number of memento threads (from configuration).
   /// @param  call_list_ttl         - Time to store calls in Cassandra (from configuration).
   MementoAppServer(const std::string& service_name,
+                   CallListStore::Store* call_list_store,
                    const std::string& home_domain,
                    const int max_call_list_length,
                    const int memento_thread,
@@ -94,16 +95,13 @@ public:
 private:
 
   /// The name of this service.
-  const std::string _service_name;
+  std::string _service_name;
 
   /// Home domain of deployment.
   std::string _home_domain;
 
   /// Load monitor.
   LoadMonitor* _load_monitor;
-
-  /// Underlying Call list store processor.
-  CallListStore::Store* _call_list_store;
 
   /// Call list store processor.
   CallListStoreProcessor* _call_list_store_processor;
@@ -148,35 +146,30 @@ public:
   ///                        the response was received.
   virtual void on_response(pjsip_msg* rsp, int fork_id);
 
-  /// Populates the MementoAppServerTsx
-  void set_members(LoadMonitor* load_monitor,
-                   CallListStoreProcessor* call_list_store_processor,
-                   std::string& home_domain);
-
   /// Constructor.
-  MementoAppServerTsx(AppServerTsxHelper* helper);
+  MementoAppServerTsx(AppServerTsxHelper* helper,
+                      CallListStoreProcessor* call_list_store_processor,
+                      std::string& service_name,
+                      std::string& home_domain);
 
 private:
-  /// Creates a formatted string from a tm
-  /// @param timestamp - The time to convert
-  /// @param pattern   - The format to use
-  std::string create_formatted_timestamp(tm* timestamp, const char* pattern);
-
-  // Converts a URI to a string
-  std::string uri_to_string(pjsip_uri_context_e context,
-                            const pjsip_uri* uri);
-
-  // Converts a PJ_STR to a string
-  std::string pj_str_to_string(const pj_str_t* pjstr);
-
   /// Transaction context to use for underlying service-related processing.
   ServiceTsxHelper* _service_tsx_helper;
+
+  /// Call list store processor.
+  CallListStoreProcessor* _call_list_store_processor;
+
+  /// The name of this service.
+  std::string _service_name;
+
+  /// Home domain of deployment.
+  std::string _home_domain;
 
   /// Flag for whether the call has been answered or rejected
   bool _answered;
 
   /// Flag for whether the call is incoming or outgoing
-  bool _incoming;
+  bool _outgoing;
 
   /// Start time of the call
   tm* _start_time;
@@ -203,15 +196,25 @@ private:
 
   /// IMPU of the call list owner
   std::string _impu;
-
-  /// Load monitor
-  LoadMonitor* _load_monitor;
-
-  /// Call list store processor.
-  CallListStoreProcessor* _call_list_store_processor;
-
-  /// Home domain of deployment.
-  std::string _home_domain;
 };
+
+/// Utility methods
+
+/// Creates a formatted string from a tm
+/// @param timestamp - The time to convert
+/// @param pattern   - The format to use
+std::string create_formatted_timestamp(tm* timestamp, const char* pattern);
+
+// Converts a URI to a string
+std::string uri_to_string(pjsip_uri_context_e context,
+                          const pjsip_uri* uri);
+
+// Converts a PJ_STR to a string
+std::string pj_str_to_string(const pj_str_t* pjstr);
+
+// Converts a string to a URI
+pjsip_uri* uri_from_string(const std::string& uri_s,
+                           pj_pool_t* pool,
+                           pj_bool_t force_name_addr);
 
 #endif
