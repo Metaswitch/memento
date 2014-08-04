@@ -40,7 +40,7 @@
 #include "sas.h"
 #include "httpstack.h"
 
-class MementoSasLogger : public HttpStack::SasLogger
+class MementoSasLogger : public HttpStack::DefaultSasLogger
 {
 public:
     // Log a transmitted HTTP response, omitting the body.

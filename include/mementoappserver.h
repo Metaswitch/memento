@@ -172,7 +172,8 @@ private:
   bool _outgoing;
 
   /// Start time of the call
-  tm* _start_time;
+  std::string _start_time_xml;
+  std::string _start_time_cassandra;
 
   /// Caller name (can be empty)
   std::string _caller_name;

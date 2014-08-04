@@ -123,6 +123,8 @@ AppServerTsx* MementoAppServer::get_app_tsx(AppServerTsxHelper* helper,
     // LCOV_EXCL_STOP
   }
 
+  LOG_DEBUG("Getting a MementoAppServerTsx");
+
   MementoAppServerTsx* memento_tsx =
                     new MementoAppServerTsx(helper,
                                             _call_list_store_processor,
@@ -143,7 +145,8 @@ MementoAppServerTsx::MementoAppServerTsx(
     _home_domain(home_domain),
     _answered(false),
     _outgoing(false),
-    _start_time(NULL),
+    _start_time_xml(""),
+    _start_time_cassandra(""),
     _caller_name(""),
     _caller_uri(""),
     _callee_name(""),
@@ -162,18 +165,29 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
   // Get the current time
   time_t rawtime;
   time(&rawtime);
-  _start_time = localtime(&rawtime);
+  tm* start_time = localtime(&rawtime);
+  _start_time_xml = create_formatted_timestamp(start_time, XML_PATTERN);
+  _start_time_cassandra = create_formatted_timestamp(start_time, TIMESTAMP_PATTERN);
 
   // Is the call originating or terminating?
   pjsip_route_hdr* hroute = (pjsip_route_hdr*)pjsip_msg_find_hdr(req,
                                                                  PJSIP_H_ROUTE,
                                                                  NULL);
 
-  if (hroute != NULL)
+  while (hroute)
   {
     pjsip_sip_uri* uri = (pjsip_sip_uri*)hroute->name_addr.uri;
     pjsip_param* orig_param = pjsip_param_find(&uri->other_param, &ORIG);
     _outgoing = (orig_param != NULL);
+
+    if (_outgoing)
+    {
+      break;
+    }
+
+    hroute = (pjsip_route_hdr*)pjsip_msg_find_hdr(req,
+                                                  PJSIP_H_ROUTE,
+                                                  hroute->next);
   }
 
   // Get the caller, callee and impu values
@@ -224,12 +238,15 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
   // Add a unique ID containing the IMPU to the record route header.
   // This has the format:
   //     <YYYYMMDDHHMMSS>_<unique_id>_<base64 encoded impu>.memento.<home domain>
-  std::string timestamp = create_formatted_timestamp(_start_time, TIMESTAMP_PATTERN);
   _unique_id = std::to_string(Utils::generate_unique_integer(0,0));
   std::string encoded_impu =
-     base64_encode(reinterpret_cast<const unsigned char*>(_impu.c_str()), _impu.length());
-  std::string dialog_id = std::string(timestamp).append("_").append(_unique_id).
-                                               append("_").append(encoded_impu);
+     base64_encode(reinterpret_cast<const unsigned char*>(_impu.c_str()),
+                                                          _impu.length());
+  std::string dialog_id = std::string(_start_time_cassandra).
+                          append("_").
+                          append(_unique_id).
+                          append("_").
+                          append(encoded_impu);
 
   add_to_dialog(dialog_id);
   send_request(req);
@@ -254,8 +271,8 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
     // LCOV_EXCL_STOP
   }
 
-  _unique_id = dialog_values[0];
-  std::string timestamp = dialog_values[1];
+  std::string timestamp = dialog_values[0];
+  _unique_id = dialog_values[1];
   _impu = base64_decode(dialog_values[2]);
 
   // Create the XML. XML should be of the form:
@@ -390,13 +407,11 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
                                          doc.allocate_string(outgoing_str.c_str()));
   doc.append_node(outgoing);
 
-  std::string start_timestamp = create_formatted_timestamp(_start_time,
-                                                           XML_PATTERN);
   // Set the start time.
   rapidxml::xml_node<>* start_time = doc.allocate_node(
                                       rapidxml::node_element,
                                       MementoXML::START_TIME,
-                                      doc.allocate_string(start_timestamp.c_str()));
+                                      doc.allocate_string(_start_time_xml.c_str()));
   doc.append_node(start_time);
 
   CallListStore::CallFragment::Type type;
@@ -448,13 +463,12 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   }
 
   // Write the XML to cassandra (using a different thread)
-  _call_list_store_processor->write_call_list_entry(
-                    _impu,
-                    create_formatted_timestamp(_start_time, TIMESTAMP_PATTERN),
-                    _unique_id,
-                    type,
-                    contents,
-                    trail());
+  _call_list_store_processor->write_call_list_entry(_impu,
+                                                    _start_time_cassandra,
+                                                    _unique_id,
+                                                    type,
+                                                    contents,
+                                                    trail());
 
   send_response(rsp);
 }
