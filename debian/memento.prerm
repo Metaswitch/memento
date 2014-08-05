@@ -85,7 +85,6 @@ case "$1" in
             remove_logging
         fi
         remove_section /etc/security/limits.conf $NAME
-        rm /var/lib/$NAME/$NAME.conf
     ;;
 
     failed-upgrade)
