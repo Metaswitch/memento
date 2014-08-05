@@ -88,7 +88,7 @@ std::string fragment_type_to_string(CallFragment::Type type)
 }
 
 // Utility method for converting a call fragment string (as stored in
-// caassandra) into an enumerated type.
+// cassandra) into an enumerated type.
 //
 // @param fragment_str    - The string to convert.
 // @param type            - (out) The type of the fragment.
