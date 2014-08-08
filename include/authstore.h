@@ -62,13 +62,16 @@ public:
     /// impi - Private ID
     std::string _impi;
 
-    /// realm - supplied on client request or defaults 
+    /// realm - supplied on client request or defaults
     /// to the home domain
     std::string _realm;
 
     /// nonce_count - supplied on client request and incremented
     /// when the digest is examined
     uint32_t _nonce_count;
+
+    /// impu - Public ID
+    std::string _impu;
 
     /// Default Constructor.
     Digest();

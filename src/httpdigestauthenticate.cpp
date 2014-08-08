@@ -402,6 +402,12 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
 
       rc = request_digest_and_store(www_auth_header, true, response);
     }
+    else if (_impu != digest->_impu)
+    {
+      LOG_DEBUG("Request's IMPU doesn't match stored IMPU. Target: %s, Stored: %s",
+               _impu.c_str(), digest->_impu.c_str());
+      rc = request_digest_and_store(www_auth_header, true, response);
+    }
     else
     {
       // Authentication successful. Increment the stored nonce count
@@ -446,8 +452,8 @@ void HTTPDigestAuthenticate::generate_digest(std::string ha1, std::string realm,
   digest->_ha1 = ha1;
   digest->_impi = _impi;
   digest->_realm = realm;
+  digest->_impu = _impu;
 
-  // TODO add the nonce as a correlator for SAS.
   gen_unique_val(32, digest->_nonce);
   gen_unique_val(32, digest->_opaque);
 }
