@@ -117,7 +117,7 @@ private:
     /// @param cass_timestamp  Cassandra timestamp
     /// @param trail           SAS trail
     void perform_call_trim(std::string impu,
-                           std::string timestamp,
+                           std::vector<CallListStore::CallFragment>& fragments,
                            uint64_t cass_timestamp,
                            SAS::TrailId trail);
 
@@ -128,7 +128,7 @@ private:
     /// @param timestamp       (out) Timestamp to pass to call list store
     /// @param trail           SAS trail
     bool is_call_trim_needed(std::string impu,
-                             std::string& timestamp,
+                             std::vector<CallListStore::CallFragment>& fragments,
                              SAS::TrailId trail);
 
     /// Underlying call list store

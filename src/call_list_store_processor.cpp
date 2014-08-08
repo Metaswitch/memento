@@ -112,11 +112,11 @@ void CallListStoreProcessor::Pool::process_work(
   if (rc == CassandraStore::OK)
   {
     // Reduce the number of stored calls (if necessary)
-    std::string timestamp;
+    std::vector<CallListStore::CallFragment> records_to_delete;
 
-    if (is_call_trim_needed(clr->impu, timestamp, clr->trail))
+    if (is_call_trim_needed(clr->impu, records_to_delete, clr->trail))
     {
-      perform_call_trim(clr->impu, timestamp, cass_timestamp, clr->trail);
+      perform_call_trim(clr->impu, records_to_delete, cass_timestamp, clr->trail);
     }
   }
   else
@@ -142,15 +142,16 @@ void CallListStoreProcessor::Pool::process_work(
 // then delete older calls to bring the stored number below the threshold again.
 // Checking the number of stored calls is done on average every
 // 1 (max_call_list_length / 10) calls.
-void CallListStoreProcessor::Pool::perform_call_trim(std::string impu,
-                                                     std::string timestamp,
-                                                     uint64_t cass_timestamp,
-                                                     SAS::TrailId trail)
+void CallListStoreProcessor::Pool::perform_call_trim(
+                    std::string impu,
+                    std::vector<CallListStore::CallFragment>& records_to_delete,
+                    uint64_t cass_timestamp,
+                    SAS::TrailId trail)
 {
   // Delete the old records
   CassandraStore::ResultCode rc =
           _call_list_store->delete_old_call_fragments_sync(impu,
-                                                           timestamp,
+                                                           records_to_delete,
                                                            cass_timestamp++,
                                                            trail);
   if (rc != CassandraStore::OK)
@@ -166,9 +167,10 @@ void CallListStoreProcessor::Pool::perform_call_trim(std::string impu,
 /// Requests the stored calls from Cassandra. If the number of stored calls
 /// is too high, returns a timestamp to delete before to reduce the call
 /// list length.
-bool CallListStoreProcessor::Pool::is_call_trim_needed(std::string impu,
-                                                       std::string& timestamp,
-                                                       SAS::TrailId trail)
+bool CallListStoreProcessor::Pool::is_call_trim_needed(
+                    std::string impu,
+                    std::vector<CallListStore::CallFragment>& records_to_delete,
+                    SAS::TrailId trail)
 {
   if (_max_call_list_length == 0)
   {
@@ -203,7 +205,7 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(std::string impu,
     // Call records successfully retrieved. Count how many BEGIN and
     // REJECTED entries there are (don't include END as this would double
     // count successful calls)
-    std::vector<std::string> timestamps;
+    int count = 0;
     for (std::vector<CallListStore::CallFragment>::const_iterator ii = records.begin();
          ii != records.end();
          ii++)
@@ -211,27 +213,28 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(std::string impu,
       if ((ii->type == CallListStore::CallFragment::Type::BEGIN) ||
           (ii->type == CallListStore::CallFragment::Type::REJECTED))
       {
-        timestamps.push_back(ii->timestamp);
+        count++;
       }
     }
 
     // If there are more stored calls than 110% of the maximum then we
     // need to delete some (110% is used so that the deletes can be
     // batched).
-    if (timestamps.size() > (_max_call_list_length * 1.1))
+    if (count > (_max_call_list_length * 1.1))
     {
-      // Sort the timestamps. Return the timestamp of the newest entry
-      // to be deleted
-      int num_to_delete = timestamps.size() - _max_call_list_length;
-      timestamp = timestamps[num_to_delete - 1];
-      LOG_DEBUG("Need to remove %d calls entries from before %s",
-                                              num_to_delete, timestamp.c_str());
+      int num_to_delete = count - _max_call_list_length;
+
+      for (int ii = 0; ii != num_to_delete; ii++)
+      {
+        records_to_delete.push_back(records[ii]);
+      }
+
+      LOG_DEBUG("Need to remove %d calls entries", num_to_delete);
 
       SAS::Event event(trail, SASEvent::CALL_LIST_TRIM_NEEDED, 0);
       event.add_var_param(impu);
-      event.add_static_param(timestamps.size());
+      event.add_static_param(count);
       event.add_static_param(_max_call_list_length);
-      event.add_var_param(timestamp);
       SAS::report_event(event);
 
       call_trim_needed = true;
