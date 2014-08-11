@@ -318,7 +318,7 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
   MementoAppServerTsx as_tsx(_helper, _clsp, service_name, home_domain);
 
   // Message is parsed successfully.
-  msg._route = "Route: <sip:homedomain;orig>";
+  msg._route = "Route: <sip:homedomain>\r\nRoute: <sip:homedomain;orig>";
   pjsip_msg* req = parse_msg(msg.get_request());
 
   // Add a P-Asserted _Identity header.
