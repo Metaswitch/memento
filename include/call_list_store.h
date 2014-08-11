@@ -137,10 +137,7 @@ public:
   /// Constructor
   ///
   /// @param impu             - The IMPU whose old fragments to delete.
-  /// @param threshold        - The threshold time (in the form YYYYMMDDHHMMSS).
-  ///                           Fragments with a timestamp that is earlier than
-  ///                           this time will be deleted (but fragments with an
-  ///                           equal timestamp will not).
+  /// @param fragments        - Fragments to be deleted
   /// @param cass_timestamp   - The timestamp to use on the cassandra write.
   DeleteOldCallFragments(const std::string& impu,
                          const std::vector<CallFragment> fragments,

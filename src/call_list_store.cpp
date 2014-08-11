@@ -369,7 +369,6 @@ bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
   //
   // For example:
   //   call_20140722120000_12345_begin
-  // Map describing the columns to write.
   std::vector<CassandraStore::RowColumns> to_delete;
   for (std::vector<CallFragment>::const_iterator ii = _fragments.begin();
        ii != _fragments.end();
