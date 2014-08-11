@@ -110,8 +110,9 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
     else
     {
       SAS::Event invalid_record(trail, SASEvent::CALL_LIST_DB_INVALID_RECORD, 0);
-      // record_fragments should always be nonempty at this point, but
-      // just in case
+
+      // record_fragments should always be nonempty at this point, so exclude the
+      // else branch from coverage
       if (!record_fragments.empty())
       {
         invalid_record.add_var_param(record_fragments[0].id);
@@ -119,8 +120,8 @@ std::string xml_from_call_records(const std::vector<CallListStore::CallFragment>
       }
       else
       {
-        invalid_record.add_var_param(record_id);
-        invalid_record.add_var_param(record_id);
+        invalid_record.add_var_param(record_id); // LCOV_EXCL_LINE
+        invalid_record.add_var_param(record_id); // LCOV_EXCL_LINE
       }
       invalid_record.add_static_param(record_fragments.size());
       SAS::report_event(invalid_record);

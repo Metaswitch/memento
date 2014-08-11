@@ -1,3 +1,4 @@
+mementosaslogger.cpp
 modules/cpp-common/src/accesslogger.cpp
 modules/cpp-common/src/httpstack.cpp
 modules/cpp-common/src/httpconnection.cpp
