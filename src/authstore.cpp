@@ -129,7 +129,8 @@ AuthStore::Digest::Digest() :
   _nonce(""),
   _impi(""),
   _realm(""),
-  _nonce_count(1)
+  _nonce_count(1),
+  _impu("")
 {
 }
 
@@ -148,6 +149,7 @@ AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
   getline(iss, digest->_impi, '\0');
   getline(iss, digest->_realm, '\0');
   iss.read((char *)&digest->_nonce_count, sizeof(uint32_t));
+  getline(iss, digest->_impu, '\0');
 
   return digest;
 }
@@ -161,6 +163,7 @@ std::string AuthStore::serialize_digest(const AuthStore::Digest* digest_d)
   oss << digest_d->_impi << '\0';
   oss << digest_d->_realm << '\0';
   oss.write((const char *)&digest_d->_nonce_count, sizeof(int));
+  oss << digest_d->_impu << '\0';
 
   return oss.str();
 }

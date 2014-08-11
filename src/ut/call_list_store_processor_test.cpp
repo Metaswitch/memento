@@ -232,9 +232,10 @@ void create_records(std::vector<CallListStore::CallFragment>& records)
 // call record count needed function returns false.
 TEST_F(CallListStoreProcessorTest, CallListIsCountNeededNoLimit)
 {
-  std::string timestamp = "";
-  bool rc =_clsp->_thread_pool->is_call_trim_needed(IMPU, timestamp, FAKE_SAS_TRAIL);
+  std::vector<CallListStore::CallFragment> fragments;
+  bool rc =_clsp->_thread_pool->is_call_trim_needed(IMPU, fragments, FAKE_SAS_TRAIL);
   ASSERT_FALSE(rc);
+  ASSERT_TRUE(fragments.size() == 0);
 }
 
 TEST_F(CallListStoreProcessorTest, CallListWrite)
@@ -279,11 +280,11 @@ TEST_F(CallListStoreProcessorWithLimitTest, CallListIsCallTrimNeeded)
   EXPECT_CALL(*_cls, get_call_fragments_sync(_,_,_)).WillOnce(DoAll(SetArgReferee<1>(records),
                                                                     Return(CassandraStore::ResultCode::OK)));
 
-  std::string timestamp = "";
-  bool rc =_clsp->_thread_pool->is_call_trim_needed(IMPU, timestamp, FAKE_SAS_TRAIL);
+  std::vector<CallListStore::CallFragment> fragments;
+  bool rc =_clsp->_thread_pool->is_call_trim_needed(IMPU, fragments, FAKE_SAS_TRAIL);
 
   ASSERT_TRUE(rc);
-  ASSERT_EQ(timestamp, "20020530093011");
+  ASSERT_TRUE(fragments.size() == 2);
 }
 
 // Test where getting the call records from the call list store fails when
@@ -295,11 +296,11 @@ TEST_F(CallListStoreProcessorWithLimitTest, CallListIsCallTrimNeededCassError)
   EXPECT_CALL(*_cls, get_call_fragments_sync(_,_,_)).WillOnce(DoAll(SetArgReferee<1>(records),
                                                                     Return(CassandraStore::ResultCode::UNKNOWN_ERROR)));
 
-  std::string timestamp = "";
-  bool rc =_clsp->_thread_pool->is_call_trim_needed(IMPU, timestamp, FAKE_SAS_TRAIL);
+  std::vector<CallListStore::CallFragment> fragments;
+  bool rc =_clsp->_thread_pool->is_call_trim_needed(IMPU, fragments, FAKE_SAS_TRAIL);
 
   ASSERT_FALSE(rc);
-  ASSERT_EQ(timestamp, "");
+  ASSERT_TRUE(fragments.size() == 0);
 }
 
 // Test performing a call trim where the number of returned records is
@@ -307,7 +308,9 @@ TEST_F(CallListStoreProcessorWithLimitTest, CallListIsCallTrimNeededCassError)
 TEST_F(CallListStoreProcessorWithLimitTest, CallListPerformCallTrim)
 {
   EXPECT_CALL(*_cls, delete_old_call_fragments_sync(_,_,_,_)).WillOnce(Return(CassandraStore::ResultCode::OK));
-  _clsp->_thread_pool->perform_call_trim(IMPU, TIMESTAMP, 123, FAKE_SAS_TRAIL);
+  std::vector<CallListStore::CallFragment> fragments;
+  _clsp->_thread_pool->perform_call_trim(IMPU, fragments, 123, FAKE_SAS_TRAIL);
+  ASSERT_TRUE(fragments.size() == 0);
 }
 
 // Test where deleting the call records from the call list store fails when
@@ -315,5 +318,6 @@ TEST_F(CallListStoreProcessorWithLimitTest, CallListPerformCallTrim)
 TEST_F(CallListStoreProcessorWithLimitTest, CallListPerformCallTrimCassError)
 {
   EXPECT_CALL(*_cls, delete_old_call_fragments_sync(_,_,_,_)).WillOnce(Return(CassandraStore::ResultCode::UNKNOWN_ERROR));
-  _clsp->_thread_pool->perform_call_trim(IMPU, TIMESTAMP, 0, FAKE_SAS_TRAIL);
+  std::vector<CallListStore::CallFragment> fragments;
+  _clsp->_thread_pool->perform_call_trim(IMPU, fragments, 0, FAKE_SAS_TRAIL);
 }
