@@ -406,6 +406,11 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
     {
       LOG_DEBUG("Request's IMPU doesn't match stored IMPU. Target: %s, Stored: %s",
                _impu.c_str(), digest->_impu.c_str());
+      SAS::Event event(_trail, SASEvent::AUTHENTICATION_WRONG_IMPU, 0);
+      event.add_var_param(_impu);
+      event.add_var_param(digest->_impu);
+      SAS::report_event(event);
+
       rc = request_digest_and_store(www_auth_header, true, response);
     }
     else
