@@ -211,7 +211,7 @@ TEST_F(HTTPDigestAuthenticateTest, RequestStoreDigest)
   std::vector<std::string> test;
   test.push_back("digest_1");
   test.push_back("realm");
-  _hc->set_result("/impi/1231231231%40home.domain/av?public_id=sip%3A1231231231%40home.domain", test);
+  _hc->set_result("/impi/1231231231%40home.domain/av?impu=sip%3A1231231231%40home.domain", test);
 
   // set the _impu/_impi
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -229,7 +229,7 @@ TEST_F(HTTPDigestAuthenticateTest, RequestStoreDigest_Stale)
   test.push_back("digest_1");
   test.push_back("realm");
   test[1] = "realm";
-  _hc->set_result("/impi/1231231231%40home.domain/av?public_id=sip%3A1231231231%40home.domain", test);
+  _hc->set_result("/impi/1231231231%40home.domain/av?impu=sip%3A1231231231%40home.domain", test);
 
   // set the _impu/_impi
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -247,7 +247,7 @@ TEST_F(HTTPDigestAuthenticateTest, RetrieveDigest_NotPresent)
   std::vector<std::string> test;
   test.push_back("digest_1");
   test.push_back("realm");
-  _hc->set_result("/impi/1231231231%40home.domain/av?public_id=sip%3A1231231231%40home.domain", test);
+  _hc->set_result("/impi/1231231231%40home.domain/av?impu=sip%3A1231231231%40home.domain", test);
 
   // set the _impu/_impi
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -266,7 +266,7 @@ TEST_F(HTTPDigestAuthenticateTest, RetrieveDigest_Present)
   std::vector<std::string> test;
   test.push_back("digest_1");
   test.push_back("realm");
-  _hc->set_result("/impi/1231231231%40home.domain/av?public_id=sip%3A1231231231%40home.domain", test);
+  _hc->set_result("/impi/1231231231%40home.domain/av?impu=sip%3A1231231231%40home.domain", test);
 
   // Write a digest to the store.
   AuthStore::Digest* digest = new AuthStore::Digest();
@@ -275,6 +275,7 @@ TEST_F(HTTPDigestAuthenticateTest, RetrieveDigest_Present)
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "home.domain";
+  digest->_impu = "sip:1231231231@home.domain";
 
   _auth_store->set_digest("1231231231@home.domain", "nonce", digest, 0);
 
@@ -301,6 +302,7 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_InvalidOpaque)
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "home.domain";
+  digest->_impu = "sip:1231231231@home.domain";
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -326,6 +328,7 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_InvalidRealm)
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "home.domain";
+  digest->_impu = "sip:1231231231@home.domain";
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -351,6 +354,7 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Valid)
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "home.domain";
+  digest->_impu = "sip:1231231231@home.domain";
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -376,12 +380,40 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Stale)
   digest->_opaque = "opaque";
   digest->_realm = "home.domain";
   digest->_nonce_count = 2;
+  digest->_impu = "sip:1231231231@home.domain";
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
   _response->set_members("1231231231","home.domain","nonce","org.projectclearwater.call-list/users/1231231231@home.domain/call-list.xml","qop","00001","cnonce","242c99c1e20618147c6a325c09720664","opaque");
 
   // Run through check if matches - should pass, but the nonce is stale
+  // The request will then fail as it can't get the digest from Homestead
+  std::string www_auth_header;
+  long rc = _auth_mod->check_if_matches(digest, www_auth_header, _response);
+
+  ASSERT_EQ(rc, 404);
+  ASSERT_EQ(_auth_mod->_impi, "1231231231@home.domain");
+
+  delete digest; digest = NULL;
+}
+
+TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_WrongIMPU)
+{
+  // Write a digest to the store.
+  AuthStore::Digest* digest = new AuthStore::Digest();
+  digest->_impi = "1231231231@home.domain";
+  digest->_nonce = "nonce";
+  digest->_ha1 = "123123123";
+  digest->_opaque = "opaque";
+  digest->_realm = "home.domain";
+  digest->_impu = "sip:1231231232@home.domain";
+
+  // Set the _impu
+  _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
+  _response->set_members("1231231231","home.domain","nonce","org.projectclearwater.call-list/users/1231231231@home.domain/call-list.xml","qop","00001","cnonce","242c99c1e20618147c6a325c09720664","opaque");
+
+  // Run through check if matches - should pass, but the impu is different to the
+  // stored impu
   // The request will then fail as it can't get the digest from Homestead
   std::string www_auth_header;
   long rc = _auth_mod->check_if_matches(digest, www_auth_header, _response);
