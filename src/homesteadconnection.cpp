@@ -68,7 +68,7 @@ HTTPCode HomesteadConnection::get_digest_data(const std::string& private_user_id
 
   std::string path = "/impi/" +
                      Utils::url_escape(private_user_identity) +
-                     "/av?public_id=" +
+                     "/av?impu=" +
                      Utils::url_escape(public_user_identity);
   HTTPCode rc = get_digest_and_parse(path, digest, realm, trail);
 
