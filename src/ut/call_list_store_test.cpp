@@ -248,17 +248,24 @@ TEST_F(CallListStoreFixture, EmptySlice)
 
 TEST_F(CallListStoreFixture, DeleteOldFragmentsMainline)
 {
-  const std::string CALL_TIMESTAMP = "20140101130100";
+  CallListStore::CallFragment record;
+  record.type = CallListStore::CallFragment::Type::REJECTED;
+  record.timestamp = "20020530093010";
+  record.id = "a";
+  record.contents = "contents";
+  std::vector<CallListStore::CallFragment> fragments;
+  fragments.push_back(record);
 
-  EXPECT_CALL(_client, batch_mutate(DeletionRange("kermit",
-                                                  "call_lists",
-                                                  "call_",
-                                                  "call_" + CALL_TIMESTAMP,
-                                                  1000),
-                                    _));
+  std::map<std::string, std::string> deleted_columns;
+  deleted_columns["call_20020530093010_a_rejected"] = "";
+
+  std::vector<CassandraStore::RowColumns> expected;
+  expected.push_back(CassandraStore::RowColumns("call_lists", "kermit", deleted_columns));
+
+  EXPECT_CALL(_client, batch_mutate(DeletionMap(expected), _));
 
   CassandraStore::ResultCode rc =
-    _store.delete_old_call_fragments_sync("kermit", CALL_TIMESTAMP, 1000, FAKE_TRAIL);
+    _store.delete_old_call_fragments_sync("kermit", fragments, 1000, FAKE_TRAIL);
 
   EXPECT_EQ(rc, CassandraStore::OK);
 }
@@ -267,10 +274,24 @@ TEST_F(CallListStoreFixture, DeleteOldFragmentsMainline)
 TEST_F(CallListStoreFixture, DeleteOldFragmentsError)
 {
   cass::InvalidRequestException ire;
-  EXPECT_CALL(_client, batch_mutate(_, _)).WillOnce(Throw(ire));
+  CallListStore::CallFragment record;
+  record.type = CallListStore::CallFragment::Type::REJECTED;
+  record.timestamp = "20020530093010";
+  record.id = "a";
+  record.contents = "contents";
+  std::vector<CallListStore::CallFragment> fragments;
+  fragments.push_back(record);
+
+  std::map<std::string, std::string> deleted_columns;
+  deleted_columns["call_20020530093010_a_rejected"] = "";
+
+  std::vector<CassandraStore::RowColumns> expected;
+  expected.push_back(CassandraStore::RowColumns("call_lists", "kermit", deleted_columns));
+
+  EXPECT_CALL(_client, batch_mutate(DeletionMap(expected), _)).WillOnce(Throw(ire));
 
   CassandraStore::ResultCode rc =
-    _store.delete_old_call_fragments_sync("kermit", "20140101130100", 1000, FAKE_TRAIL);
+    _store.delete_old_call_fragments_sync("kermit", fragments, 1000, FAKE_TRAIL);
   EXPECT_EQ(rc, CassandraStore::INVALID_REQUEST);
 }
 
@@ -342,8 +363,22 @@ TEST_F(CallListStoreFixture, SasLogging)
   mock_sas_discard_messages();
 
   // Delete old fragments. Check we get start and OK events.
-  EXPECT_CALL(_client, batch_mutate(_, _));
-  _store.delete_old_call_fragments_sync("kermit", "20140101130101", 1000, FAKE_TRAIL);
+  CallListStore::CallFragment record;
+  record.type = CallListStore::CallFragment::Type::REJECTED;
+  record.timestamp = "20020530093010";
+  record.id = "a";
+  record.contents = "contents";
+  std::vector<CallListStore::CallFragment> fragments;
+  fragments.push_back(record);
+
+  std::map<std::string, std::string> deleted_columns;
+  deleted_columns["call_20020530093010_a_rejected"] = "";
+
+  std::vector<CassandraStore::RowColumns> expected;
+  expected.push_back(CassandraStore::RowColumns("call_lists", "kermit", deleted_columns));
+
+  EXPECT_CALL(_client, batch_mutate(DeletionMap(expected), _));
+  _store.delete_old_call_fragments_sync("kermit", fragments, 1000, FAKE_TRAIL);
 
   EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_STARTED);
   EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_OK);
@@ -353,7 +388,7 @@ TEST_F(CallListStoreFixture, SasLogging)
 
   // Fail to delete old fragments. Check we get start and failure events.
   EXPECT_CALL(_client, batch_mutate(_, _)).WillOnce(Throw(ire));
-  _store.delete_old_call_fragments_sync("kermit", "20140101130101", 1000, FAKE_TRAIL);
+  _store.delete_old_call_fragments_sync("kermit", fragments, 1000, FAKE_TRAIL);
 
   EXPECT_SAS_EVENT(SASEvent::CALL_LIST_TRIM_STARTED);
   EXPECT_NO_SAS_EVENT(SASEvent::CALL_LIST_TRIM_OK);
