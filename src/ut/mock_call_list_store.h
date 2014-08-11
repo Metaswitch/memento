@@ -56,7 +56,7 @@ public:
 
   MOCK_METHOD3(new_delete_old_call_fragments_op,
                CallListStore::DeleteOldCallFragments*(const std::string& impu,
-                                                      const std::string& threshold,
+                                                      const std::vector<CallListStore::CallFragment> fragments,
                                                       const int64_t cass_timestamp));
 
   MOCK_METHOD5(write_call_fragment_sync,
@@ -72,7 +72,7 @@ public:
 
   MOCK_METHOD4(delete_old_call_fragments_sync,
                CassandraStore::ResultCode(const std::string& impu,
-                                          const std::string& threshold,
+                                          const std::vector<CallListStore::CallFragment> fragments,
                                           const int64_t cass_timestamp,
                                           SAS::TrailId trail));
 };

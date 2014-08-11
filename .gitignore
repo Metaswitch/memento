@@ -6,3 +6,4 @@
 debian/copyright
 .openssl_config_run
 tags
+*.a

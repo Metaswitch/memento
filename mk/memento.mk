@@ -1,16 +1,16 @@
 # included mk file for memento
 
-CEDAR_DIR := ${ROOT}/src
-CEDAR_TEST_DIR := ${ROOT}/tests
+MEMENTO_DIR := ${ROOT}/src
+MEMENTO_TEST_DIR := ${ROOT}/tests
 
 memento:
-	make -C ${CEDAR_DIR}
+	make -C ${MEMENTO_DIR}
 
 memento_test:
-	make -C ${CEDAR_DIR} test
+	make -C ${MEMENTO_DIR} test
 
 memento_clean:
-	make -C ${CEDAR_DIR} clean
+	make -C ${MEMENTO_DIR} clean
 
 memento_distclean: memento_clean
 

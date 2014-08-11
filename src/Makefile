@@ -37,20 +37,29 @@ TARGET_SOURCES := localstore.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
                   httpresolver.cpp \
-	          mementosaslogger.cpp
+	          mementosaslogger.cpp \
+                  call_list_store_processor.cpp \
+                  mementoappserver.cpp \
+                  base64.cpp \
+                  unique.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
 TARGET_SOURCES_TEST := test_main.cpp \
                        test_interposer.cpp \
+                       sip_common.cpp \
                        handlers_test.cpp \
                        authstore_test.cpp \
                        call_list_store_test.cpp \
                        homesteadconnection_test.cpp \
                        httpdigestauthenticate_test.cpp \
+                       call_list_store_processor_test.cpp \
+                       mementoappserver_test.cpp \
                        fakelogger.cpp \
                        fakecurl.cpp \
                        fakehomesteadconnection.cpp \
+                       faketransport_udp.cpp \
+                       faketransport_tcp.cpp \
                        mock_sas.cpp
 
 TARGET_EXTRA_OBJS_TEST := gmock-all.o \
@@ -84,6 +93,8 @@ CPPFLAGS += -I${ROOT}/include \
             -I${ROOT}/modules/app-servers/test \
             -I${ROOT}/modules/sas-client/include \
             -I${ROOT}/modules/rapidjson/include
+
+CPPFLAGS += $(shell PKG_CONFIG_PATH=${ROOT}/usr/lib/pkgconfig pkg-config --cflags libpjproject)
 
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
 VPATH := ${ROOT}/modules/cpp-common/src:${ROOT}/modules/cpp-common/test_utils:${ROOT}/modules/app-servers/test
@@ -123,6 +134,8 @@ LDFLAGS += -lzmq \
            -lboost_date_time \
            -lthrift \
            -lcassandra
+
+LDFLAGS += $(shell PKG_CONFIG_PATH=${ROOT}/usr/lib/pkgconfig pkg-config --libs libpjproject)
 
 # Test build uses just-built libraries, which may not be installed
 LDFLAGS_TEST += -Wl,-rpath=$(ROOT)/usr/lib

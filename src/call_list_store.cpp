@@ -88,7 +88,7 @@ std::string fragment_type_to_string(CallFragment::Type type)
 }
 
 // Utility method for converting a call fragment string (as stored in
-// caassandra) into an enumerated type.
+// cassandra) into an enumerated type.
 //
 // @param fragment_str    - The string to convert.
 // @param type            - (out) The type of the fragment.
@@ -339,11 +339,11 @@ Store::new_get_call_fragments_op(const std::string& impu)
 //
 
 DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
-                                               const std::string& threshold,
+                                               const std::vector<CallFragment> fragments,
                                                const int64_t cass_timestamp) :
   CassandraStore::Operation(),
   _impu(impu),
-  _threshold(threshold),
+  _fragments(fragments),
   _cass_timestamp(cass_timestamp)
 {}
 
@@ -353,28 +353,40 @@ DeleteOldCallFragments::~DeleteOldCallFragments()
 bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
                                      SAS::TrailId trail)
 {
-  LOG_DEBUG("Deleting all call fragments earlier than %s for IMPU '%s'",
-            _threshold.c_str(),
+  LOG_DEBUG("Deleting %d call fragments for IMPU '%s'",
+            _fragments.size(),
             _impu.c_str());
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_TRIM_STARTED, 0);
     ev.add_var_param(_impu);
-    ev.add_var_param(_threshold);
+    ev.add_static_param(_fragments.size());
     SAS::report_event(ev);
   }
 
-  // Delete all columns in the range "call_" to call_<Timestamp>". This covers
-  // all columns with a timestamp less than the specified value.
-  std::string start = CALL_COLUMN_PREFIX;
-  std::string finish = CALL_COLUMN_PREFIX + _threshold;
+  // The column name is of the form:
+  //   call_<timestamp>_<id>_<type>
+  //
+  // For example:
+  //   call_20140722120000_12345_begin
+  std::vector<CassandraStore::RowColumns> to_delete;
+  for (std::vector<CallFragment>::const_iterator ii = _fragments.begin();
+       ii != _fragments.end();
+       ii++)
+  {
+    std::string column_name;
+    column_name.append(CALL_COLUMN_PREFIX)
+               .append(ii->timestamp).append("_")
+               .append(ii->id).append("_")
+               .append(fragment_type_to_string(ii->type));
+    std::map<std::string, std::string> columns;
+    columns[column_name] = "";
+    to_delete.push_back(CassandraStore::RowColumns(COLUMN_FAMILY, _impu, columns));
+  }
 
-  delete_slice(client,
-               COLUMN_FAMILY,
-               _impu,
-               start,
-               finish,
-               _cass_timestamp);
+  delete_columns(client,
+                 to_delete,
+                 _cass_timestamp);
 
   LOG_DEBUG("Successfully deleted call fragments");
 
@@ -402,10 +414,10 @@ void DeleteOldCallFragments::unhandled_exception(CassandraStore::ResultCode stat
 
 DeleteOldCallFragments*
 Store::new_delete_old_call_fragments_op(const std::string& impu,
-                                        const std::string& threshold,
+                                        const std::vector<CallFragment> fragments,
                                         const int64_t cass_timestamp)
 {
-  return new DeleteOldCallFragments(impu, threshold, cass_timestamp);
+  return new DeleteOldCallFragments(impu, fragments, cass_timestamp);
 }
 
 
@@ -454,12 +466,12 @@ Store::get_call_fragments_sync(const std::string& impu,
 
 CassandraStore::ResultCode
 Store::delete_old_call_fragments_sync(const std::string& impu,
-                                      const std::string& threshold,
+                                      const std::vector<CallFragment> fragments,
                                       const int64_t cass_timestamp,
                                       SAS::TrailId trail)
 {
   DeleteOldCallFragments* op = new_delete_old_call_fragments_op(impu,
-                                                                threshold,
+                                                                fragments,
                                                                 cass_timestamp);
   do_sync(op, trail);
   CassandraStore::ResultCode result = op->get_result_code();
