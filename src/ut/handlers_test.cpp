@@ -40,6 +40,7 @@
 #include "mock_call_list_store.h"
 #include "handlers.h"
 #include "localstore.h"
+#include "fakehomesteadconnection.hpp"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -58,15 +59,16 @@ public:
   LocalStore* _store;
   AuthStore* _auth_store;
   MockCallListStore* _call_store;
+  FakeHomesteadConnection* _hc;
   CallListTask::Config* _cfg;
-
 
   HandlersTest()
   {
     _store = new LocalStore();
     _auth_store = new AuthStore(_store, 20);
     _call_store = new MockCallListStore();
-    _cfg = new CallListTask::Config(_auth_store, NULL, _call_store, "localhost");
+    _hc = new FakeHomesteadConnection();
+    _cfg = new CallListTask::Config(_auth_store, _hc, _call_store, "localhost");
 
   }
   virtual ~HandlersTest()
@@ -74,6 +76,7 @@ public:
     delete _auth_store;
     delete _store;
     delete _call_store;
+    delete _hc;
     delete _cfg;
   }
 
@@ -92,6 +95,36 @@ public:
 };
 
 MockHttpStack* HandlersTest::_httpstack = NULL;
+
+// Test the handler creation.
+TEST_F(HandlersTest, HandlerCreation)
+{
+  MockHttpStack::Request req(_httpstack,
+                             "/org.projectclearwater.call-list/users/sip:6505551234@home.domain/call-list.xml",
+                             "",
+                             "");
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
+
+  // The request to get the digest from homestead will fail, so
+  // the response will be a 404
+  EXPECT_CALL(*_httpstack, send_reply(_, 404, _));
+  handler->run();
+}
+
+// Test a request with an invalid method
+TEST_F(HandlersTest, HandlerCreationInvalidMethod)
+{
+  MockHttpStack::Request req(_httpstack,
+                             "/org.projectclearwater.call-list/users/sip:6505551234@home.domain/call-list.xml",
+                             "",
+                             "",
+                             "",
+                             htp_method_PUT);
+  CallListTask* handler = new CallListTask(req, _cfg, 0);
+
+  EXPECT_CALL(*_httpstack, send_reply(_, 405, _));
+  handler->run();
+}
 
 TEST_F(HandlersTest, Mainline)
 {
@@ -135,7 +168,7 @@ TEST_F(HandlersTest, Mainline)
   records.push_back(record1);
   records.push_back(record3);
   records.push_back(record2);
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -206,7 +239,7 @@ TEST_F(HandlersTest, DuplicatedBegin)
   records.push_back(record1);
   records.push_back(record1);
   records.push_back(record2);
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -249,7 +282,7 @@ TEST_F(HandlersTest, DuplicatedEnd)
   records.push_back(record1);
   records.push_back(record2);
   records.push_back(record2);
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -287,7 +320,7 @@ TEST_F(HandlersTest, DuplicatedRejected)
     "<start-time>2002-05-30T09:30:10</start-time>");
   records.push_back(record1);
   records.push_back(record1);
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -329,7 +362,7 @@ TEST_F(HandlersTest, WrongOrder)
   record2.contents = "<end-time>2002-05-30T09:35:00</end-time>";
   records.push_back(record2);
   records.push_back(record1);
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -365,7 +398,7 @@ TEST_F(HandlersTest, MissingEnd)
       "<start-time>2002-05-30T09:30:10</start-time>"
     "<answer-time>2002-05-30T09:30:20</answer-time>");
   records.push_back(record1);
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -381,7 +414,7 @@ TEST_F(HandlersTest, MissingEnd)
 
 TEST_F(HandlersTest, NotFound)
 {
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 
@@ -397,7 +430,7 @@ TEST_F(HandlersTest, NotFound)
 
 TEST_F(HandlersTest, DbError)
 {
-  MockHttpStack::Request req(_httpstack, "/", "digest", "");
+  MockHttpStack::Request req(_httpstack, "/", "", "");
 
   CallListTask* handler = new CallListTask(req, _cfg, 0);
 

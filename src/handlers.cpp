@@ -63,6 +63,7 @@ void CallListTask::run()
 
   rc = _auth_mod->authenticate_request(_impu, auth_header, www_auth_header, method, trail());
 
+  //LCOV_EXCL_START - These cases are tested thoroughly in individual tests
   if (rc == HTTP_UNAUTHORIZED)
   {
     LOG_DEBUG("Authorization data missing or out of date, responding with 401");
@@ -78,6 +79,8 @@ void CallListTask::run()
   {
     respond_when_authenticated();
   }
+  // LCOV_EXCL_STOP
+
   delete this;
   return;
 }
