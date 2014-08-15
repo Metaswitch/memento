@@ -46,6 +46,13 @@ fi
 # Create the config file, using the memento_hostname we've got from
 # /etc/clearwater/config
 cat > /etc/nginx/sites-available/memento << EOF
+upstream http_backend {
+        server localhost:11888;
+
+        # The minimum number of idle connections to keep alive to the backend.
+        keepalive 16;
+}
+
 server {
         listen       443;
         server_name  $memento_hostname;
@@ -64,10 +71,22 @@ server {
         # is used to just test nginx. This is defined in the ping site which
         # is installed with the clearwater-nginx package.
         location /ping {
-                proxy_pass http://localhost:11888;
+                proxy_pass http://http_backend;
+                proxy_http_version 1.1;
+
+                # The client may have instructed the server to close the
+                # connection - do not forward this upstream.
+                proxy_set_header Connection "";
         }
+
         location /org.projectclearwater.call-list {
-                proxy_pass http://localhost:11888;
+                proxy_pass http://http_backend;
+                proxy_http_version 1.1;
+
+                # The client may have instructed the server to close the
+                # connection - do not forward this upstream.
+                proxy_set_header Connection "";
+
                 gzip on;
                 gzip_types *;
         }
