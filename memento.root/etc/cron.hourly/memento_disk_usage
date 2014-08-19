@@ -104,4 +104,5 @@ then
   log warning "Disk usage is over limit, truncating call lists"
   echo "USE memento ;
         TRUNCATE call_lists ;" | cqlsh -3
+  nodetool clearsnapshot memento
 fi
