@@ -44,7 +44,7 @@ function log() {
 
 # Calculate the current disk usage in kilobytes
 function get_current_use() {
-  current_use=$(du -sk $MEMENTO_DATA_DIR | cut -f 1)
+  du -sk $MEMENTO_DATA_DIR | cut -f 1
 }
 
 # Load global settings
@@ -59,7 +59,7 @@ fi
 total_avail=$(df -kP $MEMENTO_DATA_DIR | sed -n 2p | awk '{print($2)}')
 
 # Retrieve the current usage
-get_current_use
+current_use=$(get_current_use)
 
 # Parse out the units from the config file's value
 unit=${memento_disk_limit: -1} # The last character
@@ -67,58 +67,62 @@ if [[ $unit =~ [0-9] ]]
 then
   # No unit given, assume bytes
   unit="b"
-  size=$memento_disk_limit
+  max_use=$memento_disk_limit
 else
-  size=${memento_disk_limit%?} # Everything but the last character
+  max_use=${memento_disk_limit%?} # Everything but the last character
 fi
 
 # Convert units to kilobytes
 case $unit in
   b)
-    size=$(( $size / 1024 ))
+    max_use=$(( $max_use / 1024 ))
     ;;
   k)
-    size=$(( $size ))
+    max_use=$(( $max_use ))
     ;;
   M)
-    size=$(( $size * 1024 ))
+    max_use=$(( $max_use * 1024 ))
     ;;
   G)
-    size=$(( $size * 1024 * 1024 ))
+    max_use=$(( $max_use * 1024 * 1024 ))
     ;;
   %)
-    if (( $size < 0 )) || (( $size > 100 ))
+    if (( $max_use < 0 )) || (( $max_use > 100 ))
     then
-      log error "Invalid percentage ($size%), using 20% of disk as limit"
-      size=20
+      log error "Invalid percentage ($max_use%), using 20% of disk as limit"
+      max_use=20
     fi
-    size=$(( $total_avail * $size / 100 ))
+    max_use=$(( $total_avail * $max_use / 100 ))
     ;;
   *)
     # Unrecognised unit, use 20% of disk capacity
     log error "Unrecognised unit ($unit), using 20% of disk as limit"
-    size=$(( $total_avail / 5 ))
+    max_use=$(( $total_avail / 5 ))
     ;;
 esac
 
-log info "Applying limits, current use = $current_use, limit = $size"
+log info "Applying limits, current use = ${current_use}k, limit = ${max_use}k"
 
-# Compare the size to current usage
-if (( $current_use > $size ))
+# Compare the current usage to the limit
+if (( $current_use > $max_use ))
 then
   log warning "Disk usage is over limit, deleting snapshots"
   nodetool clearsnapshot memento
 
   # Recheck usage
-  get_current_use
+  current_use=$(get_current_use)
 
-  log info "After deleting snapshots: current_use = $current_use, limit = $size"
+  log info "After deleting snapshots: current_use = ${current_use}k, limit = ${max_use}k"
 
-  if (( $current_use > $size ))
+  if (( $current_use > $max_use ))
   then
     log warning "Disk usage still over capacity, truncating database"
     echo "USE memento ;
           TRUNCATE call_lists ;" | cqlsh -3
     nodetool clearsnapshot memento
   fi
+
+  current_use=$(get_current_use)
+
+  log info "New disk usage is ${current_use}k"
 fi
