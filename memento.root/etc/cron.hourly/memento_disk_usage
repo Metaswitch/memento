@@ -42,6 +42,11 @@ function log() {
   logger -s -p cron.$1 -t "Memento Disk Usage" "$2"
 }
 
+# Calculate the current disk usage in kilobytes
+function get_current_use() {
+  current_use=$(du -sk $MEMENTO_DATA_DIR | cut -f 1)
+}
+
 # Load global settings
 . /etc/clearwater/config
 if [[ -z $memento_disk_limit ]]
@@ -50,11 +55,11 @@ then
   memento_disk_limit="20%"
 fi
 
-# Calculate the current disk usage in kilobytes
-current_use=$(du -sk $MEMENTO_DATA_DIR | cut -f 1)
-
 # Calcualte the total disk available in kilobytes
 total_avail=$(df -kP $MEMENTO_DATA_DIR | sed -n 2p | awk '{print($2)}')
+
+# Retrieve the current usage
+get_current_use
 
 # Parse out the units from the config file's value
 unit=${memento_disk_limit: -1} # The last character
@@ -101,8 +106,19 @@ log info "Applying limits, current use = $current_use, limit = $size"
 # Compare the size to current usage
 if (( $current_use > $size ))
 then
-  log warning "Disk usage is over limit, truncating call lists"
-  echo "USE memento ;
-        TRUNCATE call_lists ;" | cqlsh -3
+  log warning "Disk usage is over limit, deleting snapshots"
   nodetool clearsnapshot memento
+
+  # Recheck usage
+  get_current_use
+
+  log info "After deleting snapshots: current_use = $current_use, limit = $size"
+
+  if (( $current_use > $size ))
+  then
+    log warning "Disk usage still over capacity, truncating database"
+    echo "USE memento ;
+        TRUNCATE call_lists ;" | cqlsh -3
+    nodetool clearsnapshot memento
+  fi
 fi
