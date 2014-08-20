@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# @file memento_disk_usage
+#
+# Project Clearwater - IMS in the Cloud
+# Copyright (C) 2014  Metaswitch Networks Ltd
+#
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version, along with the "Special Exception" for use of
+# the program along with SSL, set forth below. This program is distributed
+# in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details. You should have received a copy of the GNU General Public
+# License along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+#
+# The author can be reached by email at clearwater@metaswitch.com or by
+# post at Metaswitch Networks Ltd, 100 Church St, Enfield EN2 6BQ, UK
+#
+# Special Exception
+# Metaswitch Networks Ltd  grants you permission to copy, modify,
+# propagate, and distribute a work formed by combining OpenSSL with The
+# Software, or a work derivative of such a combination, even if such
+# copying, modification, propagation, or distribution would otherwise
+# violate the terms of the GPL. You must comply with the GPL in all
+# respects for all of the code used other than OpenSSL.
+# "OpenSSL" means OpenSSL toolkit software distributed by the OpenSSL
+# Project and licensed under the OpenSSL Licenses, or a work based on such
+# software and licensed under the OpenSSL Licenses.
+# "OpenSSL Licenses" means the OpenSSL License and Original SSLeay License
+# under which the OpenSSL Project distributes the OpenSSL toolkit software,
+# as those licenses appear in the file LICENSE-OPENSSL.
+
+# Constants
+MEMENTO_DATA_DIR=/var/lib/cassandra/data/memento
+
+# Utility function for accessing the logger
+function log() {
+  logger -s -p cron.$1 -t "Memento Disk Usage" "$2"
+}
+
+# Calculate the current disk usage in kilobytes
+function get_current_use() {
+  du -sk $MEMENTO_DATA_DIR | cut -f 1
+}
+
+# Load global settings
+. /etc/clearwater/config
+if [[ -z $memento_disk_limit ]]
+then
+  log info "No disk limit configured, using 20% of the disk"
+  memento_disk_limit="20%"
+fi
+
+# Calcualte the total disk available in kilobytes
+total_avail=$(df -kP $MEMENTO_DATA_DIR | sed -n 2p | awk '{print($2)}')
+
+# Retrieve the current usage
+current_use=$(get_current_use)
+
+# Parse out the units from the config file's value
+unit=${memento_disk_limit: -1} # The last character
+if [[ $unit =~ [0-9] ]]
+then
+  # No unit given, assume bytes
+  unit="b"
+  max_use=$memento_disk_limit
+else
+  max_use=${memento_disk_limit%?} # Everything but the last character
+fi
+
+# Convert units to kilobytes
+case $unit in
+  b)
+    max_use=$(( $max_use / 1024 ))
+    ;;
+  k)
+    max_use=$(( $max_use ))
+    ;;
+  M)
+    max_use=$(( $max_use * 1024 ))
+    ;;
+  G)
+    max_use=$(( $max_use * 1024 * 1024 ))
+    ;;
+  %)
+    if (( $max_use < 0 )) || (( $max_use > 100 ))
+    then
+      log error "Invalid percentage ($max_use%), using 20% of disk as limit"
+      max_use=20
+    fi
+    max_use=$(( $total_avail * $max_use / 100 ))
+    ;;
+  *)
+    # Unrecognised unit, use 20% of disk capacity
+    log error "Unrecognised unit ($unit), using 20% of disk as limit"
+    max_use=$(( $total_avail / 5 ))
+    ;;
+esac
+
+log info "Applying limits, current use = ${current_use}k, limit = ${max_use}k"
+
+# Compare the current usage to the limit
+if (( $current_use > $max_use ))
+then
+  log warning "Disk usage is over limit, deleting snapshots"
+  nodetool clearsnapshot memento
+
+  # Recheck usage
+  current_use=$(get_current_use)
+
+  log info "After deleting snapshots: current_use = ${current_use}k, limit = ${max_use}k"
+
+  if (( $current_use > $max_use ))
+  then
+    log warning "Disk usage still over capacity, truncating database"
+    echo "USE memento ;
+          TRUNCATE call_lists ;" | cqlsh -3
+    nodetool clearsnapshot memento
+  fi
+
+  current_use=$(get_current_use)
+
+  log info "New disk usage is ${current_use}k"
+fi
