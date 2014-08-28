@@ -472,14 +472,14 @@ void HTTPDigestAuthenticate::generate_digest(std::string ha1, std::string realm,
 void HTTPDigestAuthenticate::generate_www_auth_header(std::string& www_auth_header, bool include_stale, AuthStore::Digest* digest)
 {
   www_auth_header = "Digest";
-  www_auth_header.append(" realm=").append(_home_domain);
-  www_auth_header.append(",qop=").append("auth");
-  www_auth_header.append(",nonce=").append(digest->_nonce);
-  www_auth_header.append(",opaque=").append(digest->_opaque);
+  www_auth_header.append(" realm=\"").append(_home_domain).append("\"");
+  www_auth_header.append(",qop=\"").append("auth").append("\"");
+  www_auth_header.append(",nonce=\"").append(digest->_nonce).append("\"");
+  www_auth_header.append(",opaque=\"").append(digest->_opaque).append("\"");
 
   if (include_stale)
   {
-    www_auth_header.append(",stale=TRUE");
+    www_auth_header.append(",stale=\"TRUE\"");
   }
 
   LOG_DEBUG("WWW-Authenticate header generated: %s", www_auth_header.c_str());

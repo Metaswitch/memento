@@ -49,6 +49,7 @@
 #include "fakehomesteadconnection.hpp"
 
 using namespace std;
+using testing::MatchesRegex;
 
 /// Fixture for HTTPDigestAuthenticateTest.
 class HTTPDigestAuthenticateTest : public ::testing::Test
@@ -220,6 +221,8 @@ TEST_F(HTTPDigestAuthenticateTest, RequestStoreDigest)
   std::string www_auth_header;
   long rc = _auth_mod->request_digest_and_store(www_auth_header, false, _response);
 
+  EXPECT_THAT(www_auth_header,
+              MatchesRegex("Digest realm=\"home\\.domain\",qop=\"auth\",nonce=\".*/KspN6ry7jG8CU4b\",opaque=\".*onN2aujzfJamyN3xYja\""));
   ASSERT_EQ(rc, 401);
 }
 
@@ -238,8 +241,9 @@ TEST_F(HTTPDigestAuthenticateTest, RequestStoreDigest_Stale)
   std::string www_auth_header;
   long rc = _auth_mod->request_digest_and_store(www_auth_header, true, _response);
 
+  EXPECT_THAT(www_auth_header,
+              MatchesRegex("Digest realm=\"home\\.domain\",qop=\"auth\",nonce=\".*dFXYpeUryNGb0UROC0\",opaque=\".*Bh9cHwp\\+hBh8n\\+B\\+Xqc\",stale=\"TRUE\""));
   ASSERT_EQ(rc, 401);
- // ASSERT_EQ(_auth_mod->_header, "");
 }
 
 TEST_F(HTTPDigestAuthenticateTest, RetrieveDigest_NotPresent)
