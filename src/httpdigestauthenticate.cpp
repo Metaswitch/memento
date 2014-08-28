@@ -479,7 +479,7 @@ void HTTPDigestAuthenticate::generate_www_auth_header(std::string& www_auth_head
 
   if (include_stale)
   {
-    www_auth_header.append(",stale=TRUE");
+    www_auth_header.append(",stale=\"TRUE\"");
   }
 
   LOG_DEBUG("WWW-Authenticate header generated: %s", www_auth_header.c_str());
