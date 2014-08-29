@@ -11,6 +11,16 @@ Memento acts as a SIP proxy. When it receives an initial INVITE it forwards the 
 
 Memento writes information about the call to persistent storage (supplied by a cassandra database) for later retrieval by the UE. These call fragments are written when a call begins, when a call ends, and when a call is rejected.
 
+The contents of a call list entry are derived from the SIP signalling:
+
+* The incoming/outgoing flag is derived from the session case on the initial INVITE.
+* The answered/not-answered flag is inferred from the final response to the initial INVITE.
+* The start time of the call is measured from the point the CLA receives the initial INVITE.
+* The answer time of the call is measured from the point the CLA receives the 200 OK to the initial INVITE.
+* The end time of the call is measured from the point the CLA receives the BYE.
+* The caller's URI/name from the P-Asserted-Identity header for originating calls and the From header for terminating calls.
+* The callee's URI/name from the To header for originating calls and the Request URI for terminating calls.
+
 An example call list fragment (for a rejected call is):
 
 ```
@@ -27,17 +37,7 @@ An example call list fragment (for a rejected call is):
 <start-time>2002-05-30T09:30:10</start-time>
 ```
 
-The contents of a call list entry are derived from the SIP signalling:
-
-* The incoming/outgoing flag is derived from the session case on the initial INVITE.
-* The answered/not-answered flag is inferred from the final response to the initial INVITE.
-* The start time of the call is measured from the point the CLA receives the initial INVITE.
-* The answer time of the call is measured from the point the CLA receives the 200 OK to the initial INVITE.
-* The end time of the call is measured from the point the CLA receives the BYE.
-* The caller's URI/name from the P-Asserted-Identity header for originating calls and the From header for terminating calls.
-* The callee's URI/name from the To header for originating calls and the Request URI for terminating calls.
-
-Any other mid-call messages are simply forwarded according to their route header (for a request) or via headers (for a response). If Memento receives an initial request other than an INVITE, it simply forwards the request back to the S-CSCF and does not record-route itself.
+Any other mid-call messages are simply forwarded according to their route header (for a request) or via headers (for a response). If Memento receives an initial request other than an INVITE, it simply forwards the request back to Sprout and does not record-route itself.
 
 HTTP Interface
 --------------
@@ -48,7 +48,7 @@ Memento exposes the following URL for retrieving call lists for a user:
 
 This supports GETs to retrieve an entire call list for a public user identity; all other methods return a 405.
 
-Requests to this URL must be authenticated. Memento uses HTTP Digest authentication (RFC link), and supports the "auth" quality of protection. Memento uses the credentials provisioned in homestead for authenticating requests, in a similar way to how Sprout authenticates SIP REGISTERs. Memento also authorizes requests, ensuring that the authenticated IMPI is permitted to access the IMPU referred to in the URL of the request.
+Requests to this URL must be authenticated. Memento uses [HTTP Digest authentication] (http://tools.ietf.org/html/rfc2617), and supports the "auth" quality of protection. Memento uses the credentials provisioned in homestead for authenticating requests, in a similar way to how Sprout authenticates SIP REGISTERs. Memento also authorizes requests, ensuring that the authenticated IMPI is permitted to access the IMPU referred to in the URL of the request.
 
 If the request has been authorized and authenticated Memento retrieves the call list fragments relating to the request IMPU from the call list store.
 If there are entries, Memento will create an XML document containing complete calls and return this to the client
@@ -122,7 +122,7 @@ An example IFC is:
 
 There are also five deployment wide configuration options. These should be set in /etc/clearwater/config:
 
-* `memento_enabled`: This determines whether the Memento application server is enabled. Set to 'Y' to enable it.
+* `memento_enabled`: This determines whether the Memento application server is enabled.
 * `max_call_list_length`: This determines the maximum number of complete calls a subscriber can have in the call list store.
 * `call_list_store_ttl`: This determines how long each entry should be kept in the call list store.
 * `memento_threads`: This determines the number of threads dedicated to adding call list fragments to the call list store
