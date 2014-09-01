@@ -134,6 +134,7 @@ int init_logging_options(int argc, char**argv, struct options& options)
   int opt;
   int long_opt_ind;
 
+  optind = 0;
   while ((opt = getopt_long(argc, argv, "", long_opt, &long_opt_ind)) != -1)
   {
     switch (opt)
@@ -161,6 +162,7 @@ int init_options(int argc, char**argv, struct options& options)
   int opt;
   int long_opt_ind;
 
+  optind = 0;
   while ((opt = getopt_long(argc, argv, "", long_opt, &long_opt_ind)) != -1)
   {
     switch (opt)
