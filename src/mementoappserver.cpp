@@ -62,7 +62,7 @@ namespace MementoXML
   static const char* TO = "to";
   static const char* FROM = "from";
   static const char* NAME = "name";
-  static const char* URI = "uri";
+  static const char* URI = "URI";
   static const char* OUTGOING = "outgoing";
   static const char* ANSWERED = "answered";
   static const char* START_TIME = "start-time";
@@ -162,6 +162,9 @@ MementoAppServerTsx::~MementoAppServerTsx() {}
 
 void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
 {
+  LOG_DEBUG("Memento processing an initial request of type %s",
+           (req->line.req.method.id == PJSIP_INVITE_METHOD) ? "INVITE" : "BYE");
+
   // Get the current time
   time_t rawtime;
   time(&rawtime);
@@ -254,6 +257,8 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
 
 void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 {
+  LOG_DEBUG("Mememto processing an in_dialog_request");
+
   // Get the dialog id. It has the format:
   //  <YYYYMMDDHHMMSS>_<unique_id>_<base64 encoded impu>
   std::string dialogid = dialog_id();
@@ -314,6 +319,8 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 
 void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 {
+  LOG_DEBUG("Memento processing a response");
+
   pjsip_cseq_hdr* cseq = (pjsip_cseq_hdr*)pjsip_msg_find_hdr(rsp,
                                                              PJSIP_H_CSEQ,
                                                              NULL);
