@@ -297,8 +297,8 @@ TEST_F(MementoAppServerTest, MainlineIncomingTest)
   std::string timestamp = get_formatted_timestamp();
 
   // Check that the xml, impu and CallFragment type are as expected
-  std::string xml = std::string("<to>\n\t<uri>sip:6505551234@homedomain</uri>\n</to>\n<from>" \
-                                "\n\t<uri>sip:6505551000@homedomain</uri>\n\t<name>Alice</name>" \
+  std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n</to>\n<from>" \
+                                "\n\t<URI>sip:6505551000@homedomain</URI>\n\t<name>Alice</name>" \
                                 "\n</from>\n<outgoing>1</outgoing>\n<start-time>").
                     append(timestamp).append("</start-time>\n<answered>1</answered>\n<answer-time>").
                     append(timestamp).append("</answer-time>\n\n");
@@ -343,8 +343,8 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
   // writes it to the call list store
   std::string timestamp = get_formatted_timestamp();
 
-  std::string xml = std::string("<to>\n\t<uri>sip:6505551234@homedomain</uri>\n\t<name>Bob</name>\n" \
-                                "</to>\n<from>\n\t<uri>sip:6505550000@homedomain</uri>\n\t<name>Alice</name>\n" \
+  std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n\t<name>Bob</name>\n" \
+                                "</to>\n<from>\n\t<URI>sip:6505550000@homedomain</URI>\n\t<name>Alice</name>\n" \
                                 "</from>\n<outgoing>0</outgoing>\n<start-time>").
                     append(timestamp).append("</start-time>\n<answered>1</answered>\n<answer-time>").
                     append(timestamp).append("</answer-time>\n\n");
@@ -443,8 +443,8 @@ TEST_F(MementoAppServerTest, OnErrorResponse)
   std::string timestamp = get_formatted_timestamp();
 
   // Check that the xml, impu and CallFragment type are as expected
-  std::string xml = std::string("<to>\n\t<uri>sip:6505551234@homedomain</uri>\n</to>\n<from>" \
-                                "\n\t<uri>sip:6505551000@homedomain</uri>\n\t<name>Alice</name>" \
+  std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n</to>\n<from>" \
+                                "\n\t<URI>sip:6505551000@homedomain</URI>\n\t<name>Alice</name>" \
                                 "\n</from>\n<outgoing>1</outgoing>\n<start-time>").
                     append(timestamp).append("</start-time>\n<answered>0</answered>\n\n");
   std::string impu = "sip:6505551234@homedomain";
