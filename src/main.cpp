@@ -87,6 +87,23 @@ enum OptionTypes
   HELP
 };
 
+const static struct option long_opt[] =
+{
+  {"localhost",           required_argument, NULL, LOCAL_HOST},
+  {"http",                required_argument, NULL, HTTP_ADDRESS},
+  {"http-threads",        required_argument, NULL, HTTP_THREADS},
+  {"http-worker-threads", required_argument, NULL, HTTP_WORKER_THREADS},
+  {"homestead-http-name", required_argument, NULL, HOMESTEAD_HTTP_NAME},
+  {"digest-timeout",      required_argument, NULL, DIGEST_TIMEOUT},
+  {"home-domain",         required_argument, NULL, HOME_DOMAIN},
+  {"sas",                 required_argument, NULL, SAS_CONFIG},
+  {"access-log",          required_argument, NULL, ACCESS_LOG},
+  {"log-file",            required_argument, NULL, LOG_FILE},
+  {"log-level",           required_argument, NULL, LOG_LEVEL},
+  {"help",                no_argument,       NULL, HELP},
+  {NULL,                  0,                 NULL, 0},
+};
+
 void usage(void)
 {
   puts("Options:\n"
@@ -112,90 +129,15 @@ void usage(void)
        " --help                     Show this help screen\n");
 }
 
-int init_options(int argc, char**argv, struct options& options)
+int init_logging_options(int argc, char**argv, struct options& options)
 {
-  struct option long_opt[] =
-  {
-    {"localhost",           required_argument, NULL, LOCAL_HOST},
-    {"http",                required_argument, NULL, HTTP_ADDRESS},
-    {"http-threads",        required_argument, NULL, HTTP_THREADS},
-    {"http-worker-threads", required_argument, NULL, HTTP_WORKER_THREADS},
-    {"homestead-http-name", required_argument, NULL, HOMESTEAD_HTTP_NAME},
-    {"digest-timeout",      required_argument, NULL, DIGEST_TIMEOUT},
-    {"home-domain",         required_argument, NULL, HOME_DOMAIN},
-    {"sas",                 required_argument, NULL, SAS_CONFIG},
-    {"access-log",          required_argument, NULL, ACCESS_LOG},
-    {"log-file",            required_argument, NULL, LOG_FILE},
-    {"log-level",           required_argument, NULL, LOG_LEVEL},
-    {"help",                no_argument,       NULL, HELP},
-    {NULL,                  0,                 NULL, 0},
-  };
-
   int opt;
   int long_opt_ind;
+
   while ((opt = getopt_long(argc, argv, "", long_opt, &long_opt_ind)) != -1)
   {
     switch (opt)
     {
-    case LOCAL_HOST:
-      options.local_host = std::string(optarg);
-      break;
-
-    case HTTP_ADDRESS:
-      options.http_address = std::string(optarg);
-      break;
-
-    case HTTP_THREADS:
-      options.http_threads = atoi(optarg);
-      break;
-
-    case HTTP_WORKER_THREADS:
-      options.http_worker_threads = atoi(optarg);
-      break;
-
-    case HOMESTEAD_HTTP_NAME:
-      options.homestead_http_name = std::string(optarg);
-      break;
-
-    case DIGEST_TIMEOUT:
-      options.digest_timeout = atoi(optarg);
-      if (options.digest_timeout == 0)
-      {
-        // If the supplied option is invalid then revert to the
-        // default five minutes
-        options.digest_timeout = 300;
-      }
-      break;
-
-    case HOME_DOMAIN:
-      options.home_domain = std::string(optarg);
-      break;
-
-    case SAS_CONFIG:
-    {
-      std::vector<std::string> sas_options;
-      Utils::split_string(std::string(optarg), ',', sas_options, 0, false);
-      if ((sas_options.size() == 2) &&
-          !sas_options[0].empty() &&
-          !sas_options[1].empty())
-      {
-        options.sas_server = sas_options[0];
-        options.sas_system_name = sas_options[1];
-        printf("SAS set to %s\n", options.sas_server.c_str());
-        printf("System name is set to %s\n", options.sas_system_name.c_str());
-      }
-      else
-      {
-        printf("Invalid --sas option, SAS disabled\n");
-      }
-    }
-    break;
-
-    case ACCESS_LOG:
-      options.access_log_enabled = true;
-      options.access_log_directory = std::string(optarg);
-      break;
-
     case LOG_FILE:
       options.log_to_file = true;
       options.log_directory = std::string(optarg);
@@ -205,12 +147,105 @@ int init_options(int argc, char**argv, struct options& options)
       options.log_level = atoi(optarg);
       break;
 
+    default:
+      // Ignore other options at this point
+      break;
+    }
+  }
+
+  return 0;
+}
+
+int init_options(int argc, char**argv, struct options& options)
+{
+  int opt;
+  int long_opt_ind;
+
+  while ((opt = getopt_long(argc, argv, "", long_opt, &long_opt_ind)) != -1)
+  {
+    switch (opt)
+    {
+    case LOCAL_HOST:
+      LOG_INFO("Local host: %s", optarg);
+      options.local_host = std::string(optarg);
+      break;
+
+    case HTTP_ADDRESS:
+      LOG_INFO("HTTP bind address: %s", optarg);
+      options.http_address = std::string(optarg);
+      break;
+
+    case HTTP_THREADS:
+      LOG_INFO("Number of HTTP threads: %s", optarg);
+      options.http_threads = atoi(optarg);
+      break;
+
+    case HTTP_WORKER_THREADS:
+      LOG_INFO("Number of HTTP worker threads: %s", optarg);
+      options.http_worker_threads = atoi(optarg);
+      break;
+
+    case HOMESTEAD_HTTP_NAME:
+      LOG_INFO("Homestead HTTP address: %s", optarg);
+      options.homestead_http_name = std::string(optarg);
+      break;
+
+    case DIGEST_TIMEOUT:
+      options.digest_timeout = atoi(optarg);
+
+      if (options.digest_timeout == 0)
+      {
+        // If the supplied option is invalid then revert to the
+        // default five minutes
+        options.digest_timeout = 300;
+      }
+
+      LOG_INFO("Digest timeout: %s", optarg);
+      break;
+
+    case HOME_DOMAIN:
+      options.home_domain = std::string(optarg);
+      LOG_INFO("Home domain: %s", optarg);
+      break;
+
+    case SAS_CONFIG:
+    {
+      std::vector<std::string> sas_options;
+      Utils::split_string(std::string(optarg), ',', sas_options, 0, false);
+
+      if ((sas_options.size() == 2) &&
+          !sas_options[0].empty() &&
+          !sas_options[1].empty())
+      {
+        options.sas_server = sas_options[0];
+        options.sas_system_name = sas_options[1];
+        LOG_INFO("SAS set to %s\n", options.sas_server.c_str());
+        LOG_INFO("System name is set to %s\n", options.sas_system_name.c_str());
+      }
+      else
+      {
+        LOG_INFO("Invalid --sas option, SAS disabled\n");
+      }
+    }
+    break;
+
+    case ACCESS_LOG:
+      LOG_INFO("Access log: %s", optarg);
+      options.access_log_enabled = true;
+      options.access_log_directory = std::string(optarg);
+      break;
+
+    case LOG_FILE:
+    case LOG_LEVEL:
+      // Ignore these options - they're handled by init_logging_options
+      break;
+
     case HELP:
       usage();
       return -1;
 
     default:
-      printf("Unknown option: %d.  Run with --help for options.\n", opt);
+      LOG_ERROR("Unknown option. Run with --help for options.\n");
       return -1;
     }
   }
@@ -268,7 +303,7 @@ int main(int argc, char**argv)
   options.log_to_file = false;
   options.log_level = 0;
 
-  if (init_options(argc, argv, options) != 0)
+  if (init_logging_options(argc, argv, options) != 0)
   {
     return 1;
   }
@@ -289,6 +324,25 @@ int main(int argc, char**argv)
     Log::setLogger(new Logger(options.log_directory, prog_name));
   }
 
+  LOG_STATUS("Log level set to %d", options.log_level);
+
+  std::stringstream options_ss;
+
+  for (int ii = 0; ii < argc; ii++)
+  {
+    options_ss << argv[ii];
+    options_ss << " ";
+  }
+
+  std::string options_str = "Command-line options were: " + options_ss.str();
+
+  LOG_INFO(options_str.c_str());
+
+  if (init_options(argc, argv, options) != 0)
+  {
+    return 1;
+  }
+
   AccessLogger* access_logger = NULL;
 
   if (options.access_log_enabled)
@@ -296,8 +350,6 @@ int main(int argc, char**argv)
     LOG_STATUS("Access logging enabled to %s", options.access_log_directory.c_str());
     access_logger = new AccessLogger(options.access_log_directory);
   }
-
-  LOG_STATUS("Log level set to %d", options.log_level);
 
   SAS::init(options.sas_system_name,
             "memento",
