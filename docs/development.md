@@ -7,14 +7,17 @@ below are targetted for (and tested on) this platform.  The code has been
 written to be portable, though, and should compile on other platforms once the
 required dependencies are installed.
 
-Memento is integrated into the Application Server framework provided by Sprout,
-and can be run on the Sprout nodes or as a standalone node.
+Memento consists of two main components, Memento SIP and Memento HTTP. Memento SIP is responsible for processing SIP call traffic, and Memento HTTP presents a Ut-like interface to UEs to allow them to download the call list for their subscriber.
 
-## Building the code
+## Memento (SIP)
 
-Memento is integrated with Sprout, and is built as part of the Sprout [build](https://github.com/Metaswitch/sprout/blob/dev/docs/Development.md).
+Memento (SIP) is integrated into the Application Server framework provided by Sprout,
+and can be run on the Sprout nodes or as a standalone node. Memento (SIP) is built as part of the [Sprout build](https://github.com/Metaswitch/sprout/blob/dev/docs/Development.md).
 
-## Getting the Code
+## Memento (HTTP)
+
+Getting the Code
+----------------
 
 The Memento code is all in the `memento` repository, and its submodules, which
 are in the `modules` subdirectory.
@@ -29,7 +32,8 @@ This accesses the repository over SSH on Github, and will not work unless you ha
     git config --global url."https://github.com/".insteadOf git@github.com:
     git clone --recursive git@github.com:Metaswitch/memento.git
 
-## Building Binaries
+Building Binaries
+-----------------
 
 Note that the first build can take a long time. It takes 10-15 minutes on
 an EC2 m1.small instance.
@@ -47,7 +51,26 @@ dependencies. For fast builds when you've only changed memento code, change to
 the `src` subdirectory below the top-level `memento` directory and then run
 `make`.
 
-## Running Unit Tests
+Building Debian Packages
+------------------------
+
+To build Debian packages, run `make deb`.  On completion, Debian packages
+are in the parent of the top-level `memento` directory.
+
+`make deb` does a full build before building the Debian packages and, even if
+the code is already built, it can take a minute or two to check all the
+dependencies.  If you are sure the code has already been built, you can use
+`make deb-only` to just build the Debian packages without checking the
+binaries.
+
+`make deb` and `make deb-only` can push the resulting binaries to a Debian
+repository server.  To push to a repository server on the build machine, set
+the `REPO_DIR` environment variable to the appropriate path.  To push (via
+scp) to a repository server on a remote machine, also set the `REPO_SERVER`
+environment variable to the user and server name.
+
+Running Unit Tests
+------------------
 
 To run the memento unit test suite, change to the `src` subdirectory below
 the top-level `memento` directory and issue `make test`.

@@ -2,26 +2,16 @@ Memento Overview
 ================
 
 Memento is an IMS application server. It uses the ISC interface for processing SIP call traffic and is invoked by Sprout in the normal fashion using iFCs.
-Memento also exposes an HTTP(S) interface to UEs to allow them to download the call list for their subscriber.
+Memento also exposes an HTTP(S) interface to UEs to allow them to download the call list for their subscriber. This interface is similar to Ut.
 
 SIP Interface
 -------------
 
 Memento acts as a SIP proxy. When it receives an initial INVITE it forwards the INVITE back to Sprout and record-routes itself into the dialog for the call.
 
-Memento writes information about the call to persistent storage (supplied by a cassandra database) for later retrieval by the UE. These call fragments are written when a call begins, when a call ends, and when a call is rejected.
+Memento writes information about the call to persistent storage (supplied by a cassandra database) for later retrieval by the UE. These call list fragments are written when a call begins, when a call ends, and when a call is rejected.
 
-The contents of a call list entry are derived from the SIP signalling:
-
-* The incoming/outgoing flag is derived from the session case on the initial INVITE.
-* The answered/not-answered flag is inferred from the final response to the initial INVITE.
-* The start time of the call is measured from the point the CLA receives the initial INVITE.
-* The answer time of the call is measured from the point the CLA receives the 200 OK to the initial INVITE.
-* The end time of the call is measured from the point the CLA receives the BYE.
-* The caller's URI/name from the P-Asserted-Identity header for originating calls and the From header for terminating calls.
-* The callee's URI/name from the To header for originating calls and the Request URI for terminating calls.
-
-An example call list fragment (for a rejected call is):
+The contents of a call list entry are derived from the SIP signalling, and an example call list fragment (for a rejected call is):
 
 ```
 <to>
@@ -37,7 +27,7 @@ An example call list fragment (for a rejected call is):
 <start-time>2002-05-30T09:30:10</start-time>
 ```
 
-Any other mid-call messages are simply forwarded according to their route header (for a request) or via headers (for a response). If Memento receives an initial request other than an INVITE, it simply forwards the request back to Sprout and does not record-route itself.
+Apart from INVITEa and BYEs, any other mid-call messages are simply forwarded according to their route header (for a request) or via headers (for a response). If Memento receives an initial request other than an INVITE, it simply forwards the request back to Sprout and does not record-route itself.
 
 HTTP Interface
 --------------
@@ -88,13 +78,11 @@ If there are entries, Memento will create an XML document containing complete ca
 </call-list>
 ```
 
-If there are no entries, Memento will respond with an empty call list, e.g.:
+If there are no entries, Memento will respond with an empty call list, i.e.:
 
     <call-list><calls></calls></call-list>
 
 Memento supports gzip compression of the call list document, and will compress it in the HTTP response if the requesting client indicates it is willing to accept gzip encoding.
-
-Memento also uses Nginx to act as a SSL gateway.
 
 Configuration
 -------------
@@ -122,11 +110,11 @@ An example IFC is:
 
 There are also five deployment wide configuration options. These should be set in /etc/clearwater/config:
 
-* `memento_enabled`: This determines whether the Memento application server is enabled.
-* `max_call_list_length`: This determines the maximum number of complete calls a subscriber can have in the call list store.
-* `call_list_store_ttl`: This determines how long each entry should be kept in the call list store.
-* `memento_threads`: This determines the number of threads dedicated to adding call list fragments to the call list store
-* `memento_disk_limit`: This determines the maximum size that the call lists database may occupy.
+* `memento_enabled`: This determines whether the Memento application server is enabled. This defaults to false.
+* `max_call_list_length`: This determines the maximum number of complete calls a subscriber can have in the call list store. This defaults to no limit.
+* `call_list_store_ttl`: This determines how long each call list fragment should be kept in the call list store. This defaults to 604800 seconds (1 week).
+* `memento_threads`: This determines the number of threads dedicated to adding call list fragments to the call list store. This defaults to 25 threads
+* `memento_disk_limit`: This determines the maximum size that the call lists database may occupy. This defaults to 20% of disk space.
 
 Scalability
 -----------
