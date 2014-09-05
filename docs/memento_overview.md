@@ -27,7 +27,7 @@ The contents of a call list entry are derived from the SIP signalling, and an ex
 <start-time>2002-05-30T09:30:10</start-time>
 ```
 
-Apart from INVITEa and BYEs, any other mid-call messages are simply forwarded according to their route header (for a request) or via headers (for a response). If Memento receives an initial request other than an INVITE, it simply forwards the request back to Sprout and does not record-route itself.
+Apart from INVITEs and BYEs, any other mid-call messages are simply forwarded according to their route header (for a request) or via headers (for a response). If Memento receives an initial request other than an INVITE, it simply forwards the request back to Sprout and does not record-route itself.
 
 HTTP Interface
 --------------
@@ -102,7 +102,7 @@ An example IFC is:
     <Extension></Extension>
   </SPT>
   </TriggerPoint>
-  <ApplicationServer><ServerName>sip:memento.cw-ngv.com</ServerName>
+  <ApplicationServer><ServerName>sip:memento@memento.cw-ngv.com</ServerName>
     <DefaultHandling>0</DefaultHandling>
   </ApplicationServer>
 </InitialFilterCriteria>
