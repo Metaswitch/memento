@@ -239,6 +239,11 @@ string MementoAS::Message::get_response()
 using MementoAS::Message;
 
 std::string get_formatted_timestamp();
+void add_header(pjsip_routing_hdr* header, pj_str_t header_name, char* uri, pj_pool_t* pool);
+void add_parameter(pjsip_routing_hdr* header,
+                   pj_str_t param_name,
+                   pj_str_t param_value,
+                   pj_pool_t* pool);
 
 // Test creation and destruction of the MementoAppServer objects
 TEST_F(MementoAppServerTest, CreateMementoAppServer)
@@ -317,23 +322,20 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
   std::string home_domain = "home.domain";
   MementoAppServerTsx as_tsx(_helper, _clsp, service_name, home_domain);
 
-  // Message is parsed successfully.
-  msg._route = "Route: <sip:homedomain>\r\nRoute: <sip:homedomain;orig>";
   pjsip_msg* req = parse_msg(msg.get_request());
 
   // Add a P-Asserted _Identity header.
   void* mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
   pjsip_routing_hdr* p_asserted_id = (pjsip_routing_hdr*)mem;
-  pj_list_init(p_asserted_id);
-  p_asserted_id->type = PJSIP_H_OTHER;
-  p_asserted_id->name = pj_str("P-Asserted-Identity");
-  p_asserted_id->sname = pj_str("");
-  pjsip_name_addr_init(&p_asserted_id->name_addr);
-  pj_list_init(&p_asserted_id->other_param);
-
-  pjsip_name_addr* temp = (pjsip_name_addr*)uri_from_string("Alice <sip:6505550000@homedomain>", _pool, true);
-  memcpy(&p_asserted_id->name_addr, temp, sizeof(pjsip_name_addr));
+  add_header(p_asserted_id, pj_str("P-Asserted-Identity"), "Alice <sip:6505550000@homedomain>", _pool);
   pjsip_msg_add_hdr(req, (pjsip_hdr*)p_asserted_id);
+
+  // Add a P-Served-User header.
+  mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  pjsip_routing_hdr* p_served_user = (pjsip_routing_hdr*)mem;
+  add_header(p_served_user, pj_str("P-Served-User"), "<sip:6505551234@homedomain>", _pool);
+  add_parameter(p_served_user, pj_str("sescase"), pj_str("orig"), _pool);
+  pjsip_msg_add_hdr(req, (pjsip_hdr*)p_served_user);
 
   EXPECT_CALL(*_helper, add_to_dialog(_));
   EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
@@ -355,7 +357,7 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
   as_tsx.on_response(rsp, 0);
 }
 
-// Test the mainline case for an outgoing call
+// Test when the P Asserted ID is missing
 TEST_F(MementoAppServerTest, OutgoingMissingPAssertedHeaderTest)
 {
   Message msg;
@@ -363,10 +365,17 @@ TEST_F(MementoAppServerTest, OutgoingMissingPAssertedHeaderTest)
   std::string home_domain = "home.domain";
   MementoAppServerTsx as_tsx(_helper, _clsp, service_name, home_domain);
 
+  // Add a P-Served-User header.
+  pjsip_msg* req = parse_msg(msg.get_request());
+  void* mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  pjsip_routing_hdr* p_served_user = (pjsip_routing_hdr*)mem;
+  add_header(p_served_user, pj_str("P-Served-User"), "<sip:6505551234@homedomain>", _pool);
+  add_parameter(p_served_user, pj_str("sescase"), pj_str("orig"), _pool);
+  pjsip_msg_add_hdr(req, (pjsip_hdr*)p_served_user);
+
   // Message is parsed and rejected.
-  msg._route = "Route: <sip:homedomain;orig>";
   EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
-  as_tsx.on_initial_request(parse_msg(msg.get_request()));
+  as_tsx.on_initial_request(req);
 }
 
 // Test that a non final response doesn't trigger writes to cassandra
@@ -492,4 +501,28 @@ std::string get_formatted_timestamp()
   time(&currenttime);
   tm* ct = localtime(&currenttime);
   return create_formatted_timestamp(ct, "%Y-%m-%dT%H:%M:%S");
+}
+
+void add_header(pjsip_routing_hdr* header, pj_str_t header_name, char* uri, pj_pool_t* pool)
+{
+  pj_list_init(header);
+  header->type = PJSIP_H_OTHER;
+  header->name = header_name;
+  header->sname = pj_str("");
+  pjsip_name_addr_init(&header->name_addr);
+  pj_list_init(&header->other_param);
+
+  pjsip_name_addr* temp = (pjsip_name_addr*)uri_from_string(uri, pool, true);
+  memcpy(&header->name_addr, temp, sizeof(pjsip_name_addr));
+}
+
+void add_parameter(pjsip_routing_hdr* header,
+                   pj_str_t param_name,
+                   pj_str_t param_value,
+                   pj_pool_t* pool)
+{
+  pjsip_param* param = PJ_POOL_ALLOC_T(pool, pjsip_param);
+  param->name = param_name;
+  param->value = param_value;
+  pj_list_insert_before(&header->other_param, param);
 }

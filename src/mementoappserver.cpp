@@ -54,7 +54,9 @@ static const char* TIMESTAMP_PATTERN = "%Y%m%d%H%M%S";
 static const char* XML_PATTERN = "%Y-%m-%dT%H:%M:%S";
 
 static const pj_str_t ORIG = pj_str((char*)"orig");
+static const pj_str_t P_SERVED_USER = pj_str((char*)"P-Served-User");
 static const pj_str_t P_ASSERTED_IDENTITY = pj_str((char*)"P-Asserted-Identity");
+static const pj_str_t SESCASE = pj_str((char*)"sescase");
 
 // Constants to create the Call list XML
 namespace MementoXML
@@ -173,24 +175,24 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
   _start_time_cassandra = create_formatted_timestamp(start_time, TIMESTAMP_PATTERN);
 
   // Is the call originating or terminating?
-  pjsip_route_hdr* hroute = (pjsip_route_hdr*)pjsip_msg_find_hdr(req,
-                                                                 PJSIP_H_ROUTE,
-                                                                 NULL);
+  std::string served_user;
+  pjsip_routing_hdr* psu_hdr = (pjsip_routing_hdr*)
+                     pjsip_msg_find_hdr_by_name(req, &P_SERVED_USER, NULL);
 
-  while (hroute)
+  if (psu_hdr != NULL)
   {
-    pjsip_sip_uri* uri = (pjsip_sip_uri*)hroute->name_addr.uri;
-    pjsip_param* orig_param = pjsip_param_find(&uri->other_param, &ORIG);
-    _outgoing = (orig_param != NULL);
+    pjsip_uri* uri = (pjsip_uri*)pjsip_uri_get_uri(&psu_hdr->name_addr);
+    served_user = uri_to_string(PJSIP_URI_IN_ROUTING_HDR, uri);
 
-    if (_outgoing)
+    pjsip_param* sescase = pjsip_param_find(&psu_hdr->other_param, &SESCASE);
+
+    if ((sescase != NULL) &&
+        (pj_stricmp(&sescase->value, &ORIG) == 0))
     {
-      break;
-    }
+      LOG_DEBUG("Request is originating");
 
-    hroute = (pjsip_route_hdr*)pjsip_msg_find_hdr(req,
-                                                  PJSIP_H_ROUTE,
-                                                  hroute->next);
+      _outgoing = true;
+    }
   }
 
   // Get the caller, callee and impu values
