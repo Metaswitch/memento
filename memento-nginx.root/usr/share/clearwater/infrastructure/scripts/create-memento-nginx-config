@@ -54,7 +54,7 @@ upstream http_backend {
 }
 
 server {
-        listen       443;
+        listen       [::]:443 ipv6only=off;
         server_name  $memento_hostname;
 
         ssl                  on;
@@ -93,7 +93,9 @@ server {
 }
 
 server {
-        listen      80;
+        # No ipv6only=off needed - it's covered by the listen
+        # declaration for port 80 in ./ping
+        listen       [::]:80;
         server_name $memento_hostname;
         return 301 https://\$host\$request_uri;
 }
