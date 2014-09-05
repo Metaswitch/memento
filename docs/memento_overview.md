@@ -87,7 +87,7 @@ Memento supports gzip compression of the call list document, and will compress i
 Configuration
 -------------
 
-Memento is configured for a subscriber in their IFCs, and is registered as a general AS for INVITE requests.
+Memento is configured for a subscriber in their IFCs, and is registered as a general AS for INVITE requests. The application server name should be set to `memento` @ the cluster of nodes running the Memento application servers (which will be the Sprout cluster, or a standalone application server cluster). 
 
 An example IFC is:
 
