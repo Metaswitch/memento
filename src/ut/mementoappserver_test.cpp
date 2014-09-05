@@ -357,7 +357,7 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
   as_tsx.on_response(rsp, 0);
 }
 
-// Test the mainline case for an outgoing call
+// Test when the P Asserted ID is missing
 TEST_F(MementoAppServerTest, OutgoingMissingPAssertedHeaderTest)
 {
   Message msg;
