@@ -178,7 +178,7 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
     ev.add_static_param(_fragment.type);
     ev.add_var_param(_impu);
     ev.add_var_param(_fragment.timestamp);
-    ev.add_var_param(_fragment.contents);
+    ev.add_compressed_param(_fragment.contents);
     SAS::report_event(ev);
   }
 
