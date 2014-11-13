@@ -53,7 +53,12 @@ set -e
 
 case "$1" in
     configure)
+        # Restart clearwater-infrastructure to run the script that creates the
+        # Memento site.
         service clearwater-infrastructure restart
+
+        # Enable the new Memento site
+        nginx_ensite memento
         service nginx reload
     ;;
 
