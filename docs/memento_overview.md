@@ -108,9 +108,8 @@ An example IFC is:
 </InitialFilterCriteria>
 ```
 
-There are also five deployment wide configuration options. These should be set in /etc/clearwater/config:
+There are also four deployment wide configuration options. These should be set in /etc/clearwater/config:
 
-* `memento_enabled`: This determines whether the Memento application server is enabled. This defaults to false.
 * `max_call_list_length`: This determines the maximum number of complete calls a subscriber can have in the call list store. This defaults to no limit.
 * `call_list_store_ttl`: This determines how long each call list fragment should be kept in the call list store. This defaults to 604800 seconds (1 week).
 * `memento_threads`: This determines the number of threads dedicated to adding call list fragments to the call list store. This defaults to 25 threads
