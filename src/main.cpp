@@ -282,6 +282,7 @@ void exception_handler(int sig)
 }
 
 const static std::string known_stats[] = {
+  "connected_homesteads",
   "auth_challenges",
   "auth_attempts",
   "auth_successes",
