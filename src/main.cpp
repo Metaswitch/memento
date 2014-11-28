@@ -281,6 +281,21 @@ void exception_handler(int sig)
   abort();
 }
 
+const static std::string known_stats[] = {
+  "auth_challenges",
+  "auth_attempts",
+  "auth_successes",
+  "auth_failures",
+  "auth_stales",
+  "cassandra_read_latency",
+  "record_size",
+  "record_length",
+};
+
+const static std::string MEMENTO_ZMQ_PORT = "6671";
+
+const static int num_known_stats = sizeof(known_stats) / sizeof(std::string);
+
 int main(int argc, char**argv)
 {
   // Set up our exception signal handler for asserts and segfaults.
@@ -372,6 +387,10 @@ int main(int argc, char**argv)
                                               10.0, // Initial token fill rate (per sec).
                                               10.0); // Minimum token fill rate (pre sec).
 
+  LastValueCache* stats_aggregator = new LastValueCache(num_known_stats,
+                                                        known_stats,
+                                                        MEMENTO_ZMQ_PORT);
+
   // Create a DNS resolver and an HTTP specific resolver.
   int af = AF_INET;
   struct in6_addr dummy_addr;
@@ -383,8 +402,10 @@ int main(int argc, char**argv)
 
   DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
-  HomesteadConnection* homestead_conn =
-    new HomesteadConnection(options.homestead_http_name, http_resolver);
+  HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name,
+                                                                http_resolver,
+                                                                load_monitor,
+                                                                stats_aggregator);
 
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
@@ -400,7 +421,7 @@ int main(int argc, char**argv)
 
   HttpStack* http_stack = HttpStack::get_instance();
 
-  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain);
+  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator);
 
   MementoSasLogger sas_logger;
   HttpStackUtils::PingHandler ping_handler;

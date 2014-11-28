@@ -47,10 +47,14 @@ class HomesteadConnection
 {
 public:
   /// Constructor.
-  /// @param server     The homestead cluster name to use.
-  /// @param resolver   HTTP resolver to use to query homestead.
+  /// @param server           The homestead cluster name to use.
+  /// @param resolver         HTTP resolver to use to query homestead.
+  /// @param load_monitor     Load monitor monitoring these requests.
+  /// @param stats_aggregator Statistics aggregator.
   HomesteadConnection(const std::string& server,
-                      HttpResolver* resolver);
+                      HttpResolver* resolver,
+                      LoadMonitor *load_monitor,
+                      LastValueCache *stats_aggregator);
 
   /// Destructor
   virtual ~HomesteadConnection();
