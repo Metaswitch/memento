@@ -41,12 +41,13 @@
 #include "rapidjson/stringbuffer.h"
 
 HomesteadConnection::HomesteadConnection(const std::string& server,
-                                         HttpResolver* resolver) :
+                                         HttpResolver* resolver,
+                                         CommunicationMonitor* comm_monitor) :
   _http(new HttpConnection(server,
                            false,
                            resolver,
                            SASEvent::HttpLogLevel::PROTOCOL,
-                           NULL))
+                           comm_monitor))
 {
 }
 

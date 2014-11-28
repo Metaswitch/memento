@@ -48,6 +48,8 @@
 #include "handlers.h"
 #include "sas.h"
 #include "load_monitor.h"
+#include "alarmdefinition.h"
+#include "communicationmonitor.h"
 #include "authstore.h"
 #include "mementosaslogger.h"
 
@@ -364,7 +366,20 @@ int main(int argc, char**argv)
   seed = time(NULL) ^ getpid();
   srand(seed);
 
-  MemcachedStore* m_store = new MemcachedStore(false, "./cluster_settings", NULL, NULL);
+  // Create alarm and communication monitor objects for the conditions
+  // reported by memento.
+  Alarm* mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
+  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm);
+  Alarm* mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
+  Alarm* hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
+  CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm);
+  Alarm* cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
+  CommunicationMonitor* cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm);
+
+  MemcachedStore* m_store = new MemcachedStore(false,
+                                               "./cluster_settings",
+                                               mc_comm_monitor,
+                                               mc_vbucket_alarm);
   AuthStore* auth_store = new AuthStore(m_store, options.digest_timeout);
 
   LoadMonitor* load_monitor = new LoadMonitor(100000, // Initial target latency (us)
@@ -384,12 +399,14 @@ int main(int argc, char**argv)
   DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
   HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
   HomesteadConnection* homestead_conn =
-    new HomesteadConnection(options.homestead_http_name, http_resolver);
+                          new HomesteadConnection(options.homestead_http_name,
+                                                  http_resolver,
+                                                  hs_comm_monitor);
 
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
   call_list_store->initialize();
-  call_list_store->configure("localhost", 9160);
+  call_list_store->configure("localhost", 9160, 0, 0, cass_comm_monitor);
   CassandraStore::ResultCode store_rc = call_list_store->start();
 
   if (store_rc != CassandraStore::OK)
@@ -451,6 +468,13 @@ int main(int argc, char**argv)
   delete auth_store; auth_store = NULL;
   delete call_list_store; call_list_store = NULL;
   delete m_store; m_store = NULL;
+  delete mc_comm_monitor; mc_comm_monitor = NULL;
+  delete mc_comm_alarm; mc_comm_alarm = NULL;
+  delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
+  delete hs_comm_monitor; hs_comm_monitor = NULL;
+  delete hs_comm_alarm; hs_comm_alarm = NULL;
+  delete cass_comm_monitor; cass_comm_monitor = NULL;
+  delete cass_comm_alarm; cass_comm_alarm = NULL;
 
   SAS::term();
 
