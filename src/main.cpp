@@ -282,6 +282,9 @@ void exception_handler(int sig)
 }
 
 const static std::string known_stats[] = {
+  "http_latency_us",
+  "http_incoming_requests",
+  "http_rejected_overload",
   "connected_homesteads",
   "auth_challenges",
   "auth_attempts",
@@ -421,6 +424,7 @@ int main(int argc, char**argv)
   }
 
   HttpStack* http_stack = HttpStack::get_instance();
+  HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
 
   CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator);
 
@@ -436,7 +440,8 @@ int main(int argc, char**argv)
                           options.http_port,
                           options.http_threads,
                           access_logger,
-                          load_monitor);
+                          load_monitor,
+                          &stats_manager);
     http_stack->register_handler("^/ping$", &ping_handler);
     http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
                                     pool.wrap(&call_list_handler));
