@@ -41,7 +41,10 @@ TARGET_SOURCES := localstore.cpp \
                   call_list_store_processor.cpp \
                   mementoappserver.cpp \
                   base64.cpp \
-                  unique.cpp
+                  unique.cpp \
+                  zmq_lvc.cpp \
+                  counter.cpp \
+                  accumulator.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 

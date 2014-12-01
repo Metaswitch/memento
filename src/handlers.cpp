@@ -87,6 +87,9 @@ void CallListTask::run()
 
 void CallListTask::respond_when_authenticated()
 {
+  Utils::StopWatch stop_watch;
+  stop_watch.start();
+
   std::vector<CallListStore::CallFragment> records;
   CassandraStore::ResultCode db_rc =
     _cfg->_call_list_store->get_call_fragments_sync(_impu, records, trail());
@@ -105,6 +108,13 @@ void CallListTask::respond_when_authenticated()
     return;
   }
 
+  // Update the latency statistics.
+  unsigned long latency_us = 0;
+  if (stop_watch.read(latency_us))
+  {
+    _cfg->_stat_cassandra_read_latency->accumulate(latency_us);
+  }
+
   SAS::Event db_event(trail(), SASEvent::CALL_LIST_DB_RETRIEVAL_SUCCESS, 0);
   db_event.add_static_param(records.size());
   db_event.add_var_param(_impu);
@@ -114,6 +124,10 @@ void CallListTask::respond_when_authenticated()
   std::string calllists = xml_from_call_records(records, trail());
   _req.add_header("Content-Type", "application/vnd.projectclearwater.call-list+xml");
   _req.add_content(calllists);
+
+  // Update statistics about the size and number of records in the result.
+  _cfg->_stat_record_size->accumulate(calllists.length());
+  _cfg->_stat_record_length->accumulate(records.size());
 
   SAS::Event tx_event(trail(), SASEvent::CALL_LIST_RSP_TX, 0);
   tx_event.add_var_param(_impu);

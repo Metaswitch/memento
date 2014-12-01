@@ -41,10 +41,20 @@
 
 HTTPDigestAuthenticate::HTTPDigestAuthenticate(AuthStore* auth_store,
                                                HomesteadConnection* homestead_conn,
-                                               std::string home_domain) :
+                                               std::string home_domain,
+                                               StatisticCounter* stat_auth_challenge_count,
+                                               StatisticCounter* stat_auth_attempt_count,
+                                               StatisticCounter* stat_auth_success_count,
+                                               StatisticCounter* stat_auth_failure_count,
+                                               StatisticCounter* stat_auth_stale_count) :
   _auth_store(auth_store),
   _homestead_conn(homestead_conn),
-  _home_domain(home_domain)
+  _home_domain(home_domain),
+  _stat_auth_challenge_count(stat_auth_challenge_count),
+  _stat_auth_attempt_count(stat_auth_attempt_count),
+  _stat_auth_success_count(stat_auth_success_count),
+  _stat_auth_failure_count(stat_auth_failure_count),
+  _stat_auth_stale_count(stat_auth_stale_count)
 {
 }
 
@@ -266,6 +276,8 @@ HTTPCode HTTPDigestAuthenticate::retrieve_digest_from_store(std::string& www_aut
   LOG_DEBUG("Retrieve digest for IMPU: %s, IMPI: %s", _impu.c_str(), _impi.c_str());
   HTTPCode rc = HTTP_OK;
 
+  _stat_auth_attempt_count->increment();
+
   AuthStore::Digest* digest;
   bool success = _auth_store->get_digest(_impi, response->_nonce, digest, _trail);
 
@@ -313,6 +325,16 @@ HTTPCode HTTPDigestAuthenticate::request_digest_and_store(std::string& www_auth_
 
     if (success)
     {
+      // Update statistics - either stale or (initial) challenge.
+      if (include_stale)
+      {
+        _stat_auth_stale_count->increment();
+      }
+      else
+      {
+        _stat_auth_challenge_count->increment();
+      }
+
       // Create the WWW-Authenticate header
       generate_www_auth_header(www_auth_header, include_stale, digest);
       rc = HTTP_UNAUTHORIZED;
@@ -420,6 +442,8 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
       _auth_store->set_digest(_impi, digest->_nonce, digest, _trail);
       SAS::Event event(_trail, SASEvent::AUTHENTICATION_ACCEPTED, 0);
       SAS::report_event(event);
+
+      _stat_auth_success_count->increment();
     }
   }
   else
@@ -428,6 +452,8 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
     LOG_DEBUG("Client response doesn't match stored digest");
     SAS::Event event(_trail, SASEvent::AUTHENTICATION_REJECTED, 0);
     SAS::report_event(event);
+
+    _stat_auth_failure_count->increment();
 
     rc = HTTP_FORBIDDEN;
   }

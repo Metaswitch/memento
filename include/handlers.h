@@ -44,6 +44,8 @@
 #include "homesteadconnection.h"
 #include "httpdigestauthenticate.h"
 #include "call_list_store.h"
+#include "counter.h"
+#include "accumulator.h"
 
 class CallListTask : public HttpStackUtils::Task
 {
@@ -53,16 +55,55 @@ public:
     Config(AuthStore* auth_store,
            HomesteadConnection* homestead_conn,
            CallListStore::Store* call_list_store,
-           std::string home_domain) :
+           std::string home_domain,
+           LastValueCache* stats_aggregator) :
       _auth_store(auth_store),
       _homestead_conn(homestead_conn),
       _call_list_store(call_list_store),
       _home_domain(home_domain)
-      {}
+    {
+      _stat_auth_challenge_count = new StatisticCounter("auth_challenges",
+                                                        stats_aggregator);
+      _stat_auth_attempt_count = new StatisticCounter("auth_attempts",
+                                                      stats_aggregator);
+      _stat_auth_success_count = new StatisticCounter("auth_successes",
+                                                      stats_aggregator);
+      _stat_auth_failure_count = new StatisticCounter("auth_failures",
+                                                      stats_aggregator);
+      _stat_auth_stale_count = new StatisticCounter("auth_stales",
+                                                    stats_aggregator);
+      _stat_cassandra_read_latency = new StatisticAccumulator("cassandra_read_latency",
+                                                              stats_aggregator);
+      _stat_record_size = new StatisticAccumulator("record_size",
+                                                   stats_aggregator);
+      _stat_record_length = new StatisticAccumulator("record_length",
+                                                     stats_aggregator);
+    }
+
+    ~Config()
+    {
+      delete _stat_auth_challenge_count;
+      delete _stat_auth_attempt_count;
+      delete _stat_auth_success_count;
+      delete _stat_auth_failure_count;
+      delete _stat_auth_stale_count;
+      delete _stat_cassandra_read_latency;
+      delete _stat_record_size;
+      delete _stat_record_length;
+    }
+
     AuthStore* _auth_store;
     HomesteadConnection* _homestead_conn;
     CallListStore::Store* _call_list_store;
     std::string _home_domain;
+    StatisticCounter* _stat_auth_challenge_count;
+    StatisticCounter* _stat_auth_attempt_count;
+    StatisticCounter* _stat_auth_success_count;
+    StatisticCounter* _stat_auth_failure_count;
+    StatisticCounter* _stat_auth_stale_count;
+    StatisticAccumulator* _stat_cassandra_read_latency;
+    StatisticAccumulator* _stat_record_size;
+    StatisticAccumulator* _stat_record_length;
   };
 
   CallListTask(HttpStack::Request& req,
@@ -72,7 +113,12 @@ public:
     _cfg(cfg),
     _auth_mod(new HTTPDigestAuthenticate(_cfg->_auth_store,
                                          _cfg->_homestead_conn,
-                                         _cfg->_home_domain))
+                                         _cfg->_home_domain,
+                                         _cfg->_stat_auth_challenge_count,
+                                         _cfg->_stat_auth_attempt_count,
+                                         _cfg->_stat_auth_success_count,
+                                         _cfg->_stat_auth_failure_count,
+                                         _cfg->_stat_auth_stale_count))
   {};
 
   ~CallListTask()

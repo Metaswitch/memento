@@ -41,6 +41,7 @@
 #include "httpconnection.h"
 #include "homesteadconnection.h"
 #include "authstore.h"
+#include "counter.h"
 
 class HTTPDigestAuthenticate
 {
@@ -83,9 +84,15 @@ public:
   /// @param auth_store      A pointer to the auth store.
   /// @param homestead_conn  A pointer to the homestead connection object
   /// @param home_domain     Home domain of the deployment
+  /// @param stat_*          Statistics
   HTTPDigestAuthenticate(AuthStore *auth_store,
                          HomesteadConnection *homestead_conn,
-                         std::string home_domain);
+                         std::string home_domain,
+                         StatisticCounter* stat_auth_challenge_count,
+                         StatisticCounter* stat_auth_attempt_count,
+                         StatisticCounter* stat_auth_success_count,
+                         StatisticCounter* stat_auth_failure_count,
+                         StatisticCounter* stat_auth_stale_count);
 
   /// Destructor.
   virtual ~HTTPDigestAuthenticate();
@@ -155,6 +162,12 @@ private:
   AuthStore* _auth_store;
   HomesteadConnection* _homestead_conn;
   std::string _home_domain;
+
+  StatisticCounter* _stat_auth_challenge_count;
+  StatisticCounter* _stat_auth_attempt_count;
+  StatisticCounter* _stat_auth_success_count;
+  StatisticCounter* _stat_auth_failure_count;
+  StatisticCounter* _stat_auth_stale_count;
 
   std::string _impu;
   SAS::TrailId _trail;

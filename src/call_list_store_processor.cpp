@@ -40,12 +40,18 @@ CallListStoreProcessor::CallListStoreProcessor(LoadMonitor* load_monitor,
                                                CallListStore::Store* call_list_store,
                                                const int max_call_list_length,
                                                const int memento_threads,
-                                               const int call_list_ttl) :
-  _thread_pool(new Pool(call_list_store,
+                                               const int call_list_ttl,
+                                               LastValueCache* stats_aggregator) :
+  _thread_pool(new Pool(this,
+                        call_list_store,
                         load_monitor,
                         max_call_list_length,
                         call_list_ttl,
-                        memento_threads))
+                        memento_threads)),
+  _stat_completed_calls_recorded("memento_completed_calls", stats_aggregator),
+  _stat_failed_calls_recorded("memento_failed_calls", stats_aggregator),
+  _stat_cassandra_read_latency("memento_cassandra_read_latency", stats_aggregator),
+  _stat_cassandra_write_latency("memento_cassandra_write_latency", stats_aggregator)
 {
   _thread_pool->start();
 }
@@ -101,6 +107,10 @@ void CallListStoreProcessor::Pool::process_work(
   // Create the cassandra timestamp
   uint64_t cass_timestamp = CallListStore::Store::generate_timestamp();
 
+  unsigned long latency_us;
+  Utils::StopWatch stop_watch;
+  stop_watch.start();
+
   CassandraStore::ResultCode rc = _call_list_store->write_call_fragment_sync(
                                                     clr->impu,
                                                     call_fragment,
@@ -108,9 +118,25 @@ void CallListStoreProcessor::Pool::process_work(
                                                     _call_list_ttl,
                                                     clr->trail);
 
-
   if (rc == CassandraStore::OK)
   {
+    // Record the latency.
+    latency_us = 0;
+    if (stop_watch.read(latency_us))
+    {
+      _call_list_store_proc->_stat_cassandra_write_latency.accumulate(latency_us);
+    }
+
+    // Record that we have successfully written a call record.
+    if (clr->type == CallListStore::CallFragment::Type::END)
+    {
+      _call_list_store_proc->_stat_completed_calls_recorded.increment();
+    }
+    else if (clr->type == CallListStore::CallFragment::Type::REJECTED)
+    {
+      _call_list_store_proc->_stat_failed_calls_recorded.increment();
+    }
+
     // Reduce the number of stored calls (if necessary)
     std::vector<CallListStore::CallFragment> records_to_delete;
 
@@ -127,8 +153,7 @@ void CallListStoreProcessor::Pool::process_work(
   }
 
   // Record the latency of the request
-  unsigned long latency_us = 0;
-
+  latency_us = 0;
   if (clr->stop_watch.read(latency_us))
   {
     LOG_DEBUG("Request latency = %ldus", latency_us);
@@ -195,6 +220,9 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(
 
   bool call_trim_needed = false;
 
+  Utils::StopWatch stop_watch;
+  stop_watch.start();
+
   std::vector<CallListStore::CallFragment> records;
   CassandraStore::ResultCode rc = _call_list_store->get_call_fragments_sync(impu,
                                                                             records,
@@ -202,6 +230,13 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(
 
   if (rc == CassandraStore::OK)
   {
+    // Record the latency.
+    unsigned long latency_us = 0;
+    if (stop_watch.read(latency_us))
+    {
+      _call_list_store_proc->_stat_cassandra_read_latency.accumulate(latency_us);
+    }
+
     // Call records successfully retrieved. Count how many BEGIN and
     // REJECTED entries there are (don't include END as this would double
     // count successful calls)
@@ -250,7 +285,8 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(
   return call_trim_needed;
 }
 
-CallListStoreProcessor::Pool::Pool(CallListStore::Store* call_list_store,
+CallListStoreProcessor::Pool::Pool(CallListStoreProcessor* call_list_store_processor,
+                                   CallListStore::Store* call_list_store,
                                    LoadMonitor* load_monitor,
                                    const int max_call_list_length,
                                    const int call_list_ttl,
@@ -260,7 +296,8 @@ CallListStoreProcessor::Pool::Pool(CallListStore::Store* call_list_store,
   _call_list_store(call_list_store),
   _load_monitor(load_monitor),
   _max_call_list_length(max_call_list_length),
-  _call_list_ttl(call_list_ttl)
+  _call_list_ttl(call_list_ttl),
+  _call_list_store_proc(call_list_store_processor)
 {}
 
 

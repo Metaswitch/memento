@@ -42,6 +42,8 @@
 #include "load_monitor.h"
 #include "sas.h"
 #include "mementosasevent.h"
+#include "counter.h"
+#include "accumulator.h"
 
 class CallListStoreProcessor
 {
@@ -51,7 +53,8 @@ public:
                          CallListStore::Store* call_list_store,
                          const int max_call_list_length,
                          const int memento_thread,
-                         const int call_list_ttl);
+                         const int call_list_ttl,
+                         LastValueCache* stats_aggregator);
 
   /// Destructor
   ~CallListStoreProcessor();
@@ -91,13 +94,15 @@ private:
   {
   public:
     /// Constructor.
+    /// @param call_list_store_proc Parent call list store processor.
     /// @param call_list_store      A pointer to the underlying call list store.
     /// @param load_monitor         A pointer to the load monitor.
     /// @param max_call_list_length Maximum number of complete calls to store
     /// @param call_list_ttl        TTL of call list store entries.
     /// @param num_threads          Number of memento worker threads to start
     /// @param max_queue            Max queue size to allow.
-    Pool(CallListStore::Store* call_list_store,
+    Pool(CallListStoreProcessor* call_list_store_proc,
+         CallListStore::Store* call_list_store,
          LoadMonitor* load_monitor,
          const int max_call_list_length,
          const int call_list_ttl,
@@ -142,12 +147,21 @@ private:
 
     /// Time to store calls in Cassandra.
     int _call_list_ttl;
+
+    /// Parent call list store processor.
+    CallListStoreProcessor* _call_list_store_proc;
   };
 
   friend class Pool;
 
   ///  Thread pool
   Pool* _thread_pool;
+
+  // Statistics.
+  StatisticCounter _stat_completed_calls_recorded;
+  StatisticCounter _stat_failed_calls_recorded;
+  StatisticAccumulator _stat_cassandra_read_latency;
+  StatisticAccumulator _stat_cassandra_write_latency;
 };
 
 #endif

@@ -34,17 +34,11 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-# Constants
-MEMENTO_DATA_DIR=/var/lib/cassandra/data/memento
+. /usr/share/clearwater/bin/memento-disk-usage-functions
 
 # Utility function for accessing the logger
 function log() {
   logger -s -p cron.$1 -t "Memento Disk Usage" "$2"
-}
-
-# Calculate the current disk usage in kilobytes
-function get_current_use() {
-  du -sk $MEMENTO_DATA_DIR | cut -f 1
 }
 
 # Load global settings
@@ -55,11 +49,11 @@ then
   memento_disk_limit="20%"
 fi
 
-# Calcualte the total disk available in kilobytes
-total_avail=$(df -kP $MEMENTO_DATA_DIR | sed -n 2p | awk '{print($2)}')
+# Calculate the total disk available in kilobytes
+total_avail=$(memento_get_total_avail)
 
 # Retrieve the current usage
-current_use=$(get_current_use)
+current_use=$(memento_get_current_use)
 
 # Parse out the units from the config file's value
 unit=${memento_disk_limit: -1} # The last character
@@ -110,7 +104,7 @@ then
   nodetool clearsnapshot memento
 
   # Recheck usage
-  current_use=$(get_current_use)
+  current_use=$(memento_get_current_use)
 
   log info "After deleting snapshots: current_use = ${current_use}k, limit = ${max_use}k"
 
@@ -122,7 +116,10 @@ then
     nodetool clearsnapshot memento
   fi
 
-  current_use=$(get_current_use)
+  current_use=$(memento_get_current_use)
 
   log info "New disk usage is ${current_use}k"
 fi
+
+# Update the temporary file containing the current usage
+echo $current_use > $MEMENTO_DISK_USAGE_FILE
