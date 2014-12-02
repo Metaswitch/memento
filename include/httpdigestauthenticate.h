@@ -88,11 +88,11 @@ public:
   HTTPDigestAuthenticate(AuthStore *auth_store,
                          HomesteadConnection *homestead_conn,
                          std::string home_domain,
-                         StatisticCounter* stat_auth_challenge_count,
-                         StatisticCounter* stat_auth_attempt_count,
-                         StatisticCounter* stat_auth_success_count,
-                         StatisticCounter* stat_auth_failure_count,
-                         StatisticCounter* stat_auth_stale_count);
+                         Counter* stat_auth_challenge_count,
+                         Counter* stat_auth_attempt_count,
+                         Counter* stat_auth_success_count,
+                         Counter* stat_auth_failure_count,
+                         Counter* stat_auth_stale_count);
 
   /// Destructor.
   virtual ~HTTPDigestAuthenticate();
@@ -163,11 +163,11 @@ private:
   HomesteadConnection* _homestead_conn;
   std::string _home_domain;
 
-  StatisticCounter* _stat_auth_challenge_count;
-  StatisticCounter* _stat_auth_attempt_count;
-  StatisticCounter* _stat_auth_success_count;
-  StatisticCounter* _stat_auth_failure_count;
-  StatisticCounter* _stat_auth_stale_count;
+  Counter* _stat_auth_challenge_count;
+  Counter* _stat_auth_attempt_count;
+  Counter* _stat_auth_success_count;
+  Counter* _stat_auth_failure_count;
+  Counter* _stat_auth_stale_count;
 
   std::string _impu;
   SAS::TrailId _trail;

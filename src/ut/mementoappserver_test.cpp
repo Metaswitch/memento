@@ -45,12 +45,23 @@
 #include "mock_call_list_store_processor.h"
 #include "test_interposer.hpp"
 #include "mock_cassandra_store.h"
+#include "zmq_lvc.h"
 
 using namespace std;
 using testing::InSequence;
 using testing::Return;
 using ::testing::_;
 using ::testing::StrictMock;
+
+const static std::string known_stats[] = {
+  "memento_completed_calls",
+  "memento_failed_calls",
+  "memento_not_recorded_overload",
+  "memento_cassandra_read_latency",
+  "memento_cassandra_write_latency",
+};
+const static std::string zmq_port = "6666";
+const int num_known_stats = sizeof(known_stats) / sizeof(std::string);
 
 /// Fixture for MementoAppServerTest.
 class MementoAppServerTest : public SipCommonTest
@@ -61,6 +72,10 @@ public:
     SipCommonTest::SetUpTestCase();
     _helper = new MockAppServerTsxHelper();
     _clsp = new MockCallListStoreProcessor();
+    _stats_aggregator = new LastValueCache(num_known_stats,
+                                           known_stats,
+                                           zmq_port,
+                                           10);
 
     // Completely control time so we can match against
     // the start/answer/end times in the XML.
@@ -71,6 +86,7 @@ public:
   {
     cwtest_reset_time();
 
+    delete _stats_aggregator; _stats_aggregator = NULL;
     delete _clsp; _clsp = NULL;
     delete _helper; _helper = NULL;
     SipCommonTest::TearDownTestCase();
@@ -86,6 +102,7 @@ public:
 
   static MockAppServerTsxHelper* _helper;
   static MockCallListStoreProcessor* _clsp;
+  static LastValueCache* _stats_aggregator;
 };
 
 /// Fixture for MementoAppServerTest.
@@ -97,6 +114,10 @@ public:
     SipCommonTest::SetUpTestCase();
     _helper = new MockAppServerTsxHelper("123_123_c2lwOjY1MDU1NTEyMzRAaG9tZWRvbWFpbg==");
     _clsp = new MockCallListStoreProcessor();
+    _stats_aggregator = new LastValueCache(num_known_stats,
+                                           known_stats,
+                                           zmq_port,
+                                           10);
 
     cwtest_completely_control_time();
   }
@@ -105,6 +126,7 @@ public:
   {
     cwtest_reset_time();
 
+    delete _stats_aggregator; _stats_aggregator = NULL;
     delete _clsp; _clsp = NULL;
     delete _helper; _helper = NULL;
     SipCommonTest::TearDownTestCase();
@@ -120,12 +142,15 @@ public:
 
   static MockAppServerTsxHelper* _helper;
   static MockCallListStoreProcessor* _clsp;
+  static LastValueCache* _stats_aggregator;
 };
 
 MockAppServerTsxHelper* MementoAppServerTest::_helper = NULL;
 MockCallListStoreProcessor* MementoAppServerTest::_clsp = NULL;
+LastValueCache* MementoAppServerTest::_stats_aggregator = NULL;
 MockAppServerTsxHelper* MementoAppServerWithDialogIDTest::_helper = NULL;
 MockCallListStoreProcessor* MementoAppServerWithDialogIDTest::_clsp = NULL;
+LastValueCache* MementoAppServerWithDialogIDTest::_stats_aggregator = NULL;
 
 namespace MementoAS
 {
@@ -255,7 +280,8 @@ TEST_F(MementoAppServerTest, CreateMementoAppServer)
                                                home_domain,
                                                0,
                                                25,
-                                               604800);
+                                               604800,
+                                               _stats_aggregator);
 
   // Test creating an app server transaction with an invalid method -
   // it shouldn't be created.

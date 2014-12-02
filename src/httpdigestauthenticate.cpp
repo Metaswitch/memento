@@ -42,11 +42,11 @@
 HTTPDigestAuthenticate::HTTPDigestAuthenticate(AuthStore* auth_store,
                                                HomesteadConnection* homestead_conn,
                                                std::string home_domain,
-                                               StatisticCounter* stat_auth_challenge_count,
-                                               StatisticCounter* stat_auth_attempt_count,
-                                               StatisticCounter* stat_auth_success_count,
-                                               StatisticCounter* stat_auth_failure_count,
-                                               StatisticCounter* stat_auth_stale_count) :
+                                               Counter* stat_auth_challenge_count,
+                                               Counter* stat_auth_attempt_count,
+                                               Counter* stat_auth_success_count,
+                                               Counter* stat_auth_failure_count,
+                                               Counter* stat_auth_stale_count) :
   _auth_store(auth_store),
   _homestead_conn(homestead_conn),
   _home_domain(home_domain),
