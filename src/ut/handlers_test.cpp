@@ -41,6 +41,7 @@
 #include "handlers.h"
 #include "localstore.h"
 #include "fakehomesteadconnection.hpp"
+#include "memento_lvc.h"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -56,6 +57,7 @@ class HandlersTest : public testing::Test
 {
 public:
   static MockHttpStack* _httpstack;
+  static LastValueCache* _stats_aggregator;
   LocalStore* _store;
   AuthStore* _auth_store;
   MockCallListStore* _call_store;
@@ -68,7 +70,7 @@ public:
     _auth_store = new AuthStore(_store, 20);
     _call_store = new MockCallListStore();
     _hc = new FakeHomesteadConnection();
-    _cfg = new CallListTask::Config(_auth_store, _hc, _call_store, "localhost");
+    _cfg = new CallListTask::Config(_auth_store, _hc, _call_store, "localhost", _stats_aggregator);
 
   }
   virtual ~HandlersTest()
@@ -83,18 +85,18 @@ public:
   static void SetUpTestCase()
   {
     _httpstack = new MockHttpStack();
-    cwtest_completely_control_time();
+    _stats_aggregator = new MementoLVC(10);  // Short period to reduce shutdown delays.
   }
 
   static void TearDownTestCase()
   {
-    cwtest_reset_time();
-
+    delete _stats_aggregator; _stats_aggregator = NULL;
     delete _httpstack; _httpstack = NULL;
   }
 };
 
 MockHttpStack* HandlersTest::_httpstack = NULL;
+LastValueCache* HandlersTest::_stats_aggregator = NULL;
 
 // Test the handler creation.
 TEST_F(HandlersTest, HandlerCreation)

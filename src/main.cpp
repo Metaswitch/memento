@@ -50,6 +50,7 @@
 #include "load_monitor.h"
 #include "authstore.h"
 #include "mementosaslogger.h"
+#include "memento_lvc.h"
 
 struct options
 {
@@ -281,25 +282,6 @@ void exception_handler(int sig)
   abort();
 }
 
-const static std::string known_stats[] = {
-  "http_latency_us",
-  "http_incoming_requests",
-  "http_rejected_overload",
-  "connected_homesteads",
-  "auth_challenges",
-  "auth_attempts",
-  "auth_successes",
-  "auth_failures",
-  "auth_stales",
-  "cassandra_read_latency",
-  "record_size",
-  "record_length",
-};
-
-const static std::string MEMENTO_ZMQ_PORT = "6671";
-
-const static int num_known_stats = sizeof(known_stats) / sizeof(std::string);
-
 int main(int argc, char**argv)
 {
   // Set up our exception signal handler for asserts and segfaults.
@@ -391,9 +373,7 @@ int main(int argc, char**argv)
                                               10.0, // Initial token fill rate (per sec).
                                               10.0); // Minimum token fill rate (pre sec).
 
-  LastValueCache* stats_aggregator = new LastValueCache(num_known_stats,
-                                                        known_stats,
-                                                        MEMENTO_ZMQ_PORT);
+  LastValueCache* stats_aggregator = new MementoLVC();
 
   // Create a DNS resolver and an HTTP specific resolver.
   int af = AF_INET;

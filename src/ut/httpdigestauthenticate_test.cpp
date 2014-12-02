@@ -47,6 +47,7 @@
 #include "test_utils.hpp"
 #include "test_interposer.hpp"
 #include "fakehomesteadconnection.hpp"
+#include "fakecounter.h"
 
 using namespace std;
 using testing::MatchesRegex;
@@ -59,7 +60,14 @@ class HTTPDigestAuthenticateTest : public ::testing::Test
     _local_data_store = new LocalStore();
     _auth_store = new AuthStore(_local_data_store, 300);
     _hc = new FakeHomesteadConnection();
-    _auth_mod = new HTTPDigestAuthenticate(_auth_store, _hc, "home.domain");
+    _auth_mod = new HTTPDigestAuthenticate(_auth_store,
+                                           _hc,
+                                           "home.domain",
+                                           &_auth_challenge_count,
+                                           &_auth_attempt_count,
+                                           &_auth_success_count,
+                                           &_auth_failure_count,
+                                           &_auth_stale_count);
     _response = new HTTPDigestAuthenticate::Response();
   }
 
@@ -75,6 +83,11 @@ class HTTPDigestAuthenticateTest : public ::testing::Test
   LocalStore* _local_data_store;
   AuthStore* _auth_store;
   FakeHomesteadConnection* _hc;
+  FakeCounter _auth_challenge_count;
+  FakeCounter _auth_attempt_count;
+  FakeCounter _auth_success_count;
+  FakeCounter _auth_failure_count;
+  FakeCounter _auth_stale_count;
   HTTPDigestAuthenticate* _auth_mod;
   HTTPDigestAuthenticate::Response* _response;
 };

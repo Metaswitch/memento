@@ -55,6 +55,7 @@ class AuthStoreTest : public ::testing::Test
 
   virtual ~AuthStoreTest()
   {
+    cwtest_reset_time();
   }
 };
 

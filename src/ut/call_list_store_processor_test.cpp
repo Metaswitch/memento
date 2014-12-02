@@ -44,6 +44,7 @@
 #include "call_list_store_processor.h"
 #include "mock_call_list_store.h"
 #include "mockloadmonitor.hpp"
+#include "memento_lvc.h"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -57,6 +58,16 @@ static int FAKE_SAS_TRAIL = 0;
 static std::string IMPU = "sip:6510001000@home.domain";
 static std::string TIMESTAMP = "20020530093010";
 
+const static std::string known_stats[] = {
+  "memento_completed_calls",
+  "memento_failed_calls",
+  "memento_not_recorded_overload",
+  "memento_cassandra_read_latency",
+  "memento_cassandra_write_latency",
+};
+const static std::string zmq_port = "6666";
+const int num_known_stats = sizeof(known_stats) / sizeof(std::string);
+
 // Fixture for tests that has no limit to the number of stored call lists
 class CallListStoreProcessorTest : public ::testing::Test
 {
@@ -64,20 +75,26 @@ public:
   CallListStoreProcessorTest()
   {
     _cls = new MockCallListStore();
+    _stats_aggregator = new LastValueCache(num_known_stats,
+                                           known_stats,
+                                           zmq_port,
+                                           10);
 
     // No maximum call length and 1 worker thread
-    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 0, 1, CALL_LIST_TTL);
+    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 0, 1, CALL_LIST_TTL, _stats_aggregator);
   }
 
   virtual ~CallListStoreProcessorTest()
   {
     delete _cls; _cls = NULL;
+    delete _stats_aggregator; _stats_aggregator = NULL;
     delete _clsp; _clsp = NULL;
   }
 
   StrictMock<MockLoadMonitor> _load_monitor;
   CallListStoreProcessor* _clsp;
   MockCallListStore* _cls;
+  LastValueCache* _stats_aggregator;
 };
 
 // Fixture for tests that has a low limit to the number of stored call lists
@@ -87,20 +104,26 @@ public:
   CallListStoreProcessorWithLimitTest()
   {
     _cls = new MockCallListStore();
+    _stats_aggregator = new LastValueCache(num_known_stats,
+                                           known_stats,
+                                           zmq_port,
+                                           10);
 
     // Maximum call length of 4 and 2 worker threads
-    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 4, 2, CALL_LIST_TTL);
+    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 4, 2, CALL_LIST_TTL, _stats_aggregator);
   }
 
   virtual ~CallListStoreProcessorWithLimitTest()
   {
     delete _cls; _cls = NULL;
+    delete _stats_aggregator; _stats_aggregator = NULL;
     delete _clsp; _clsp = NULL;
   }
 
   StrictMock<MockLoadMonitor> _load_monitor;
   CallListStoreProcessor* _clsp;
   MockCallListStore* _cls;
+  LastValueCache* _stats_aggregator;
 };
 
 // Create a vector of call list store fragments that the mock
@@ -238,12 +261,30 @@ TEST_F(CallListStoreProcessorTest, CallListIsCountNeededNoLimit)
   ASSERT_TRUE(fragments.size() == 0);
 }
 
-TEST_F(CallListStoreProcessorTest, CallListWrite)
+TEST_F(CallListStoreProcessorTest, CallListWriteBegin)
 {
   EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
 
   EXPECT_CALL(*_cls, write_call_fragment_sync(IMPU, _, _, CALL_LIST_TTL, FAKE_SAS_TRAIL)).WillOnce(Return(CassandraStore::ResultCode::OK));
   _clsp->write_call_list_entry(IMPU, TIMESTAMP, "id", CallListStore::CallFragment::Type::BEGIN, "xml", FAKE_SAS_TRAIL);
+  sleep(1);
+}
+
+TEST_F(CallListStoreProcessorTest, CallListWriteEnd)
+{
+  EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
+
+  EXPECT_CALL(*_cls, write_call_fragment_sync(IMPU, _, _, CALL_LIST_TTL, FAKE_SAS_TRAIL)).WillOnce(Return(CassandraStore::ResultCode::OK));
+  _clsp->write_call_list_entry(IMPU, TIMESTAMP, "id", CallListStore::CallFragment::Type::END, "xml", FAKE_SAS_TRAIL);
+  sleep(1);
+}
+
+TEST_F(CallListStoreProcessorTest, CallListWriteRejected)
+{
+  EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
+
+  EXPECT_CALL(*_cls, write_call_fragment_sync(IMPU, _, _, CALL_LIST_TTL, FAKE_SAS_TRAIL)).WillOnce(Return(CassandraStore::ResultCode::OK));
+  _clsp->write_call_list_entry(IMPU, TIMESTAMP, "id", CallListStore::CallFragment::Type::REJECTED, "xml", FAKE_SAS_TRAIL);
   sleep(1);
 }
 
