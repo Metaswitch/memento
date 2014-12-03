@@ -407,7 +407,15 @@ int main(int argc, char**argv)
   CallListStore::Store* call_list_store = new CallListStore::Store();
   call_list_store->initialize();
   call_list_store->configure("localhost", 9160, 0, 0, cass_comm_monitor);
-  CassandraStore::ResultCode store_rc = call_list_store->start();
+
+  // Test Cassandra connectivity.
+  CassandraStore::ResultCode store_rc = call_list_store->connection_test();
+
+  if (store_rc == CassandraStore::OK)
+  {
+    // Store can connect to Cassandra, so start it.
+    store_rc = call_list_store->start();
+  }
 
   if (store_rc != CassandraStore::OK)
   {
