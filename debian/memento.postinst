@@ -54,6 +54,8 @@ set -e
 NAME=memento
 log_directory=/var/log/$NAME
 
+. /usr/share/clearwater/bin/memento-disk-usage-functions
+
 add_section() {
     file=$1
     tag=$2
@@ -93,6 +95,9 @@ case "$1" in
         done
 
         /usr/share/clearwater/cassandra-schemas/memento.sh
+
+        # Record disk usage now - it will be kept up-to-date by a cron job
+        memento_get_current_use > $MEMENTO_DISK_USAGE_FILE
 
         # Restart memento.  Always do this by terminating memento so monit will
         # restart it more-or-less immediately.  (monit restart seems to have

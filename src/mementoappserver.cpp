@@ -78,7 +78,8 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                    const std::string& home_domain,
                                    const int max_call_list_length,
                                    const int memento_threads,
-                                   const int call_list_ttl) :
+                                   const int call_list_ttl,
+                                   LastValueCache* stats_aggregator) :
   AppServer(service_name),
   _service_name(service_name),
   _home_domain(home_domain),
@@ -90,7 +91,10 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                                         call_list_store,
                                                         max_call_list_length,
                                                         memento_threads,
-                                                        call_list_ttl))
+                                                        call_list_ttl,
+                                                        stats_aggregator)),
+  _stat_calls_not_recorded_due_to_overload("memento_not_recorded_overload",
+                                           stats_aggregator)
 {
 }
 
@@ -121,6 +125,7 @@ AppServerTsx* MementoAppServer::get_app_tsx(AppServerTsxHelper* helper,
     LOG_WARNING("No available tokens - no memento processing of request");
     SAS::Event event(helper->trail(), SASEvent::CALL_LIST_OVERLOAD, 0);
     SAS::report_event(event);
+    _stat_calls_not_recorded_due_to_overload.increment();
     return NULL;
     // LCOV_EXCL_STOP
   }

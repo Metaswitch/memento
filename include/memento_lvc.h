@@ -1,8 +1,8 @@
 /**
- * @file fakehomesteadconnection.cpp
+ * @file memento_lvc.h
  *
  * Project Clearwater - IMS in the Cloud
- * Copyright (C) 2014  Metaswitch Networks Ltd
+ * Copyright (C) 2013  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,70 +34,25 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#include "fakehomesteadconnection.hpp"
-#include "gtest/gtest.h"
+#ifndef MEMENTO_LVC_H__
+#define MEMENTO_LVC_H__
 
-FakeHomesteadConnection::FakeHomesteadConnection() :
-  // Pass NULL in as the HTTP resolver.  This will never get invoked amnyway.
-  HomesteadConnection("narcissus", NULL, NULL, NULL)
+#include "zmq_lvc.h"
+
+class MementoLVC : public LastValueCache
 {
-}
+private:
+  const static std::string KNOWN_STATS[];
+  const static int NUM_KNOWN_STATS;
+  const static std::string ZMQ_PORT;
 
+public:
+  MementoLVC(long poll_timeout_ms = 1000) :
+    LastValueCache(NUM_KNOWN_STATS,
+                   KNOWN_STATS,
+                   ZMQ_PORT,
+                   poll_timeout_ms)
+  {}
+};
 
-FakeHomesteadConnection::~FakeHomesteadConnection()
-{
-  flush_all();
-}
-
-
-void FakeHomesteadConnection::flush_all()
-{
-  _results.clear();
-  _rcs.clear();
-}
-
-void FakeHomesteadConnection::set_result(const std::string& url,
-                                         const std::vector<std::string> result)
-{
-  _results[url] = result;
-}
-
-void FakeHomesteadConnection::delete_result(const std::string& url)
-{
-  _results.erase(url);
-}
-
-void FakeHomesteadConnection::set_rc(const std::string& url,
-                                     long rc)
-{
-  _rcs[url] = rc;
-}
-
-
-void FakeHomesteadConnection::delete_rc(const std::string& url)
-{
-  _rcs.erase(url);
-}
-
-long FakeHomesteadConnection::get_digest_and_parse(const std::string& path,
-                                                   std::string& digest,
-                                                   std::string& realm,
-                                                   SAS::TrailId trail)
-{
-  HTTPCode http_code = HTTP_NOT_FOUND;
-  std::map<std::string, std::vector<std::string>>::const_iterator i = _results.find(path);
-  if (i != _results.end())
-  {
-    digest = i->second[0];
-    realm = i->second[1];
-    http_code = HTTP_OK;
-  }
-
-  std::map<std::string, long>::const_iterator i2 = _rcs.find(path);
-  if (i2 != _rcs.end())
-  {
-    http_code = i2->second;
-  }
-
-  return http_code;
-}
+#endif

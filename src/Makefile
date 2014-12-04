@@ -43,7 +43,11 @@ TARGET_SOURCES := localstore.cpp \
                   base64.cpp \
                   unique.cpp \
                   alarm.cpp \
-                  communicationmonitor.cpp
+                  communicationmonitor.cpp \
+                  zmq_lvc.cpp \
+                  counter.cpp \
+                  accumulator.cpp \
+                  memento_lvc.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
@@ -62,7 +66,8 @@ TARGET_SOURCES_TEST := test_main.cpp \
                        fakehomesteadconnection.cpp \
                        faketransport_udp.cpp \
                        faketransport_tcp.cpp \
-                       mock_sas.cpp
+                       mock_sas.cpp \
+                       memento_lvc.cpp
 
 TARGET_EXTRA_OBJS_TEST := gmock-all.o \
                           gtest-all.o

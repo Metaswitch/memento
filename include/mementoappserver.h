@@ -48,6 +48,7 @@ extern "C" {
 #include "load_monitor.h"
 #include "call_list_store_processor.h"
 #include "sas.h"
+#include "zmq_lvc.h"
 
 class MementoAppServer;
 class MementoAppServerTsx;
@@ -71,12 +72,14 @@ public:
   /// @param  max_call_list_length  - Maximum number of calls to store (from configuration).
   /// @param  memento_thread        - Number of memento threads (from configuration).
   /// @param  call_list_ttl         - Time to store calls in Cassandra (from configuration).
+  /// @param  stats_aggregator      - Statistics aggregator (last value cache).
   MementoAppServer(const std::string& service_name,
                    CallListStore::Store* call_list_store,
                    const std::string& home_domain,
                    const int max_call_list_length,
                    const int memento_thread,
-                   const int call_list_ttl);
+                   const int call_list_ttl,
+                   LastValueCache* stats_aggregator);
 
   /// Virtual destructor.
   ~MementoAppServer();
@@ -105,6 +108,9 @@ private:
 
   /// Call list store processor.
   CallListStoreProcessor* _call_list_store_processor;
+
+  /// Statistic.
+  StatisticCounter _stat_calls_not_recorded_due_to_overload;
 };
 
 /// The MementoAppServerTsx class subclasses AppServerTsx and provides
