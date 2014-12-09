@@ -71,6 +71,7 @@ struct options
   bool log_to_file;
   std::string log_directory;
   int log_level;
+  bool alarms_enabled;
 };
 
 // Enum for option types not assigned short-forms
@@ -85,6 +86,7 @@ enum OptionTypes
   HOME_DOMAIN,
   SAS_CONFIG,
   ACCESS_LOG,
+  ALARMS_ENABLED,
   LOG_FILE,
   LOG_LEVEL,
   HELP
@@ -101,6 +103,7 @@ const static struct option long_opt[] =
   {"home-domain",         required_argument, NULL, HOME_DOMAIN},
   {"sas",                 required_argument, NULL, SAS_CONFIG},
   {"access-log",          required_argument, NULL, ACCESS_LOG},
+  {"alarms-enabled",      no_argument,       NULL, ALARMS_ENABLED},
   {"log-file",            required_argument, NULL, LOG_FILE},
   {"log-level",           required_argument, NULL, LOG_LEVEL},
   {"help",                no_argument,       NULL, HELP},
@@ -126,6 +129,7 @@ void usage(void)
        "    specified, SAS is disabled\n"
        " --access-log <directory>\n"
        "                            Generate access logs in specified directory\n"
+       "     --alarms-enabled       Whether SNMP alarms are enabled (default: false)\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -240,6 +244,11 @@ int init_options(int argc, char**argv, struct options& options)
       options.access_log_directory = std::string(optarg);
       break;
 
+    case ALARMS_ENABLED:
+      LOG_INFO("SNMP alarms are enabled");
+      options.alarms_enabled = true;
+      break;
+
     case LOG_FILE:
     case LOG_LEVEL:
       // Ignore these options - they're handled by init_logging_options
@@ -307,6 +316,7 @@ int main(int argc, char**argv)
   options.access_log_enabled = false;
   options.log_to_file = false;
   options.log_level = 0;
+  options.alarms_enabled = false;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -367,15 +377,30 @@ int main(int argc, char**argv)
   seed = time(NULL) ^ getpid();
   srand(seed);
 
-  // Create alarm and communication monitor objects for the conditions
-  // reported by memento.
-  Alarm* mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm);
-  Alarm* mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
-  Alarm* hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm);
-  Alarm* cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm);
+  Alarm* mc_comm_alarm = NULL;
+  CommunicationMonitor* mc_comm_monitor = NULL;
+  Alarm* mc_vbucket_alarm = NULL;
+  Alarm* hs_comm_alarm = NULL;
+  CommunicationMonitor* hs_comm_monitor = NULL;
+  Alarm* cass_comm_alarm = NULL;
+  CommunicationMonitor* cass_comm_monitor = NULL;
+
+  if (options.alarms_enabled)
+  {
+    // Create alarm and communication monitor objects for the conditions
+    // reported by memento.
+    mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
+    mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm);
+    mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
+    hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
+    hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm);
+    cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
+    cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm);
+
+    LOG_DEBUG("Starting alarm request agent");
+    AlarmReqAgent::get_instance().start();
+    AlarmState::clear_all("memento");
+  }
 
   MemcachedStore* m_store = new MemcachedStore(false,
                                                "./cluster_settings",
@@ -482,13 +507,20 @@ int main(int argc, char**argv)
   delete auth_store; auth_store = NULL;
   delete call_list_store; call_list_store = NULL;
   delete m_store; m_store = NULL;
-  delete mc_comm_monitor; mc_comm_monitor = NULL;
-  delete mc_comm_alarm; mc_comm_alarm = NULL;
-  delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
-  delete hs_comm_monitor; hs_comm_monitor = NULL;
-  delete hs_comm_alarm; hs_comm_alarm = NULL;
-  delete cass_comm_monitor; cass_comm_monitor = NULL;
-  delete cass_comm_alarm; cass_comm_alarm = NULL;
+
+  if (options.alarms_enabled)
+  {
+    // Stop the alarm request agent
+    AlarmReqAgent::get_instance().stop();
+
+    delete mc_comm_monitor; mc_comm_monitor = NULL;
+    delete mc_comm_alarm; mc_comm_alarm = NULL;
+    delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
+    delete hs_comm_monitor; hs_comm_monitor = NULL;
+    delete hs_comm_alarm; hs_comm_alarm = NULL;
+    delete cass_comm_monitor; cass_comm_monitor = NULL;
+    delete cass_comm_alarm; cass_comm_alarm = NULL;
+  }
 
   SAS::term();
 

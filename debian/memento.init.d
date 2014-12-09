@@ -104,6 +104,12 @@ get_settings()
       [ -r $file ] && . $file
     done
   fi
+
+  # Enable SNMP alarms if informsink(s) are configured
+  if [ ! -z "$snmp_ip" ]
+  then
+    alarms_enabled_arg="--alarms-enabled"
+  fi
 }
 
 #
@@ -133,6 +139,7 @@ do_start()
                      --homestead-http-name $homestead_http_name
                      --home-domain $home_domain
                      --access-log $log_directory
+                     $alarms_enabled_arg
                      --log-file $log_directory
                      --log-level $log_level
                      --sas $sas_server,$NAME@$public_hostname"
