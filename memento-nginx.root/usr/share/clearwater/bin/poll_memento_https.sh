@@ -49,7 +49,7 @@ then
 fi
 
 # Send HTTP request and check that the response is "OK".
-curl -f -g -m 2 -s -H 'Host: $memento_hostname' https://127.0.0.1/ping 2> /tmp/poll-memento-https.sh.stderr.$$ | tee /tmp/poll-memento-https.sh.stdout.$$ | head -1 | egrep -q "^OK$"
+curl -f -g -m 2 -s --insecure -H 'Host: $memento_hostname' https://127.0.0.1/ping 2> /tmp/poll-memento-https.sh.stderr.$$ | tee /tmp/poll-memento-https.sh.stdout.$$ | head -1 | egrep -q "^OK$"
 rc=$?
 
 # Check the return code and log if appropriate.
