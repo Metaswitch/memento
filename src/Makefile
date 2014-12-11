@@ -42,6 +42,8 @@ TARGET_SOURCES := localstore.cpp \
                   mementoappserver.cpp \
                   base64.cpp \
                   unique.cpp \
+                  alarm.cpp \
+                  communicationmonitor.cpp \
                   zmq_lvc.cpp \
                   counter.cpp \
                   accumulator.cpp \

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# @file memento.monit
+# @file memento-nginx.monit
 #
 # Project Clearwater - IMS in the Cloud
 # Copyright (C) 2013  Metaswitch Networks Ltd
@@ -36,30 +36,25 @@
 
 . /etc/clearwater/config
 
-# Set up the monit configuration for memento with the right IP addresses and ports
-cat > /etc/monit/conf.d/memento.monit <<EOF
-# Check the server's public interfaces.  We put this first so that we process
-# failed polls (and maybe kill the server) before we process the restart.
+if [ -z $memento_hostname ]
+then
+  memento_hostname="memento.$home_domain"
+fi
 
-check program poll_memento with path "/usr/share/clearwater/bin/poll_memento.sh"
+# Set up the monit configuration for memento with the right IP addresses and ports
+cat > /etc/monit/conf.d/memento-nginx.monit <<EOF
+# Check the server's public interfaces via HTTPS to nginx and raise an alarm if
+# the server isn't reachable.
+
+check program poll_memento_https with path "/usr/share/clearwater/bin/poll_memento_https.sh"
 
   if status != 0 for 2 cycles
-    then exec "/etc/init.d/memento abort"
+    then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5007.3"
+    else if succeeded
+        then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5007.1"
 
-check process memento pidfile /var/run/memento.pid
-  start program   = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento start'"
-  stop program    = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento stop'"
-  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort-restart'"
-
-  if memory is greater than 80% for 3 cycles
-     then restart
-
-  if uptime < 30 seconds
-     then exec "/bin/true"
-     else if succeeded
-         then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5000.1"
 EOF
-chmod 0644 /etc/monit/conf.d/memento.monit
+chmod 0644 /etc/monit/conf.d/memento-nginx.monit
 
 # Force monit to reload its configuration
 reload clearwater-monit || true

@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 
-# @file memento.monit
+# @file poll_memento_https.sh
 #
 # Project Clearwater - IMS in the Cloud
-# Copyright (C) 2013  Metaswitch Networks Ltd
+# Copyright (C) 2014  Metaswitch Networks Ltd
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -34,32 +34,30 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
+# This script checks that port 11888 is open to poll memento and check whether it
+# is healthy.
+
+# In case memento has only just restarted, give it a few seconds to come up
+sleep 5
+
+# Read the config, defaulting appropriately.
 . /etc/clearwater/config
 
-# Set up the monit configuration for memento with the right IP addresses and ports
-cat > /etc/monit/conf.d/memento.monit <<EOF
-# Check the server's public interfaces.  We put this first so that we process
-# failed polls (and maybe kill the server) before we process the restart.
+if [ -z $memento_hostname ]
+then
+  memento_hostname="memento.$home_domain"
+fi
 
-check program poll_memento with path "/usr/share/clearwater/bin/poll_memento.sh"
+# Send HTTP request and check that the response is "OK".
+curl -f -g -m 2 -s --insecure -H 'Host: $memento_hostname' https://127.0.0.1/ping 2> /tmp/poll-memento-https.sh.stderr.$$ | tee /tmp/poll-memento-https.sh.stdout.$$ | head -1 | egrep -q "^OK$"
+rc=$?
 
-  if status != 0 for 2 cycles
-    then exec "/etc/init.d/memento abort"
+# Check the return code and log if appropriate.
+if [ $rc != 0 ] ; then
+  echo HTTPS failed to https://127.0.0.1/ping >&2
+  cat /tmp/poll-memento-https.sh.stderr.$$ >&2
+  cat /tmp/poll-memento-https.sh.stdout.$$ >&2
+fi
+rm -f /tmp/poll-memento-https.sh.stderr.$$ /tmp/poll-memento-https.sh.stdout.$$
 
-check process memento pidfile /var/run/memento.pid
-  start program   = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento start'"
-  stop program    = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento stop'"
-  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort-restart'"
-
-  if memory is greater than 80% for 3 cycles
-     then restart
-
-  if uptime < 30 seconds
-     then exec "/bin/true"
-     else if succeeded
-         then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5000.1"
-EOF
-chmod 0644 /etc/monit/conf.d/memento.monit
-
-# Force monit to reload its configuration
-reload clearwater-monit || true
+exit $rc

@@ -43,7 +43,8 @@
 HomesteadConnection::HomesteadConnection(const std::string& server,
                                          HttpResolver* resolver,
                                          LoadMonitor *load_monitor,
-                                         LastValueCache *stats_aggregator) :
+                                         LastValueCache *stats_aggregator,
+                                         CommunicationMonitor* comm_monitor) :
   _http(new HttpConnection(server,
                            false,
                            resolver,
@@ -51,7 +52,7 @@ HomesteadConnection::HomesteadConnection(const std::string& server,
                            load_monitor,
                            stats_aggregator,
                            SASEvent::HttpLogLevel::PROTOCOL,
-                           NULL))
+                           comm_monitor))
 {
 }
 

@@ -51,10 +51,13 @@ public:
   /// @param resolver         HTTP resolver to use to query homestead.
   /// @param load_monitor     Load monitor monitoring these requests.
   /// @param stats_aggregator Statistics aggregator.
+  /// @param comm_monitor     An optional CommunicatorMonitor object to monitor
+  ///                         the state of the connection and reports alarms.
   HomesteadConnection(const std::string& server,
                       HttpResolver* resolver,
                       LoadMonitor *load_monitor,
-                      LastValueCache *stats_aggregator);
+                      LastValueCache *stats_aggregator,
+                      CommunicationMonitor* comm_monitor=NULL);
 
   /// Destructor
   virtual ~HomesteadConnection();
