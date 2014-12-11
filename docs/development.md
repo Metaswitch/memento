@@ -16,6 +16,22 @@ and can be run on the Sprout nodes or as a standalone node. Memento (SIP) is bui
 
 ## Memento (HTTP)
 
+Dependencies
+------------
+
+Memento depends on a number of tools and libraries.  Some of these are
+included as git submodules, but the rest must be installed separately.
+
+On Ubuntu 12.04,
+
+1.  update the package list
+
+        sudo apt-get update
+
+2.  install the required packages
+
+        sudo apt-get install libboost-all-dev make cmake flex bison libtool libcloog-ppl0 git gcc g++ bison flex libxml2-utils autoconf libevent-dev  libzmq3-dev pkg-config libcurl4-openssl-dev valgrind
+        
 Getting the Code
 ----------------
 
