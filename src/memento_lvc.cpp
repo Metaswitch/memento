@@ -53,4 +53,4 @@ const std::string MementoLVC::KNOWN_STATS[] = {
 
 const int MementoLVC::NUM_KNOWN_STATS = sizeof(MementoLVC::KNOWN_STATS) / sizeof(std::string);
 
-const std::string MementoLVC::ZMQ_PORT = "6671";
+const std::string MementoLVC::SOCKET_NAME = "memento";

@@ -44,13 +44,13 @@ class MementoLVC : public LastValueCache
 private:
   const static std::string KNOWN_STATS[];
   const static int NUM_KNOWN_STATS;
-  const static std::string ZMQ_PORT;
+  const static std::string SOCKET_NAME;
 
 public:
   MementoLVC(long poll_timeout_ms = 1000) :
     LastValueCache(NUM_KNOWN_STATS,
                    KNOWN_STATS,
-                   ZMQ_PORT,
+                   SOCKET_NAME,
                    poll_timeout_ms)
   {}
 };
