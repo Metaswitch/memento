@@ -58,8 +58,10 @@ case "$1" in
         service clearwater-infrastructure restart
 
         # Enable the new Memento site
-        nginx_ensite memento
-        service nginx reload
+        if ( nginx_ensite memento > /dev/null )
+        then
+            service nginx stop
+        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
