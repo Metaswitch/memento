@@ -58,7 +58,7 @@ class HomesteadConnectionTest : public ::testing::Test
   {
     fakecurl_responses.clear();
     fakecurl_responses["http://10.42.42.42:80/impi/privid1/av?impu=pubid1"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
-    fakecurl_responses["http://10.42.42.42:80/impi/privid2/av?impu=pubid2"] = CURLE_HTTP_RETURNED_ERROR;
+    fakecurl_responses["http://10.42.42.42:80/impi/privid2/av?impu=pubid2"] = 503;
     fakecurl_responses["http://10.42.42.42:80/impi/privid3/av?impu=pubid3"] = "{\"digest\"{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
     fakecurl_responses["http://10.42.42.42:80/impi/privid4/av?impu=pubid4"] = "{\"digest1\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
     fakecurl_responses["http://10.42.42.42:80/impi/privid5/av?impu=pubid5"] = "{\"digest\":{\"realm1\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";
