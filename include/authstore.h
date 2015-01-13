@@ -78,6 +78,13 @@ public:
 
     /// Destructor.
     ~Digest();
+
+  private:
+    /// Memcached CAS value.
+    uint64_t _cas;
+
+    // The auth store is a friend so it can read the digest's CAS value.
+    friend class AuthStore;
   };
 
   /// Constructor.

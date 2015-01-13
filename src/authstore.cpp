@@ -64,7 +64,12 @@ bool AuthStore::set_digest(const std::string& impi,
 
   LOG_DEBUG("Set digest for %s\n%s", key.c_str(), data.c_str());
 
-  Store::Status status = _data_store->set_data("AuthStore", key, data, 0, _expiry, trail);
+  Store::Status status = _data_store->set_data("AuthStore",
+                                               key,
+                                               data,
+                                               digest->_cas,
+                                               _expiry,
+                                               trail);
 
   if (status != Store::Status::OK)
   {
@@ -120,6 +125,7 @@ bool AuthStore::get_digest(const std::string& impi,
   SAS::report_event(event);
 
   digest = deserialize_digest(data);
+  digest->_cas = cas;
   return true;
 }
 
@@ -130,7 +136,8 @@ AuthStore::Digest::Digest() :
   _impi(""),
   _realm(""),
   _nonce_count(1),
-  _impu("")
+  _impu(""),
+  _cas(0)
 {
 }
 
