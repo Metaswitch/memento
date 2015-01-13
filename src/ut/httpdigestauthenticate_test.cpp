@@ -52,6 +52,8 @@
 using namespace std;
 using testing::MatchesRegex;
 
+const SAS::TrailId DUMMY_TRAIL_ID = 0x1122334455667788;
+
 /// Fixture for HTTPDigestAuthenticateTest.
 class HTTPDigestAuthenticateTest : public ::testing::Test
 {
@@ -312,14 +314,21 @@ TEST_F(HTTPDigestAuthenticateTest, RetrieveDigest_Present)
 
 TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_InvalidOpaque)
 {
-  // Write a digest to the store.
-  AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = "1231231231@home.domain";
-  digest->_nonce = "nonce";
-  digest->_ha1 = "123123123";
-  digest->_opaque = "opaque";
-  digest->_realm = "home.domain";
-  digest->_impu = "sip:1231231231@home.domain";
+  // Write a digest to the store. This simulates the digest stored when the
+  // unauthenticated request was received.
+  AuthStore::Digest orig_digest;
+  orig_digest._impi = "1231231231@home.domain";
+  orig_digest._nonce = "nonce";
+  orig_digest._ha1 = "123123123";
+  orig_digest._opaque = "opaque";
+  orig_digest._realm = "home.domain";
+  orig_digest._impu = "sip:1231231231@home.domain";
+  _auth_store->set_digest(orig_digest._impi, orig_digest._nonce, &orig_digest, DUMMY_TRAIL_ID);
+
+  // Read the digest back.  This simulates the processing just before the
+  // authenticated request is checked.
+  AuthStore::Digest* digest;
+  _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, digest, DUMMY_TRAIL_ID);
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -338,14 +347,21 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_InvalidOpaque)
 
 TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_InvalidRealm)
 {
-  // Write a digest to the store.
-  AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = "1231231231@home.domain";
-  digest->_nonce = "nonce";
-  digest->_ha1 = "123123123";
-  digest->_opaque = "opaque";
-  digest->_realm = "home.domain";
-  digest->_impu = "sip:1231231231@home.domain";
+  // Write a digest to the store. This simulates the digest stored when the
+  // unauthenticated request was received.
+  AuthStore::Digest orig_digest;
+  orig_digest._impi = "1231231231@home.domain";
+  orig_digest._nonce = "nonce";
+  orig_digest._ha1 = "123123123";
+  orig_digest._opaque = "opaque";
+  orig_digest._realm = "home.domain";
+  orig_digest._impu = "sip:1231231231@home.domain";
+  _auth_store->set_digest(orig_digest._impi, orig_digest._nonce, &orig_digest, DUMMY_TRAIL_ID);
+
+  // Read the digest back.  This simulates the processing just before the
+  // authenticated request is checked.
+  AuthStore::Digest* digest;
+  _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, digest, DUMMY_TRAIL_ID);
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -362,16 +378,23 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_InvalidRealm)
   delete digest; digest = NULL;
 }
 
-TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Valid)
+TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Valid_ReturnsOK)
 {
-  // Write a digest to the store.
-  AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = "1231231231@home.domain";
-  digest->_nonce = "nonce";
-  digest->_ha1 = "123123123";
-  digest->_opaque = "opaque";
-  digest->_realm = "home.domain";
-  digest->_impu = "sip:1231231231@home.domain";
+  // Write a digest to the store. This simulates the digest stored when the
+  // unauthenticated request was received.
+  AuthStore::Digest orig_digest;
+  orig_digest._impi = "1231231231@home.domain";
+  orig_digest._nonce = "nonce";
+  orig_digest._ha1 = "123123123";
+  orig_digest._opaque = "opaque";
+  orig_digest._realm = "home.domain";
+  orig_digest._impu = "sip:1231231231@home.domain";
+  _auth_store->set_digest(orig_digest._impi, orig_digest._nonce, &orig_digest, DUMMY_TRAIL_ID);
+
+  // Read the digest back.  This simulates the processing just before the
+  // authenticated request is checked.
+  AuthStore::Digest* digest;
+  _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, digest, DUMMY_TRAIL_ID);
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -387,17 +410,62 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Valid)
   delete digest; digest = NULL;
 }
 
+TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Valid_UpdatesNonceCount)
+{
+  // Write a digest to the store. This simulates the digest stored when the
+  // unauthenticated request was received.
+  AuthStore::Digest orig_digest;
+  orig_digest._impi = "1231231231@home.domain";
+  orig_digest._nonce = "nonce";
+  orig_digest._ha1 = "123123123";
+  orig_digest._opaque = "opaque";
+  orig_digest._realm = "home.domain";
+  orig_digest._impu = "sip:1231231231@home.domain";
+  _auth_store->set_digest(orig_digest._impi, orig_digest._nonce, &orig_digest, DUMMY_TRAIL_ID);
+
+  // Read the digest back.  This simulates the processing just before the
+  // authenticated request is checked.
+  AuthStore::Digest* digest;
+  _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, digest, DUMMY_TRAIL_ID);
+
+  // Set the _impu
+  _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
+  _response->set_members("1231231231","home.domain","nonce","org.projectclearwater.call-list/users/1231231231@home.domain/call-list.xml","qop","00001","cnonce","242c99c1e20618147c6a325c09720664","opaque");
+
+  // Run through check if matches - should pass
+  std::string www_auth_header;
+  long rc = _auth_mod->check_if_matches(digest, www_auth_header, _response);
+
+  ASSERT_EQ(rc, 200);
+
+  // Check that the digest's nonce count has been updated in the store.
+  AuthStore::Digest* new_digest = NULL;
+  bool store_success = _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, new_digest, DUMMY_TRAIL_ID);
+  EXPECT_TRUE(store_success);
+  EXPECT_EQ(2u, new_digest->_nonce_count);
+
+  delete new_digest; new_digest = NULL;
+  delete digest; digest = NULL;
+}
+
 TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Stale)
 {
-  // Write a digest to the store.
-  AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = "1231231231@home.domain";
-  digest->_nonce = "nonce";
-  digest->_ha1 = "123123123";
-  digest->_opaque = "opaque";
-  digest->_realm = "home.domain";
-  digest->_nonce_count = 2;
-  digest->_impu = "sip:1231231231@home.domain";
+  // Write a digest to the store. This simulates the digest stored when the
+  // unauthenticated request was received.
+  AuthStore::Digest orig_digest;
+  orig_digest._impi = "1231231231@home.domain";
+  orig_digest._nonce = "nonce";
+  orig_digest._ha1 = "123123123";
+  orig_digest._opaque = "opaque";
+  orig_digest._realm = "home.domain";
+  orig_digest._impu = "sip:1231231231@home.domain";
+  orig_digest._nonce_count = 2; // Not equal to 1.
+  _auth_store->set_digest(orig_digest._impi, orig_digest._nonce, &orig_digest, DUMMY_TRAIL_ID);
+
+  // Read the digest back.  This simulates the processing just before the
+  // authenticated request is checked.
+  AuthStore::Digest* digest;
+  _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, digest, DUMMY_TRAIL_ID);
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
@@ -416,14 +484,21 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Stale)
 
 TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_WrongIMPU)
 {
-  // Write a digest to the store.
-  AuthStore::Digest* digest = new AuthStore::Digest();
-  digest->_impi = "1231231231@home.domain";
-  digest->_nonce = "nonce";
-  digest->_ha1 = "123123123";
-  digest->_opaque = "opaque";
-  digest->_realm = "home.domain";
-  digest->_impu = "sip:1231231232@home.domain";
+  // Write a digest to the store. This simulates the digest stored when the
+  // unauthenticated request was received.
+  AuthStore::Digest orig_digest;
+  orig_digest._impi = "1231231231@home.domain";
+  orig_digest._nonce = "nonce";
+  orig_digest._ha1 = "123123123";
+  orig_digest._opaque = "opaque";
+  orig_digest._realm = "home.domain";
+  orig_digest._impu = "sip:1231231232@home.domain"; // This does not match the IMPI.
+  _auth_store->set_digest(orig_digest._impi, orig_digest._nonce, &orig_digest, DUMMY_TRAIL_ID);
+
+  // Read the digest back.  This simulates the processing just before the
+  // authenticated request is checked.
+  AuthStore::Digest* digest;
+  _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, digest, DUMMY_TRAIL_ID);
 
   // Set the _impu
   _auth_mod->set_members("sip:1231231231@home.domain", "GET", "1231231231@home.domain", 0);
