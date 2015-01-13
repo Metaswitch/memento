@@ -440,8 +440,8 @@ TEST_F(HTTPDigestAuthenticateTest, CheckIfMatches_Valid_UpdatesNonceCount)
 
   // Check that the digest's nonce count has been updated in the store.
   AuthStore::Digest* new_digest = NULL;
-  bool store_success = _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, new_digest, DUMMY_TRAIL_ID);
-  EXPECT_TRUE(store_success);
+  Store::Status status = _auth_store->get_digest(orig_digest._impi, orig_digest._nonce, new_digest, DUMMY_TRAIL_ID);
+  EXPECT_EQ(Store::OK, status);
   EXPECT_EQ(2u, new_digest->_nonce_count);
 
   delete new_digest; new_digest = NULL;

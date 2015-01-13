@@ -279,9 +279,9 @@ HTTPCode HTTPDigestAuthenticate::retrieve_digest_from_store(std::string& www_aut
   _stat_auth_attempt_count->increment();
 
   AuthStore::Digest* digest;
-  bool success = _auth_store->get_digest(_impi, response->_nonce, digest, _trail);
+  Store::Status store_rc = _auth_store->get_digest(_impi, response->_nonce, digest, _trail);
 
-  if (success)
+  if (store_rc == Store::OK)
   {
     // Successfully retrieved digest, so check whether it matches
     // the response sent by the client
@@ -321,9 +321,9 @@ HTTPCode HTTPDigestAuthenticate::request_digest_and_store(std::string& www_auth_
     LOG_DEBUG("Store digest for IMPU: %s, IMPI: %s", _impu.c_str(), _impi.c_str());
     AuthStore::Digest* digest = new AuthStore::Digest();
     generate_digest(ha1, realm, digest);
-    bool success = _auth_store->set_digest(_impi, digest->_nonce, digest, _trail);
+    Store::Status status = _auth_store->set_digest(_impi, digest->_nonce, digest, _trail);
 
-    if (success)
+    if (status == Store::OK)
     {
       // Update statistics - either stale or (initial) challenge.
       if (include_stale)
