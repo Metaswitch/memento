@@ -94,7 +94,7 @@ public:
             int expiry);
 
   /// Destructor.
-  ~AuthStore();
+  virtual ~AuthStore();
 
   /// set_digest.
   ///
@@ -103,10 +103,10 @@ public:
   /// @param digest A pointer to a Digest object to store
   ///
   /// @return       The status code returned by the store.
-  Store::Status set_digest(const std::string& impi,
-                           const std::string& nonce,
-                           const Digest*,
-                           SAS::TrailId);
+  virtual Store::Status set_digest(const std::string& impi,
+                                   const std::string& nonce,
+                                   const Digest*,
+                                   SAS::TrailId);
 
   /// get_digest.
   ///
@@ -116,10 +116,10 @@ public:
   ///               responsible for deleting
   ///
   /// @return       The status code returned by the store.
-  Store::Status get_digest(const std::string& impi,
-                           const std::string& nonce,
-                           Digest*&,
-                           SAS::TrailId);
+  virtual Store::Status get_digest(const std::string& impi,
+                                   const std::string& nonce,
+                                   Digest*&,
+                                   SAS::TrailId);
 
 private:
   std::string serialize_digest(const Digest* digest);

@@ -439,11 +439,33 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
     {
       // Authentication successful. Increment the stored nonce count
       digest->_nonce_count++;
-      _auth_store->set_digest(_impi, digest->_nonce, digest, _trail);
-      SAS::Event event(_trail, SASEvent::AUTHENTICATION_ACCEPTED, 0);
-      SAS::report_event(event);
+      Store::Status store_rc = _auth_store->set_digest(_impi,
+                                                       digest->_nonce,
+                                                       digest,
+                                                       _trail);
+      LOG_DEBUG("Updateing nonce count - store returned %d", store_rc);
 
-      _stat_auth_success_count->increment();
+      if (store_rc == Store::DATA_CONTENTION)
+      {
+        // The write to the store failed due to a CAS mismatch.  This means that
+        // the digest has already been used to authenticate another request, so
+        // the authentication on this request is stale. Rechallenge.
+        LOG_DEBUG("Failed to update nonce count - rechallenge");
+        SAS::Event event(_trail, SASEvent::AUTHENTICATION_OUT_OF_DATE, 1);
+        SAS::report_event(event);
+        rc = request_digest_and_store(www_auth_header, true, response);
+      }
+      else
+      {
+        // The nonce count was either updated successfully (in which case we
+        // accept the request) or the store failed (in which case we're not sure
+        // what to do for the best, and accepting the request is sensible
+        // default behaviour).
+        LOG_DEBUG("Authentication accepted");
+        SAS::Event event(_trail, SASEvent::AUTHENTICATION_ACCEPTED, 0);
+        SAS::report_event(event);
+        _stat_auth_success_count->increment();
+      }
     }
   }
   else
