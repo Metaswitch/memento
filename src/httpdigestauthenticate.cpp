@@ -443,7 +443,7 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
                                                        digest->_nonce,
                                                        digest,
                                                        _trail);
-      LOG_DEBUG("Updateing nonce count - store returned %d", store_rc);
+      LOG_DEBUG("Updating nonce count - store returned %d", store_rc);
 
       if (store_rc == Store::DATA_CONTENTION)
       {
