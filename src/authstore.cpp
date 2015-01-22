@@ -54,17 +54,22 @@ AuthStore::~AuthStore()
 {
 }
 
-bool AuthStore::set_digest(const std::string& impi,
-                           const std::string& nonce,
-                           const AuthStore::Digest* digest,
-                           SAS::TrailId trail)
+Store::Status AuthStore::set_digest(const std::string& impi,
+                                    const std::string& nonce,
+                                    const AuthStore::Digest* digest,
+                                    SAS::TrailId trail)
 {
   std::string key = impi + '\\' + nonce;
   std::string data = serialize_digest(digest);
 
   LOG_DEBUG("Set digest for %s\n%s", key.c_str(), data.c_str());
 
-  Store::Status status = _data_store->set_data("AuthStore", key, data, 0, _expiry, trail);
+  Store::Status status = _data_store->set_data("AuthStore",
+                                               key,
+                                               data,
+                                               digest->_cas,
+                                               _expiry,
+                                               trail);
 
   if (status != Store::Status::OK)
   {
@@ -75,24 +80,24 @@ bool AuthStore::set_digest(const std::string& impi,
     event.add_var_param(key);
     event.add_var_param(data);
     SAS::report_event(event);
-
-    return false;
     // LCOV_EXCL_STOP
   }
+  else
+  {
+    SAS::Event event(trail, SASEvent::AUTHSTORE_SET_SUCCESS, 0);
+    event.add_var_param(key);
+    event.add_var_param(data);
+    SAS::report_event(event);
+  }
 
-  SAS::Event event(trail, SASEvent::AUTHSTORE_SET_SUCCESS, 0);
-  event.add_var_param(key);
-  event.add_var_param(data);
-  SAS::report_event(event);
-
-  return true;
+  return status;
 }
 
 
-bool AuthStore::get_digest(const std::string& impi,
-                           const std::string& nonce,
-                           AuthStore::Digest*& digest,
-                           SAS::TrailId trail)
+Store::Status AuthStore::get_digest(const std::string& impi,
+                                    const std::string& nonce,
+                                    AuthStore::Digest*& digest,
+                                    SAS::TrailId trail)
 {
   std::string key = impi + '\\' + nonce;
   std::string data;
@@ -109,18 +114,21 @@ bool AuthStore::get_digest(const std::string& impi,
     SAS::report_event(event);
 
     digest = NULL;
-    return false;
+  }
+  else
+  {
+    LOG_DEBUG("Retrieved Digest for %s\n%s", key.c_str(), data.c_str());
+
+    SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
+    event.add_var_param(key);
+    event.add_var_param(data);
+    SAS::report_event(event);
+
+    digest = deserialize_digest(data);
+    digest->_cas = cas;
   }
 
-  LOG_DEBUG("Retrieved Digest for %s\n%s", key.c_str(), data.c_str());
-
-  SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
-  event.add_var_param(key);
-  event.add_var_param(data);
-  SAS::report_event(event);
-
-  digest = deserialize_digest(data);
-  return true;
+  return status;
 }
 
 AuthStore::Digest::Digest() :
@@ -130,7 +138,8 @@ AuthStore::Digest::Digest() :
   _impi(""),
   _realm(""),
   _nonce_count(1),
-  _impu("")
+  _impu(""),
+  _cas(0)
 {
 }
 

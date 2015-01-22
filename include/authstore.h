@@ -78,6 +78,13 @@ public:
 
     /// Destructor.
     ~Digest();
+
+  private:
+    /// Memcached CAS value.
+    uint64_t _cas;
+
+    // The auth store is a friend so it can read the digest's CAS value.
+    friend class AuthStore;
   };
 
   /// Constructor.
@@ -87,20 +94,32 @@ public:
             int expiry);
 
   /// Destructor.
-  ~AuthStore();
+  virtual ~AuthStore();
 
   /// set_digest.
+  ///
   /// @param impi   A reference to the private user identity.
   /// @param nonce  A reference to the nonce.
   /// @param digest A pointer to a Digest object to store
-  bool set_digest(const std::string& impi, const std::string& nonce, const Digest*, SAS::TrailId);
+  ///
+  /// @return       The status code returned by the store.
+  virtual Store::Status set_digest(const std::string& impi,
+                                   const std::string& nonce,
+                                   const Digest*,
+                                   SAS::TrailId);
 
-  /// set_digest.
+  /// get_digest.
+  ///
   /// @param impi   A reference to the private user identity.
   /// @param nonce  A reference to the nonce.
   /// @param digest A Digest object to populate with the retrieved Digest. Caller is
   ///               responsible for deleting
-  bool get_digest(const std::string& impi, const std::string& nonce, Digest*&, SAS::TrailId);
+  ///
+  /// @return       The status code returned by the store.
+  virtual Store::Status get_digest(const std::string& impi,
+                                   const std::string& nonce,
+                                   Digest*&,
+                                   SAS::TrailId);
 
 private:
   std::string serialize_digest(const Digest* digest);
