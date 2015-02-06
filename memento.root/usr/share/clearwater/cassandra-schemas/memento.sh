@@ -1,12 +1,10 @@
-#! /bin/bash
+#!/bin/bash
 
 keyspace=$(basename $0|sed -e 's#^\(.*\)[.]sh$#\1#')
 
 . /etc/clearwater/config
-if [ ! -z $signaling_namespace ]
-then
-    if [ $EUID -ne 0 ]
-    then
+if [ ! -z $signaling_namespace ]; then
+    if [ $EUID -ne 0 ]; then
         echo "When using multiple networks, schema creation must be run as root"
         exit 2
     fi
