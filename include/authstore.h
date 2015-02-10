@@ -87,6 +87,34 @@ public:
     friend class AuthStore;
   };
 
+  /// Interface used by the AuthStore to serialize digests from C++ objects to
+  /// the format used in the store, and deserialize them.
+  ///
+  /// This interface allows multiple (de)serializers to be defined and for the
+  /// AuthStore to use them in a pluggable fashion.
+  class SerializerDeserializer
+  {
+  public:
+    /// Virtual destructor.
+    virtual ~SerializerDeserializer();
+
+    /// Serialize a Digest object to the format used in the store.
+    ///
+    /// @param digest - The digest to serialize.
+    /// @return       - The serialized form.
+    virtual std::string serialize_digest(const Digest* digest) = 0;
+
+    /// Deserialize some data from the store to a Digest object.
+    ///
+    /// @param digest_s - The data to deserialize.
+    /// @return         - A digest object, or NULL if the data could not be
+    ///                   deserialized (e.g. because it is corrupt).
+    virtual Digest* deserialize_digest(const std::string& digest_s) = 0;
+
+    /// @return - The name of this (de)serializer.
+    virtual std::string name() = 0;
+  };
+
   /// Constructor.
   /// @param data_store    A pointer to the underlying data store.
   /// @param expiry        Expiry time of entries
