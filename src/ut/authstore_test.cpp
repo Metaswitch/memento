@@ -46,16 +46,39 @@
 
 using namespace std;
 
-/// Fixture for AuthStoreTest.
-class AuthStoreTest : public ::testing::Test
+// These tests use "typed tests" to run the same tests over different
+// (de)serializers. For more information see:
+// https://code.google.com/p/googletest/wiki/AdvancedGuide#Typed_Tests
+
+/// The types of (de)serializer that we want to test.
+typedef ::testing::Types<
+  AuthStore::BinarySerializerDeserializer,
+  AuthStore::JsonSerializerDeserializer
+> SerializerDeserializerTypes;
+
+/// Fixture for BasicAuthStoreTest.  This uses a single AuthStore,
+/// configured to use exactly one (de)serializer.
+///
+/// The fixture is a template, parameterized over the different types of
+/// (de)serializer.
+template<class T>
+class BasicAuthStoreTest : public ::testing::Test
 {
-  AuthStoreTest()
+  BasicAuthStoreTest()
   {
     _local_data_store = new LocalStore();
-    _auth_store = new AuthStore(_local_data_store, 300);
+    AuthStore::SerializerDeserializer* serializer = new T();
+    std::vector<AuthStore::SerializerDeserializer*> deserializers = {
+      new T(),
+    };
+
+    _auth_store = new AuthStore(_local_data_store,
+                                serializer,
+                                deserializers,
+                                300);
   }
 
-  virtual ~AuthStoreTest()
+  virtual ~BasicAuthStoreTest()
   {
     delete _local_data_store; _local_data_store = NULL;
     delete _auth_store; _auth_store = NULL;
@@ -66,8 +89,11 @@ class AuthStoreTest : public ::testing::Test
   AuthStore* _auth_store;
 };
 
+// BasicSessionStoreTest is parameterized over these types.
+TYPED_TEST_CASE(BasicAuthStoreTest, SerializerDeserializerTypes);
 
-TEST_F(AuthStoreTest, SimpleWriteRead)
+
+TYPED_TEST(BasicAuthStoreTest, SimpleWriteRead)
 {
   // Write a digest to the store.
   std::string impi = "6505551234@cw-ngv.com";
@@ -82,12 +108,12 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
   digest->_nonce_count = 3;
   digest->_impu = "sip:" + impi;
 
-  _auth_store->set_digest(impi, nonce, digest, 0);
+  this->_auth_store->set_digest(impi, nonce, digest, 0);
 
   // Retrieve the digest from the store and check it against
   // the initial digest
   AuthStore::Digest* digest2;
-  _auth_store->get_digest(impi, nonce, digest2, 0);
+  this->_auth_store->get_digest(impi, nonce, digest2, 0);
 
   ASSERT_EQ(digest->_impi, digest2->_impi);
   ASSERT_EQ(digest->_nonce, digest2->_nonce);
@@ -101,7 +127,7 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
   delete digest2; digest2 = NULL;
 }
 
-TEST_F(AuthStoreTest, ReadExpired)
+TYPED_TEST(BasicAuthStoreTest, ReadExpired)
 {
   cwtest_completely_control_time();
 
@@ -116,19 +142,19 @@ TEST_F(AuthStoreTest, ReadExpired)
   digest->_opaque = "opaque";
   digest->_realm = "cw-ngv.com";
 
-  _auth_store->set_digest(impi, nonce, digest, 0);
+  this->_auth_store->set_digest(impi, nonce, digest, 0);
 
   // Advance the time by 299 seconds and read the record.
   cwtest_advance_time_ms(299000);
   AuthStore::Digest* digest2;
-  _auth_store->get_digest(impi, nonce, digest2, 0);
+  this->_auth_store->get_digest(impi, nonce, digest2, 0);
 
   ASSERT_EQ(digest->_ha1, digest2->_ha1);
 
   // Advance the time another 2 seconds to expire the record.
   cwtest_advance_time_ms(2000);
   AuthStore::Digest* digest3;
-  _auth_store->get_digest(impi, nonce, digest3, 0);
+  this->_auth_store->get_digest(impi, nonce, digest3, 0);
 
   ASSERT_EQ(NULL, digest3);
 
