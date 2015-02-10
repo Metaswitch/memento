@@ -128,14 +128,24 @@ Store::Status AuthStore::get_digest(const std::string& impi,
   else
   {
     LOG_DEBUG("Retrieved Digest for %s\n%s", key.c_str(), data.c_str());
-
-    SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
-    event.add_var_param(key);
-    event.add_var_param(data);
-    SAS::report_event(event);
-
     digest = deserialize_digest(data);
-    digest->_cas = cas;
+
+    if (digest != NULL)
+    {
+      digest->_cas = cas;
+      SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
+      event.add_var_param(key);
+      event.add_var_param(data);
+      SAS::report_event(event);
+    }
+    else
+    {
+      LOG_INFO("Failed to deserialze record");
+      // TODO: SAS event
+
+      // Handle as if the digest was not found.
+      status = Store::NOT_FOUND;
+    }
   }
 
   return status;
@@ -159,7 +169,29 @@ AuthStore::Digest::~Digest()
 
 AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
 {
-  return _deserializers[0]->deserialize_digest(digest_s);
+  Digest* digest = NULL;
+
+  for (std::vector<SerializerDeserializer*>::const_iterator it = _deserializers.begin();
+       it != _deserializers.end();
+       ++it)
+  {
+    SerializerDeserializer* deserializer = *it;
+    LOG_DEBUG("Try '%s' deserializer", deserializer->name().c_str());
+
+    digest = deserializer->deserialize_digest(digest_s);
+
+    if (digest != NULL)
+    {
+      LOG_DEBUG("Deserialization successful");
+      break;
+    }
+    else
+    {
+      LOG_DEBUG("Deserialization failed");
+    }
+  }
+
+  return digest;
 }
 
 std::string AuthStore::serialize_digest(const AuthStore::Digest* digest)
