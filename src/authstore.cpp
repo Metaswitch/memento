@@ -225,16 +225,34 @@ std::string AuthStore::BinarySerializerDeserializer::
 AuthStore::Digest* AuthStore::BinarySerializerDeserializer::
   deserialize_digest(const std::string& digest_s)
 {
+  // Helper macro that bails out if we unexpectedly hit the end of the input
+  // stream.
+#define ASSERT_NOT_EOF(STREAM)                                                 \
+if ((STREAM).eof())                                                            \
+{                                                                              \
+  LOG_INFO("Failed to deserialize binary document (hit EOF at %s:%d)",         \
+           __FILE__, __LINE__);                                                \
+  delete digest; digest = NULL;                                                \
+  return NULL;                                                                 \
+}
+
   std::istringstream iss(digest_s, std::istringstream::in|std::istringstream::binary);
   Digest* digest = new Digest();
 
   getline(iss, digest->_ha1, '\0');
+  ASSERT_NOT_EOF(iss);
   getline(iss, digest->_opaque, '\0');
+  ASSERT_NOT_EOF(iss);
   getline(iss, digest->_nonce, '\0');
+  ASSERT_NOT_EOF(iss);
   getline(iss, digest->_impi, '\0');
+  ASSERT_NOT_EOF(iss);
   getline(iss, digest->_realm, '\0');
+  ASSERT_NOT_EOF(iss);
   iss.read((char *)&digest->_nonce_count, sizeof(uint32_t));
+  ASSERT_NOT_EOF(iss);
   getline(iss, digest->_impu, '\0');
+  // Could legitimately be at the end of the stream now.
 
   return digest;
 }
