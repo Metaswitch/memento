@@ -53,6 +53,20 @@ AuthStore::AuthStore(Store* data_store, int expiry) :
   _deserializers.push_back(new BinarySerializerDeserializer());
 }
 
+AuthStore::AuthStore(Store* data_store,
+                     SerializerDeserializer*& serializer,
+                     std::vector<SerializerDeserializer*>& deserializers,
+                     int expiry) :
+  _data_store(data_store),
+  _serializer(serializer),
+  _deserializers(deserializers),
+  _expiry(expiry)
+{
+  // Take ownership of the (de)serializers.
+  serializer = NULL;
+  deserializers.clear();
+}
+
 AuthStore::~AuthStore()
 {
   delete _serializer; _serializer = NULL;

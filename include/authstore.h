@@ -138,6 +138,24 @@ public:
   };
 
   /// Constructor.
+  ///
+  /// @param data_store    A pointer to the underlying data store.
+  /// @param serializer    The serializer to use when writing digests.
+  ///                      The AuthStore takes ownership of it.
+  /// @param deserializer  A vector of deserializers to try when reading
+  ///                      digests. The order is important - each deserializer
+  ///                      is tried in turn until one successfully parses the
+  ///                      record.  The AuthStore takes ownership of the
+  ///                      deserializers in the vector.
+  /// @param expiry        Expiry time of entries
+  AuthStore(Store* data_store,
+            SerializerDeserializer*& serializer,
+            std::vector<SerializerDeserializer*>& _deserializers,
+            int expiry);
+
+  /// Alternative constructor that creates an AuthStore with just the default
+  /// (de)serializer.
+  ///
   /// @param data_store    A pointer to the underlying data store.
   /// @param expiry        Expiry time of entries
   AuthStore(Store* data_store,
