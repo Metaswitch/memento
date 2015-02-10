@@ -43,8 +43,14 @@
 #include "authstore.h"
 #include "test_utils.hpp"
 #include "test_interposer.hpp"
+#include "mock_store.h"
 
 using namespace std;
+
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Return;
+using ::testing::SetArgReferee;
 
 // These tests use "typed tests" to run the same tests over different
 // (de)serializers. For more information see:
@@ -253,4 +259,79 @@ TYPED_TEST(MultiFormatAuthStoreTest, CanReadAllFormats)
 
   delete digest; digest = NULL;
   delete digest2; digest2 = NULL;
+}
+
+
+class CorruptDataAuthStoreTest : public ::testing::Test
+{
+  CorruptDataAuthStoreTest()
+  {
+    _mock_store = new MockStore();
+
+    AuthStore::SerializerDeserializer* serializer =
+      new AuthStore::JsonSerializerDeserializer();
+    std::vector<AuthStore::SerializerDeserializer*> deserializers = {
+      new AuthStore::JsonSerializerDeserializer(),
+      new AuthStore::BinarySerializerDeserializer(),
+    };
+
+    _auth_store = new AuthStore(_mock_store,
+                                serializer,
+                                deserializers,
+                                300);
+  }
+
+  virtual ~CorruptDataAuthStoreTest()
+  {
+    delete _mock_store; _mock_store = NULL;
+    delete _auth_store; _auth_store = NULL;
+    cwtest_reset_time();
+  }
+
+  MockStore* _mock_store;
+  AuthStore* _auth_store;
+};
+
+
+TEST_F(CorruptDataAuthStoreTest, BadlyFormedJson)
+{
+  AuthStore::Digest* digest;
+  Store::Status rc;
+
+  std::string impi = "kermit@cw-ngv.com";
+  std::string nonce = "987654321";
+
+  EXPECT_CALL(*_mock_store, get_data(_, _, _, _, _))
+    .WillOnce(DoAll(SetArgReferee<2>(std::string("{ \"ha1\": \"12345\", "
+                                                   "\"realm\": \"cw-ngv.com\", ")),
+                    SetArgReferee<3>(1), // CAS
+                    Return(Store::OK)));
+
+  rc = _auth_store->get_digest(impi, nonce, digest, 0);
+  ASSERT_TRUE(digest == NULL);
+  EXPECT_EQ(Store::NOT_FOUND, rc);
+}
+
+
+TEST_F(CorruptDataAuthStoreTest, SemanticallyInvalidJson)
+{
+  AuthStore::Digest* digest;
+  Store::Status rc;
+
+  std::string impi = "kermit@cw-ngv.com";
+  std::string nonce = "987654321";
+
+  // JSON is invalid because "ha1" and "realm" should be in a "digest" object.
+  EXPECT_CALL(*_mock_store, get_data(_, _, _, _, _))
+    .WillOnce(DoAll(SetArgReferee<2>(std::string("{ \"ha1\": \"12345\", "
+                                                   "\"realm\": \"cw-ngv.com\", "
+                                                   "\"opaque\": \"blahblahblah\", "
+                                                   "\"impu\": \"kermit@cw-ngv.com\", "
+                                                   "\"nc\": 1}")),
+                    SetArgReferee<3>(1), // CAS
+                    Return(Store::OK)));
+
+  rc = _auth_store->get_digest(impi, nonce, digest, 0);
+  ASSERT_TRUE(digest == NULL);
+  EXPECT_EQ(Store::NOT_FOUND, rc);
 }
