@@ -1,5 +1,5 @@
 /**
- * @file avstore.cpp Implementation of store for Authentication Vectors
+ * @file authstore.cpp Implementation of store for Authentication Vectors
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -158,8 +158,8 @@ Store::Status AuthStore::get_digest(const std::string& impi,
     }
     else
     {
-      LOG_INFO("Failed to deserialze record");
-      SAS::Event event(trail, SasEvent::AUTHSTORE_DESERIALIZATION_FAILURE, 0);
+      LOG_INFO("Failed to deserialize record");
+      SAS::Event event(trail, SASEvent::AUTHSTORE_DESERIALIZATION_FAILURE, 0);
       event.add_var_param(key);
       event.add_var_param(data);
       SAS::report_event(event);

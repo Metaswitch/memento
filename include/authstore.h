@@ -1,5 +1,5 @@
 /**
- * @file avstore.h  Definition of class for storing Authentication Vectors
+ * @file authstore.h  Definition of class for storing Authentication Vectors
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
