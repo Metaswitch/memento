@@ -126,6 +126,17 @@ public:
     std::string name();
   };
 
+  /// A (de)serializer for the JSON format.
+  class JsonSerializerDeserializer : public SerializerDeserializer
+  {
+  public:
+    ~JsonSerializerDeserializer() {};
+
+    std::string serialize_digest(const Digest* digest);
+    Digest* deserialize_digest(const std::string& digest_s);
+    std::string name();
+  };
+
   /// Constructor.
   /// @param data_store    A pointer to the underlying data store.
   /// @param expiry        Expiry time of entries

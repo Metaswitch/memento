@@ -43,6 +43,7 @@
 #include "log.h"
 #include "sas.h"
 #include "mementosasevent.h"
+#include "json_parse_utils.h"
 
 AuthStore::AuthStore(Store* data_store, int expiry) :
   _data_store(data_store),
@@ -133,6 +134,9 @@ Store::Status AuthStore::get_digest(const std::string& impi,
     if (digest != NULL)
     {
       digest->_cas = cas;
+      digest->_impi = impi;
+      digest->_nonce = nonce;
+
       SAS::Event event(trail, SASEvent::AUTHSTORE_GET_SUCCESS, 0);
       event.add_var_param(key);
       event.add_var_param(data);
@@ -238,4 +242,90 @@ AuthStore::Digest* AuthStore::BinarySerializerDeserializer::
 std::string AuthStore::BinarySerializerDeserializer::name()
 {
   return "binary";
+}
+
+
+//
+// Definition of the JSON (de)serializer.
+//
+
+static const char* const JSON_DIGEST = "digest";
+static const char* const JSON_REALM = "realm";
+static const char* const JSON_QOP = "qop";
+static const char* const JSON_AUTH = "auth";
+static const char* const JSON_HA1 = "ha1";
+static const char* const JSON_OPAQUE = "opaque";
+static const char* const JSON_IMPU = "impu";
+static const char* const JSON_NC = "nc";
+
+std::string AuthStore::JsonSerializerDeserializer::
+  serialize_digest(const Digest* digest)
+{
+  rapidjson::StringBuffer sb;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(sb);
+
+  writer.StartObject();
+  {
+    writer.String(JSON_DIGEST);
+    writer.StartObject();
+    {
+      writer.String(JSON_REALM); writer.String(digest->_realm.c_str());
+      writer.String(JSON_QOP); writer.String(JSON_AUTH);
+      writer.String(JSON_HA1); writer.String(digest->_ha1.c_str());
+    }
+    writer.EndObject();
+
+    writer.String(JSON_OPAQUE); writer.String(digest->_opaque.c_str());
+    writer.String(JSON_IMPU); writer.String(digest->_impu.c_str());
+    writer.String(JSON_NC); writer.Int(digest->_nonce_count);
+  }
+  writer.EndObject();
+
+  return sb.GetString();
+}
+
+AuthStore::Digest* AuthStore::JsonSerializerDeserializer::
+  deserialize_digest(const std::string& digest_s)
+{
+  LOG_DEBUG("Deserialize JSON document: %s", digest_s.c_str());
+
+  rapidjson::Document doc;
+  doc.Parse<0>(digest_s.c_str());
+
+  if (doc.HasParseError())
+  {
+    LOG_DEBUG("Failed to parse document");
+    return NULL;
+  }
+
+  Digest* digest = new Digest();
+
+  try
+  {
+    JSON_ASSERT_CONTAINS(doc, JSON_DIGEST);
+    JSON_ASSERT_OBJECT(doc[JSON_DIGEST]);
+    const rapidjson::Value& digest_block = doc[JSON_DIGEST];
+    {
+      JSON_GET_STRING_MEMBER(digest_block, JSON_HA1, digest->_ha1);
+      // The QoP is assumed to always be 'auth'.
+      JSON_GET_STRING_MEMBER(digest_block, JSON_REALM, digest->_realm);
+    }
+
+    JSON_GET_STRING_MEMBER(doc, JSON_OPAQUE, digest->_opaque);
+    JSON_GET_STRING_MEMBER(doc, JSON_IMPU, digest->_impu);
+    JSON_GET_INT_MEMBER(doc, JSON_NC, digest->_nonce_count);
+  }
+  catch(JsonFormatError err)
+  {
+    LOG_INFO("Failed to deserialize JSON document (hit error at %s:%d)",
+             err._file, err._line);
+    delete digest; digest = NULL;
+  }
+
+  return digest;
+}
+
+std::string AuthStore::JsonSerializerDeserializer::name()
+{
+  return "JSON";
 }
