@@ -96,7 +96,7 @@ public:
   {
   public:
     /// Virtual destructor.
-    virtual ~SerializerDeserializer();
+    virtual ~SerializerDeserializer() {};
 
     /// Serialize a Digest object to the format used in the store.
     ///
@@ -113,6 +113,17 @@ public:
 
     /// @return - The name of this (de)serializer.
     virtual std::string name() = 0;
+  };
+
+  /// A (de)serializer for the (deprecated) custom binary format.
+  class BinarySerializerDeserializer : public SerializerDeserializer
+  {
+  public:
+    ~BinarySerializerDeserializer() {};
+
+    std::string serialize_digest(const Digest* digest);
+    Digest* deserialize_digest(const std::string& digest_s);
+    std::string name();
   };
 
   /// Constructor.
@@ -155,6 +166,11 @@ private:
 
   /// A pointer to the underlying data store.
   Store* _data_store;
+
+  /// Serializer to use when writing records, and a vector of deserializers to
+  /// try when reading them.
+  SerializerDeserializer* _serializer;
+  std::vector<SerializerDeserializer*> _deserializers;
 
   /// Time to expire Digest record (controlled by configuration)
   int _expiry;

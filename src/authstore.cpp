@@ -48,10 +48,20 @@ AuthStore::AuthStore(Store* data_store, int expiry) :
   _data_store(data_store),
   _expiry(expiry)
 {
+  _serializer = new BinarySerializerDeserializer();
+  _deserializers.push_back(new BinarySerializerDeserializer());
 }
 
 AuthStore::~AuthStore()
 {
+  delete _serializer; _serializer = NULL;
+
+  for (std::vector<SerializerDeserializer*>::iterator it = _deserializers.begin();
+       it != _deserializers.end();
+       ++it)
+  {
+    delete *it; *it = NULL;
+  }
 }
 
 Store::Status AuthStore::set_digest(const std::string& impi,
@@ -149,6 +159,36 @@ AuthStore::Digest::~Digest()
 
 AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
 {
+  return _deserializers[0]->deserialize_digest(digest_s);
+}
+
+std::string AuthStore::serialize_digest(const AuthStore::Digest* digest)
+{
+  return _serializer->serialize_digest(digest);
+}
+
+//
+// Definition of the binary (de)serializer.
+//
+
+std::string AuthStore::BinarySerializerDeserializer::
+  serialize_digest(const Digest* digest)
+{
+  std::ostringstream oss(std::ostringstream::out|std::ostringstream::binary);
+  oss << digest->_ha1 << '\0';
+  oss << digest->_opaque << '\0';
+  oss << digest->_nonce << '\0';
+  oss << digest->_impi << '\0';
+  oss << digest->_realm << '\0';
+  oss.write((const char *)&digest->_nonce_count, sizeof(int));
+  oss << digest->_impu << '\0';
+
+  return oss.str();
+}
+
+AuthStore::Digest* AuthStore::BinarySerializerDeserializer::
+  deserialize_digest(const std::string& digest_s)
+{
   std::istringstream iss(digest_s, std::istringstream::in|std::istringstream::binary);
   Digest* digest = new Digest();
 
@@ -163,16 +203,7 @@ AuthStore::Digest* AuthStore::deserialize_digest(const std::string& digest_s)
   return digest;
 }
 
-std::string AuthStore::serialize_digest(const AuthStore::Digest* digest_d)
+std::string AuthStore::BinarySerializerDeserializer::name()
 {
-  std::ostringstream oss(std::ostringstream::out|std::ostringstream::binary);
-  oss << digest_d->_ha1 << '\0';
-  oss << digest_d->_opaque << '\0';
-  oss << digest_d->_nonce << '\0';
-  oss << digest_d->_impi << '\0';
-  oss << digest_d->_realm << '\0';
-  oss.write((const char *)&digest_d->_nonce_count, sizeof(int));
-  oss << digest_d->_impu << '\0';
-
-  return oss.str();
+  return "binary";
 }
