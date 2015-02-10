@@ -75,6 +75,8 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
   digest->_ha1 = "123123123";
   digest->_opaque = "opaque";
   digest->_realm = "cw-ngv.com";
+  digest->_nonce_count = 3;
+  digest->_impu = "sip:" + impi;
 
   auth_store->set_digest(impi, nonce, digest, 0);
 
@@ -83,7 +85,13 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
   AuthStore::Digest* digest2;
   auth_store->get_digest(impi, nonce, digest2, 0);
 
+  ASSERT_EQ(digest->_impi, digest2->_impi);
+  ASSERT_EQ(digest->_nonce, digest2->_nonce);
   ASSERT_EQ(digest->_ha1, digest2->_ha1);
+  ASSERT_EQ(digest->_realm, digest2->_realm);
+  ASSERT_EQ(digest->_opaque, digest2->_opaque);
+  ASSERT_EQ(digest->_impu, digest2->_impu);
+  ASSERT_EQ(digest->_nonce_count, digest2->_nonce_count);
 
   delete digest; digest = NULL;
   delete digest2; digest2 = NULL;
