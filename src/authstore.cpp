@@ -159,7 +159,10 @@ Store::Status AuthStore::get_digest(const std::string& impi,
     else
     {
       LOG_INFO("Failed to deserialze record");
-      // TODO: SAS event
+      SAS::Event event(trail, SasEvent::AUTHSTORE_DESERIALIZATION_FAILURE, 0);
+      event.add_var_param(key);
+      event.add_var_param(data);
+      SAS::report_event(event);
 
       // Handle as if the digest was not found.
       status = Store::NOT_FOUND;
