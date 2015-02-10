@@ -51,20 +51,24 @@ class AuthStoreTest : public ::testing::Test
 {
   AuthStoreTest()
   {
+    _local_data_store = new LocalStore();
+    _auth_store = new AuthStore(_local_data_store, 300);
   }
 
   virtual ~AuthStoreTest()
   {
+    delete _local_data_store; _local_data_store = NULL;
+    delete _auth_store; _auth_store = NULL;
     cwtest_reset_time();
   }
+
+  LocalStore* _local_data_store;
+  AuthStore* _auth_store;
 };
 
 
 TEST_F(AuthStoreTest, SimpleWriteRead)
 {
-  LocalStore* local_data_store = new LocalStore();
-  AuthStore* auth_store = new AuthStore(local_data_store, 300);
-
   // Write a digest to the store.
   std::string impi = "6505551234@cw-ngv.com";
   std::string nonce = "9876543210";
@@ -78,12 +82,12 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
   digest->_nonce_count = 3;
   digest->_impu = "sip:" + impi;
 
-  auth_store->set_digest(impi, nonce, digest, 0);
+  _auth_store->set_digest(impi, nonce, digest, 0);
 
   // Retrieve the digest from the store and check it against
   // the initial digest
   AuthStore::Digest* digest2;
-  auth_store->get_digest(impi, nonce, digest2, 0);
+  _auth_store->get_digest(impi, nonce, digest2, 0);
 
   ASSERT_EQ(digest->_impi, digest2->_impi);
   ASSERT_EQ(digest->_nonce, digest2->_nonce);
@@ -95,16 +99,11 @@ TEST_F(AuthStoreTest, SimpleWriteRead)
 
   delete digest; digest = NULL;
   delete digest2; digest2 = NULL;
-  delete auth_store; auth_store = NULL;
-  delete local_data_store; local_data_store = NULL;
 }
 
 TEST_F(AuthStoreTest, ReadExpired)
 {
   cwtest_completely_control_time();
-
-  LocalStore* local_data_store = new LocalStore();
-  AuthStore* auth_store = new AuthStore(local_data_store, 30);
 
   // Write a digest to the store.
   std::string impi = "6505551234@cw-ngv.com";
@@ -117,25 +116,23 @@ TEST_F(AuthStoreTest, ReadExpired)
   digest->_opaque = "opaque";
   digest->_realm = "cw-ngv.com";
 
-  auth_store->set_digest(impi, nonce, digest, 0);
+  _auth_store->set_digest(impi, nonce, digest, 0);
 
-  // Advance the time by 29 seconds and read the record.
-  cwtest_advance_time_ms(29000);
+  // Advance the time by 299 seconds and read the record.
+  cwtest_advance_time_ms(299000);
   AuthStore::Digest* digest2;
-  auth_store->get_digest(impi, nonce, digest2, 0);
+  _auth_store->get_digest(impi, nonce, digest2, 0);
 
   ASSERT_EQ(digest->_ha1, digest2->_ha1);
 
   // Advance the time another 2 seconds to expire the record.
   cwtest_advance_time_ms(2000);
   AuthStore::Digest* digest3;
-  auth_store->get_digest(impi, nonce, digest3, 0);
+  _auth_store->get_digest(impi, nonce, digest3, 0);
 
   ASSERT_EQ(NULL, digest3);
 
   delete digest; digest = NULL;
   delete digest2; digest2 = NULL;
   delete digest3; digest3 = NULL;
-  delete auth_store; auth_store = NULL;
-  delete local_data_store; local_data_store = NULL;
 }
