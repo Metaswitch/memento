@@ -112,7 +112,7 @@ const static struct option long_opt[] =
   {"sas",                    required_argument, NULL, SAS_CONFIG},
   {"access-log",             required_argument, NULL, ACCESS_LOG},
   {"alarms-enabled",         no_argument,       NULL, ALARMS_ENABLED},
-  {"memcached-write-format", no_argument,       NULL, MEMCACHED_WRITE_FORMAT},
+  {"memcached-write-format", required_argument, NULL, MEMCACHED_WRITE_FORMAT},
   {"log-file",               required_argument, NULL, LOG_FILE},
   {"log-level",              required_argument, NULL, LOG_LEVEL},
   {"help",                   no_argument,       NULL, HELP},
