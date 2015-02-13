@@ -49,8 +49,8 @@ AuthStore::AuthStore(Store* data_store, int expiry) :
   _data_store(data_store),
   _expiry(expiry)
 {
-  _serializer = new BinarySerializerDeserializer();
-  _deserializers.push_back(new BinarySerializerDeserializer());
+  _serializer = new JsonSerializerDeserializer();
+  _deserializers.push_back(new JsonSerializerDeserializer());
 }
 
 AuthStore::AuthStore(Store* data_store,

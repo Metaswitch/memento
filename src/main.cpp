@@ -142,7 +142,7 @@ void usage(void)
        " --memcached-write-format\n"
        "                            The data format to use when writing authentication\n"
        "                            digests to memcached. Values are 'binary' and 'json'\n"
-       "                            (defaults to 'binary')\n"
+       "                            (defaults to 'json')\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -351,7 +351,7 @@ int main(int argc, char**argv)
   options.log_to_file = false;
   options.log_level = 0;
   options.alarms_enabled = false;
-  options.memcached_write_format = MemcachedWriteFormat::BINARY;
+  options.memcached_write_format = MemcachedWriteFormat::JSON;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
