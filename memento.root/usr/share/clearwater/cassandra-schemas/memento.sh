@@ -24,7 +24,7 @@ if [[ ! -e /var/lib/cassandra/data/${keyspace} ]]; then
             printf "*** ERROR: Cassandra did not come online!\n"
             exit 1
         fi
-        netstat -na | grep -q ":7199[^0-9]"
+        $namespace_prefix netstat -na | grep -q ":7199[^0-9]"
     done
     let "cnt=0"
     $namespace_prefix netstat -na | grep "LISTEN" | awk '{ print $4 }' | grep -q ":9160\$"
