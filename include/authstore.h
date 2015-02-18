@@ -1,5 +1,5 @@
 /**
- * @file avstore.h  Definition of class for storing Authentication Vectors
+ * @file authstore.h  Definition of class for storing Authentication Vectors
  *
  * Project Clearwater - IMS in the Cloud
  * Copyright (C) 2014  Metaswitch Networks Ltd
@@ -87,7 +87,75 @@ public:
     friend class AuthStore;
   };
 
+  /// Interface used by the AuthStore to serialize digests from C++ objects to
+  /// the format used in the store, and deserialize them.
+  ///
+  /// This interface allows multiple (de)serializers to be defined and for the
+  /// AuthStore to use them in a pluggable fashion.
+  class SerializerDeserializer
+  {
+  public:
+    /// Virtual destructor.
+    virtual ~SerializerDeserializer() {};
+
+    /// Serialize a Digest object to the format used in the store.
+    ///
+    /// @param digest - The digest to serialize.
+    /// @return       - The serialized form.
+    virtual std::string serialize_digest(const Digest* digest) = 0;
+
+    /// Deserialize some data from the store to a Digest object.
+    ///
+    /// @param digest_s - The data to deserialize.
+    /// @return         - A digest object, or NULL if the data could not be
+    ///                   deserialized (e.g. because it is corrupt).
+    virtual Digest* deserialize_digest(const std::string& digest_s) = 0;
+
+    /// @return - The name of this (de)serializer.
+    virtual std::string name() = 0;
+  };
+
+  /// A (de)serializer for the (deprecated) custom binary format.
+  class BinarySerializerDeserializer : public SerializerDeserializer
+  {
+  public:
+    ~BinarySerializerDeserializer() {};
+
+    std::string serialize_digest(const Digest* digest);
+    Digest* deserialize_digest(const std::string& digest_s);
+    std::string name();
+  };
+
+  /// A (de)serializer for the JSON format.
+  class JsonSerializerDeserializer : public SerializerDeserializer
+  {
+  public:
+    ~JsonSerializerDeserializer() {};
+
+    std::string serialize_digest(const Digest* digest);
+    Digest* deserialize_digest(const std::string& digest_s);
+    std::string name();
+  };
+
   /// Constructor.
+  ///
+  /// @param data_store    A pointer to the underlying data store.
+  /// @param serializer    The serializer to use when writing digests.
+  ///                      The AuthStore takes ownership of it.
+  /// @param deserializer  A vector of deserializers to try when reading
+  ///                      digests. The order is important - each deserializer
+  ///                      is tried in turn until one successfully parses the
+  ///                      record.  The AuthStore takes ownership of the
+  ///                      deserializers in the vector.
+  /// @param expiry        Expiry time of entries
+  AuthStore(Store* data_store,
+            SerializerDeserializer*& serializer,
+            std::vector<SerializerDeserializer*>& _deserializers,
+            int expiry);
+
+  /// Alternative constructor that creates an AuthStore with just the default
+  /// (de)serializer.
+  ///
   /// @param data_store    A pointer to the underlying data store.
   /// @param expiry        Expiry time of entries
   AuthStore(Store* data_store,
@@ -127,6 +195,11 @@ private:
 
   /// A pointer to the underlying data store.
   Store* _data_store;
+
+  /// Serializer to use when writing records, and a vector of deserializers to
+  /// try when reading them.
+  SerializerDeserializer* _serializer;
+  std::vector<SerializerDeserializer*> _deserializers;
 
   /// Time to expire Digest record (controlled by configuration)
   int _expiry;

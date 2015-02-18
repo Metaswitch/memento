@@ -54,6 +54,12 @@
 #include "mementosaslogger.h"
 #include "memento_lvc.h"
 
+enum MemcachedWriteFormat
+{
+  BINARY,
+  JSON,
+};
+
 struct options
 {
   std::string local_host;
@@ -72,6 +78,7 @@ struct options
   std::string log_directory;
   int log_level;
   bool alarms_enabled;
+  MemcachedWriteFormat memcached_write_format;
 };
 
 // Enum for option types not assigned short-forms
@@ -87,6 +94,7 @@ enum OptionTypes
   SAS_CONFIG,
   ACCESS_LOG,
   ALARMS_ENABLED,
+  MEMCACHED_WRITE_FORMAT,
   LOG_FILE,
   LOG_LEVEL,
   HELP
@@ -94,20 +102,21 @@ enum OptionTypes
 
 const static struct option long_opt[] =
 {
-  {"localhost",           required_argument, NULL, LOCAL_HOST},
-  {"http",                required_argument, NULL, HTTP_ADDRESS},
-  {"http-threads",        required_argument, NULL, HTTP_THREADS},
-  {"http-worker-threads", required_argument, NULL, HTTP_WORKER_THREADS},
-  {"homestead-http-name", required_argument, NULL, HOMESTEAD_HTTP_NAME},
-  {"digest-timeout",      required_argument, NULL, DIGEST_TIMEOUT},
-  {"home-domain",         required_argument, NULL, HOME_DOMAIN},
-  {"sas",                 required_argument, NULL, SAS_CONFIG},
-  {"access-log",          required_argument, NULL, ACCESS_LOG},
-  {"alarms-enabled",      no_argument,       NULL, ALARMS_ENABLED},
-  {"log-file",            required_argument, NULL, LOG_FILE},
-  {"log-level",           required_argument, NULL, LOG_LEVEL},
-  {"help",                no_argument,       NULL, HELP},
-  {NULL,                  0,                 NULL, 0},
+  {"localhost",              required_argument, NULL, LOCAL_HOST},
+  {"http",                   required_argument, NULL, HTTP_ADDRESS},
+  {"http-threads",           required_argument, NULL, HTTP_THREADS},
+  {"http-worker-threads",    required_argument, NULL, HTTP_WORKER_THREADS},
+  {"homestead-http-name",    required_argument, NULL, HOMESTEAD_HTTP_NAME},
+  {"digest-timeout",         required_argument, NULL, DIGEST_TIMEOUT},
+  {"home-domain",            required_argument, NULL, HOME_DOMAIN},
+  {"sas",                    required_argument, NULL, SAS_CONFIG},
+  {"access-log",             required_argument, NULL, ACCESS_LOG},
+  {"alarms-enabled",         no_argument,       NULL, ALARMS_ENABLED},
+  {"memcached-write-format", required_argument, NULL, MEMCACHED_WRITE_FORMAT},
+  {"log-file",               required_argument, NULL, LOG_FILE},
+  {"log-level",              required_argument, NULL, LOG_LEVEL},
+  {"help",                   no_argument,       NULL, HELP},
+  {NULL,                     0,                 NULL, 0},
 };
 
 void usage(void)
@@ -129,7 +138,11 @@ void usage(void)
        "    specified, SAS is disabled\n"
        " --access-log <directory>\n"
        "                            Generate access logs in specified directory\n"
-       "     --alarms-enabled       Whether SNMP alarms are enabled (default: false)\n"
+       " --alarms-enabled           Whether SNMP alarms are enabled (default: false)\n"
+       " --memcached-write-format\n"
+       "                            The data format to use when writing authentication\n"
+       "                            digests to memcached. Values are 'binary' and 'json'\n"
+       "                            (defaults to 'binary')\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -249,6 +262,27 @@ int init_options(int argc, char**argv, struct options& options)
       options.alarms_enabled = true;
       break;
 
+    case MEMCACHED_WRITE_FORMAT:
+      if (strcmp(optarg, "binary") == 0)
+      {
+        LOG_INFO("Memcached write format set to 'binary'");
+        options.memcached_write_format = MemcachedWriteFormat::BINARY;
+      }
+      else if (strcmp(optarg, "json") == 0)
+      {
+        LOG_INFO("Memcached write format set to 'json'");
+        options.memcached_write_format = MemcachedWriteFormat::JSON;
+      }
+      else
+      {
+        LOG_WARNING("Invalid value for memcached-write-format, using '%s'."
+                    "Got '%s', valid vales are 'json' and 'binary'",
+                    ((options.memcached_write_format == MemcachedWriteFormat::JSON) ?
+                     "json" : "binary"),
+                    optarg);
+      }
+      break;
+
     case LOG_FILE:
     case LOG_LEVEL:
       // Ignore these options - they're handled by init_logging_options
@@ -317,6 +351,7 @@ int main(int argc, char**argv)
   options.log_to_file = false;
   options.log_level = 0;
   options.alarms_enabled = false;
+  options.memcached_write_format = MemcachedWriteFormat::BINARY;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -406,7 +441,26 @@ int main(int argc, char**argv)
                                                "./cluster_settings",
                                                mc_comm_monitor,
                                                mc_vbucket_alarm);
-  AuthStore* auth_store = new AuthStore(m_store, options.digest_timeout);
+
+  AuthStore::SerializerDeserializer* serializer;
+  std::vector<AuthStore::SerializerDeserializer*> deserializers;
+
+  if (options.memcached_write_format == MemcachedWriteFormat::JSON)
+  {
+    serializer = new AuthStore::JsonSerializerDeserializer();
+  }
+  else
+  {
+    serializer = new AuthStore::BinarySerializerDeserializer();
+  }
+
+  deserializers.push_back(new AuthStore::JsonSerializerDeserializer());
+  deserializers.push_back(new AuthStore::BinarySerializerDeserializer());
+
+  AuthStore* auth_store = new AuthStore(m_store,
+                                        serializer,
+                                        deserializers,
+                                        options.digest_timeout);
 
   LoadMonitor* load_monitor = new LoadMonitor(100000, // Initial target latency (us)
                                               20, // Maximum token bucket size.
