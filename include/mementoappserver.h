@@ -67,19 +67,27 @@ class MementoAppServer : public AppServer
 {
 public:
   /// Constructor.
-  /// @param  service_name          - Service name (memento).
-  /// @param  home_domain           - Home domain of deployment (from configuration).
-  /// @param  max_call_list_length  - Maximum number of calls to store (from configuration).
-  /// @param  memento_thread        - Number of memento threads (from configuration).
-  /// @param  call_list_ttl         - Time to store calls in Cassandra (from configuration).
-  /// @param  stats_aggregator      - Statistics aggregator (last value cache).
+  /// @param  service_name           - Service name (memento).
+  /// @param  home_domain            - Home domain of deployment (from configuration).
+  /// @param  max_call_list_length   - Maximum number of calls to store (from configuration).
+  /// @param  memento_thread         - Number of memento threads (from configuration).
+  /// @param  call_list_ttl          - Time to store calls in Cassandra (from configuration).
+  /// @param  stats_aggregator       - Statistics aggregator (last value cache).
+  /// @param  cass_target_latency_us - Target latency for the Cassandra requests (from configuration).
+  /// @param  max_tokens             - Max number of tokens for the Cassandra load monitor (from configuration).
+  /// @param  init_token_rate        - Initial token rate for the Cassandra load monitor (from configuration).
+  /// @param  min_token_rate         - Minimum token rate for the Cassandra load monitor (from configuration).
   MementoAppServer(const std::string& service_name,
                    CallListStore::Store* call_list_store,
                    const std::string& home_domain,
                    const int max_call_list_length,
                    const int memento_thread,
                    const int call_list_ttl,
-                   LastValueCache* stats_aggregator);
+                   LastValueCache* stats_aggregator,
+                   const int cass_target_latency_us,
+                   const int max_tokens,
+                   const float init_token_rate,
+                   const float min_token_rate);
 
   /// Virtual destructor.
   ~MementoAppServer();
