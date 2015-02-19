@@ -102,10 +102,10 @@ enum OptionTypes
   LOG_FILE,
   LOG_LEVEL,
   HELP,
-  OPT_CASS_TARGET_LATENCY_US,
-  OPT_MAX_TOKENS,
-  OPT_INIT_TOKEN_RATE,
-  OPT_MIN_TOKEN_RATE
+  CASS_TARGET_LATENCY_US,
+  MAX_TOKENS,
+  INIT_TOKEN_RATE,
+  MIN_TOKEN_RATE
 };
 
 const static struct option long_opt[] =
@@ -124,10 +124,10 @@ const static struct option long_opt[] =
   {"log-file",               required_argument, NULL, LOG_FILE},
   {"log-level",              required_argument, NULL, LOG_LEVEL},
   {"help",                   no_argument,       NULL, HELP},
-  {"cass-target-latency-us", required_argument, NULL, OPT_CASS_TARGET_LATENCY_US},
-  {"max-tokens",             required_argument, NULL, OPT_MAX_TOKENS},
-  {"init-token-rate",        required_argument, NULL, OPT_INIT_TOKEN_RATE},
-  {"min-token-rate",         required_argument, NULL, OPT_MIN_TOKEN_RATE},
+  {"cass-target-latency-us", required_argument, NULL, CASS_TARGET_LATENCY_US},
+  {"max-tokens",             required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",        required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",         required_argument, NULL, MIN_TOKEN_RATE},
   {NULL,                     0,                 NULL, 0},
 };
 
@@ -303,7 +303,7 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
-    case OPT_CASS_TARGET_LATENCY_US:
+    case CASS_TARGET_LATENCY_US:
       options.cass_target_latency_us = atoi(optarg);
 
       if (options.cass_target_latency_us <= 0)
@@ -313,7 +313,7 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
-    case OPT_MAX_TOKENS:
+    case MAX_TOKENS:
       options.max_tokens = atoi(optarg);
 
       if (options.max_tokens <= 0)
@@ -323,7 +323,7 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
-    case OPT_INIT_TOKEN_RATE:
+    case INIT_TOKEN_RATE:
       options.init_token_rate = atoi(optarg);
  
       if (options.init_token_rate <= 0)
@@ -333,7 +333,7 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
-    case OPT_MIN_TOKEN_RATE:
+    case MIN_TOKEN_RATE:
       options.min_token_rate = atoi(optarg);
 
       if (options.min_token_rate <= 0)
