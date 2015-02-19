@@ -156,7 +156,7 @@ void usage(void)
        "                            digests to memcached. Values are 'binary' and 'json'\n"
        "                            (defaults to 'binary')\n"
        " --target-latency-us <usecs>\n"
-       "                            Target latency above which throttling applies (default: 1000000)\n"
+       "                            Target latency above which throttling applies (default: 100000)\n"
        " --max-tokens N             Maximum number of tokens allowed in the token bucket (used by\n" 
        "                            the throttling code (default: 20))\n"
        " --init-token-rate N        Initial token refill rate of tokens in the token bucket (used by\n"

@@ -282,7 +282,7 @@ TEST_F(MementoAppServerTest, CreateMementoAppServer)
                                                25,
                                                604800,
                                                _stats_aggregator,
-                                               100000,
+                                               1000000,
                                                20,
                                                100.0,
                                                10.0);
