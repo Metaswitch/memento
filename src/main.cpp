@@ -79,7 +79,7 @@ struct options
   int log_level;
   bool alarms_enabled;
   MemcachedWriteFormat memcached_write_format;
-  int cass_target_latency_us;
+  int target_latency_us;
   int max_tokens;
   float init_token_rate;
   float min_token_rate;
@@ -102,7 +102,7 @@ enum OptionTypes
   LOG_FILE,
   LOG_LEVEL,
   HELP,
-  CASS_TARGET_LATENCY_US,
+  TARGET_LATENCY_US,
   MAX_TOKENS,
   INIT_TOKEN_RATE,
   MIN_TOKEN_RATE
@@ -124,7 +124,7 @@ const static struct option long_opt[] =
   {"log-file",               required_argument, NULL, LOG_FILE},
   {"log-level",              required_argument, NULL, LOG_LEVEL},
   {"help",                   no_argument,       NULL, HELP},
-  {"cass-target-latency-us", required_argument, NULL, CASS_TARGET_LATENCY_US},
+  {"target-latency-us",      required_argument, NULL, TARGET_LATENCY_US},
   {"max-tokens",             required_argument, NULL, MAX_TOKENS},
   {"init-token-rate",        required_argument, NULL, INIT_TOKEN_RATE},
   {"min-token-rate",         required_argument, NULL, MIN_TOKEN_RATE},
@@ -155,7 +155,7 @@ void usage(void)
        "                            The data format to use when writing authentication\n"
        "                            digests to memcached. Values are 'binary' and 'json'\n"
        "                            (defaults to 'binary')\n"
-       " --cass-target-latency-us <usecs>\n"
+       " --target-latency-us <usecs>\n"
        "                            Target latency above which throttling applies (default: 1000000)\n"
        " --max-tokens N             Maximum number of tokens allowed in the token bucket (used by\n" 
        "                            the throttling code (default: 20))\n"
@@ -303,12 +303,12 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
-    case CASS_TARGET_LATENCY_US:
-      options.cass_target_latency_us = atoi(optarg);
+    case TARGET_LATENCY_US:
+      options.target_latency_us = atoi(optarg);
 
-      if (options.cass_target_latency_us <= 0)
+      if (options.target_latency_us <= 0)
       {
-        LOG_ERROR("Invalid --cass-target-latency-us option %s", optarg);
+        LOG_ERROR("Invalid --target-latency-us option %s", optarg);
         return -1;
       }
       break;
@@ -412,7 +412,7 @@ int main(int argc, char**argv)
   options.log_level = 0;
   options.alarms_enabled = false;
   options.memcached_write_format = MemcachedWriteFormat::BINARY;
-  options.cass_target_latency_us = 1000000;
+  options.target_latency_us = 100000;
   options.max_tokens = 20;
   options.init_token_rate = 100.0;
   options.min_token_rate = 10.0;
@@ -526,7 +526,7 @@ int main(int argc, char**argv)
                                         deserializers,
                                         options.digest_timeout);
 
-  LoadMonitor* load_monitor = new LoadMonitor(options.cass_target_latency_us, 
+  LoadMonitor* load_monitor = new LoadMonitor(options.target_latency_us, 
                                               options.max_tokens,
                                               options.init_token_rate, 
                                               options.min_token_rate); 

@@ -281,7 +281,11 @@ TEST_F(MementoAppServerTest, CreateMementoAppServer)
                                                0,
                                                25,
                                                604800,
-                                               _stats_aggregator);
+                                               _stats_aggregator,
+                                               100000,
+                                               20,
+                                               100.0,
+                                               10.0);
 
   // Test creating an app server transaction with an invalid method -
   // it shouldn't be created.
