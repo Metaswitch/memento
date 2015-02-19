@@ -79,6 +79,10 @@ struct options
   int log_level;
   bool alarms_enabled;
   MemcachedWriteFormat memcached_write_format;
+  int target_latency_us;
+  int max_tokens;
+  float init_token_rate;
+  float min_token_rate;
 };
 
 // Enum for option types not assigned short-forms
@@ -97,7 +101,11 @@ enum OptionTypes
   MEMCACHED_WRITE_FORMAT,
   LOG_FILE,
   LOG_LEVEL,
-  HELP
+  HELP,
+  TARGET_LATENCY_US,
+  MAX_TOKENS,
+  INIT_TOKEN_RATE,
+  MIN_TOKEN_RATE
 };
 
 const static struct option long_opt[] =
@@ -116,6 +124,10 @@ const static struct option long_opt[] =
   {"log-file",               required_argument, NULL, LOG_FILE},
   {"log-level",              required_argument, NULL, LOG_LEVEL},
   {"help",                   no_argument,       NULL, HELP},
+  {"target-latency-us",      required_argument, NULL, TARGET_LATENCY_US},
+  {"max-tokens",             required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",        required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",         required_argument, NULL, MIN_TOKEN_RATE},
   {NULL,                     0,                 NULL, 0},
 };
 
@@ -143,6 +155,14 @@ void usage(void)
        "                            The data format to use when writing authentication\n"
        "                            digests to memcached. Values are 'binary' and 'json'\n"
        "                            (defaults to 'binary')\n"
+       " --target-latency-us <usecs>\n"
+       "                            Target latency above which throttling applies (default: 100000)\n"
+       " --max-tokens N             Maximum number of tokens allowed in the token bucket (used by\n" 
+       "                            the throttling code (default: 20))\n"
+       " --init-token-rate N        Initial token refill rate of tokens in the token bucket (used by\n"
+       "                            the throttling code (default: 100.0))\n"
+       " --min-token-rate N         Minimum token refill rate of tokens in the token bucket (used by\n"
+       "                            the throttling code (default: 10.0))\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -283,6 +303,46 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
+    case TARGET_LATENCY_US:
+      options.target_latency_us = atoi(optarg);
+
+      if (options.target_latency_us <= 0)
+      {
+        LOG_ERROR("Invalid --target-latency-us option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case MAX_TOKENS:
+      options.max_tokens = atoi(optarg);
+
+      if (options.max_tokens <= 0)
+      {
+        LOG_ERROR("Invalid --max-tokens option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case INIT_TOKEN_RATE:
+      options.init_token_rate = atoi(optarg);
+ 
+      if (options.init_token_rate <= 0)
+      {
+        LOG_ERROR("Invalid --init-token-rate option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case MIN_TOKEN_RATE:
+      options.min_token_rate = atoi(optarg);
+
+      if (options.min_token_rate <= 0)
+      {
+        LOG_ERROR("Invalid --min-token-rate option %s", optarg);
+        return -1;
+      }
+      break;
+
     case LOG_FILE:
     case LOG_LEVEL:
       // Ignore these options - they're handled by init_logging_options
@@ -352,6 +412,10 @@ int main(int argc, char**argv)
   options.log_level = 0;
   options.alarms_enabled = false;
   options.memcached_write_format = MemcachedWriteFormat::BINARY;
+  options.target_latency_us = 100000;
+  options.max_tokens = 20;
+  options.init_token_rate = 100.0;
+  options.min_token_rate = 10.0;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -462,10 +526,10 @@ int main(int argc, char**argv)
                                         deserializers,
                                         options.digest_timeout);
 
-  LoadMonitor* load_monitor = new LoadMonitor(100000, // Initial target latency (us)
-                                              20, // Maximum token bucket size.
-                                              10.0, // Initial token fill rate (per sec).
-                                              10.0); // Minimum token fill rate (pre sec).
+  LoadMonitor* load_monitor = new LoadMonitor(options.target_latency_us, 
+                                              options.max_tokens,
+                                              options.init_token_rate, 
+                                              options.min_token_rate); 
 
   LastValueCache* stats_aggregator = new MementoLVC();
 

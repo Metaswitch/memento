@@ -111,6 +111,10 @@ get_settings()
     alarms_enabled_arg="--alarms-enabled"
   fi
 
+  [ -z "$target_latency_us" ] || target_latency_us_arg="--target-latency-us $target_latency_us"
+  [ -z "$max_tokens" ] || max_tokens_arg="--max-tokens $max_tokens"
+  [ -z "$init_token_rate" ] || init_token_rate_arg="--init-token-rate $init_token_rate"
+  [ -z "$min_token_rate" ] || min_token_rate_arg="--min-token-rate $min_token_rate"
   [ -z "$signaling_namespace" ] || namespace_prefix="ip netns exec $signaling_namespace"
 }
 
@@ -142,6 +146,10 @@ do_start()
                      --home-domain $home_domain
                      --access-log $log_directory
                      $alarms_enabled_arg
+                     $target_latency_us_arg
+                     $max_tokens_arg
+                     $init_token_rate_arg
+                     $min_token_rate_arg
                      --log-file $log_directory
                      --log-level $log_level
                      --sas $sas_server,$NAME@$public_hostname"
