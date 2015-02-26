@@ -116,6 +116,7 @@ get_settings()
   [ -z "$init_token_rate" ] || init_token_rate_arg="--init-token-rate $init_token_rate"
   [ -z "$min_token_rate" ] || min_token_rate_arg="--min-token-rate $min_token_rate"
   [ -z "$signaling_namespace" ] || namespace_prefix="ip netns exec $signaling_namespace"
+  [ -z "$exception_max_ttl" ] || exception_max_ttl_arg="--exception-max-ttl $exception_max_ttl"
 }
 
 #
@@ -150,6 +151,7 @@ do_start()
                      $max_tokens_arg
                      $init_token_rate_arg
                      $min_token_rate_arg
+                     $exception_max_ttl_arg
                      --log-file $log_directory
                      --log-level $log_level
                      --sas $sas_server,$NAME@$public_hostname"
