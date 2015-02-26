@@ -482,11 +482,18 @@ int main(int argc, char**argv)
     access_logger = new AccessLogger(options.access_log_directory);
   }
 
- // Create an exception handler. The exception handler doesn't need
- // to quiesce the process before killing it.
- exception_handler = new ExceptionHandler(options.exception_max_ttl,
-                                          false,
-                                          NULL); // TODO
+  HealthChecker* hc = new HealthChecker();
+  pthread_t health_check_thread;
+  pthread_create(&health_check_thread,
+                 NULL,
+                 &HealthChecker::static_main_thread_function,
+                 (void*)hc);
+  
+  // Create an exception handler. The exception handler doesn't need
+  // to quiesce the process before killing it.
+  exception_handler = new ExceptionHandler(options.exception_max_ttl,
+                                           false,
+                                           hc);
 
   SAS::init(options.sas_system_name,
             "memento",
@@ -595,8 +602,8 @@ int main(int argc, char**argv)
 
   HttpStack* http_stack = HttpStack::get_instance();
   HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
-
-  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator);
+  
+  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc);
 
   MementoSasLogger sas_logger;
   HttpStackUtils::PingHandler ping_handler;
@@ -641,6 +648,9 @@ int main(int argc, char**argv)
   call_list_store->stop();
   call_list_store->wait_stopped();
 
+  hc->terminate();
+  pthread_join(health_check_thread, NULL);
+  
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
@@ -650,7 +660,9 @@ int main(int argc, char**argv)
   delete call_list_store; call_list_store = NULL;
   delete m_store; m_store = NULL;
   delete exception_handler; exception_handler = NULL;
+  delete hc; hc = NULL;
 
+  
   if (options.alarms_enabled)
   {
     // Stop the alarm request agent
