@@ -133,6 +133,8 @@ void CallListTask::respond_when_authenticated()
   tx_event.add_var_param(_impu);
   SAS::report_event(tx_event);
 
+  // 200 OK response - we're still active and providing service
+  _cfg->_health_checker->health_check_passed();  
   send_http_reply(HTTP_OK);
 }
 
