@@ -43,12 +43,6 @@
 #include "utils.h"
 #include "mementosasevent.h"
 
-// Values for the load monitor. Target latency is 1 second
-static const int TARGET_LATENCY = 1000000;
-static const int MAX_TOKENS = 20;
-static float INITIAL_TOKEN_RATE = 100.0;
-static float MIN_TOKEN_RATE = 10.0;
-
 static const int MAX_CALL_ENTRY_LENGTH = 4096;
 static const char* TIMESTAMP_PATTERN = "%Y%m%d%H%M%S";
 static const char* XML_PATTERN = "%Y-%m-%dT%H:%M:%S";
@@ -79,20 +73,26 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                    const int max_call_list_length,
                                    const int memento_threads,
                                    const int call_list_ttl,
-                                   LastValueCache* stats_aggregator) :
+                                   LastValueCache* stats_aggregator,
+                                   const int cass_target_latency,
+                                   const int max_tokens,
+                                   const float init_token_rate,
+                                   const float min_token_rate,
+                                   ExceptionHandler* exception_handler) :
   AppServer(service_name),
   _service_name(service_name),
   _home_domain(home_domain),
-  _load_monitor(new LoadMonitor(TARGET_LATENCY,
-                                MAX_TOKENS,
-                                INITIAL_TOKEN_RATE,
-                                MIN_TOKEN_RATE)),
+  _load_monitor(new LoadMonitor(cass_target_latency,
+                                max_tokens,
+                                init_token_rate,
+                                min_token_rate)),
   _call_list_store_processor(new CallListStoreProcessor(_load_monitor,
                                                         call_list_store,
                                                         max_call_list_length,
                                                         memento_threads,
                                                         call_list_ttl,
-                                                        stats_aggregator)),
+                                                        stats_aggregator,
+                                                        exception_handler)),
   _stat_calls_not_recorded_due_to_overload("memento_not_recorded_overload",
                                            stats_aggregator)
 {

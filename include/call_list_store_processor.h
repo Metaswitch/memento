@@ -54,7 +54,8 @@ public:
                          const int max_call_list_length,
                          const int memento_thread,
                          const int call_list_ttl,
-                         LastValueCache* stats_aggregator);
+                         LastValueCache* stats_aggregator,
+                         ExceptionHandler* exception_handler);
 
   /// Destructor
   ~CallListStoreProcessor();
@@ -87,6 +88,12 @@ public:
     SAS::TrailId trail;
   };
 
+  static void exception_callback(CallListStoreProcessor::CallListRequest* work)
+  {
+    // No recovery behaviour as this is asynchronos, so we can't sensibly
+    // respond
+  }
+
 private:
   /// @class Pool
   /// The thread pool used by the call list store processor
@@ -107,6 +114,8 @@ private:
          const int max_call_list_length,
          const int call_list_ttl,
          unsigned int num_threads,
+         ExceptionHandler* exception_handler,
+         void (*callback)(CallListStoreProcessor::CallListRequest* work),
          unsigned int max_queue = 0);
 
     /// Destructor

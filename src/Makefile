@@ -47,7 +47,9 @@ TARGET_SOURCES := localstore.cpp \
                   zmq_lvc.cpp \
                   counter.cpp \
                   accumulator.cpp \
-                  memento_lvc.cpp
+                  memento_lvc.cpp \
+                  health_checker.cpp \
+                  exception_handler.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 

@@ -53,6 +53,7 @@
 #include "authstore.h"
 #include "mementosaslogger.h"
 #include "memento_lvc.h"
+#include "exception_handler.h"
 
 enum MemcachedWriteFormat
 {
@@ -79,6 +80,11 @@ struct options
   int log_level;
   bool alarms_enabled;
   MemcachedWriteFormat memcached_write_format;
+  int target_latency_us;
+  int max_tokens;
+  float init_token_rate;
+  float min_token_rate;
+  int exception_max_ttl;
 };
 
 // Enum for option types not assigned short-forms
@@ -97,7 +103,12 @@ enum OptionTypes
   MEMCACHED_WRITE_FORMAT,
   LOG_FILE,
   LOG_LEVEL,
-  HELP
+  HELP,
+  TARGET_LATENCY_US,
+  MAX_TOKENS,
+  INIT_TOKEN_RATE,
+  MIN_TOKEN_RATE,
+  EXCEPTION_MAX_TTL
 };
 
 const static struct option long_opt[] =
@@ -116,6 +127,11 @@ const static struct option long_opt[] =
   {"log-file",               required_argument, NULL, LOG_FILE},
   {"log-level",              required_argument, NULL, LOG_LEVEL},
   {"help",                   no_argument,       NULL, HELP},
+  {"target-latency-us",      required_argument, NULL, TARGET_LATENCY_US},
+  {"max-tokens",             required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",        required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",         required_argument, NULL, MIN_TOKEN_RATE},
+  {"exception-max-ttl",      required_argument, NULL, EXCEPTION_MAX_TTL},
   {NULL,                     0,                 NULL, 0},
 };
 
@@ -143,6 +159,17 @@ void usage(void)
        "                            The data format to use when writing authentication\n"
        "                            digests to memcached. Values are 'binary' and 'json'\n"
        "                            (defaults to 'json')\n"
+       " --target-latency-us <usecs>\n"
+       "                            Target latency above which throttling applies (default: 100000)\n"
+       " --max-tokens N             Maximum number of tokens allowed in the token bucket (used by\n"
+       "                            the throttling code (default: 20))\n"
+       " --init-token-rate N        Initial token refill rate of tokens in the token bucket (used by\n"
+       "                            the throttling code (default: 100.0))\n"
+       " --min-token-rate N         Minimum token refill rate of tokens in the token bucket (used by\n"
+       "                            the throttling code (default: 10.0))\n"
+       " --exception-max-ttl <secs>\n"
+       "                            The maximum time before the process exits if it hits an exception.\n"
+       "                            The actual time is randomised.\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -283,6 +310,52 @@ int init_options(int argc, char**argv, struct options& options)
       }
       break;
 
+    case TARGET_LATENCY_US:
+      options.target_latency_us = atoi(optarg);
+
+      if (options.target_latency_us <= 0)
+      {
+        LOG_ERROR("Invalid --target-latency-us option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case MAX_TOKENS:
+      options.max_tokens = atoi(optarg);
+
+      if (options.max_tokens <= 0)
+      {
+        LOG_ERROR("Invalid --max-tokens option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case INIT_TOKEN_RATE:
+      options.init_token_rate = atoi(optarg);
+
+      if (options.init_token_rate <= 0)
+      {
+        LOG_ERROR("Invalid --init-token-rate option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case MIN_TOKEN_RATE:
+      options.min_token_rate = atoi(optarg);
+
+      if (options.min_token_rate <= 0)
+      {
+        LOG_ERROR("Invalid --min-token-rate option %s", optarg);
+        return -1;
+      }
+      break;
+
+    case EXCEPTION_MAX_TTL:
+      options.exception_max_ttl = atoi(optarg);
+      LOG_INFO("Max TTL after an exception set to %d",
+      options.exception_max_ttl);
+      break;
+
     case LOG_FILE:
     case LOG_LEVEL:
       // Ignore these options - they're handled by init_logging_options
@@ -302,6 +375,7 @@ int init_options(int argc, char**argv, struct options& options)
 }
 
 static sem_t term_sem;
+ExceptionHandler* exception_handler;
 
 // Signal handler that triggers memento termination.
 void terminate_handler(int sig)
@@ -310,11 +384,11 @@ void terminate_handler(int sig)
 }
 
 // Signal handler that simply dumps the stack and then crashes out.
-void exception_handler(int sig)
+void signal_handler(int sig)
 {
   // Reset the signal handlers so that another exception will cause a crash.
   signal(SIGABRT, SIG_DFL);
-  signal(SIGSEGV, SIG_DFL);
+  signal(SIGSEGV, signal_handler);
 
   // Log the signal, along with a backtrace.
   LOG_BACKTRACE("Signal %d caught", sig);
@@ -323,6 +397,9 @@ void exception_handler(int sig)
   // will trigger the log files to be copied to the diags bundle
   LOG_COMMIT();
 
+  // Check if there's a stored jmp_buf on the thread and handle if there is
+  exception_handler->handle_exception();
+
   // Dump a core.
   abort();
 }
@@ -330,8 +407,8 @@ void exception_handler(int sig)
 int main(int argc, char**argv)
 {
   // Set up our exception signal handler for asserts and segfaults.
-  signal(SIGABRT, exception_handler);
-  signal(SIGSEGV, exception_handler);
+  signal(SIGABRT, signal_handler);
+  signal(SIGSEGV, signal_handler);
 
   sem_init(&term_sem, 0, 0);
   signal(SIGTERM, terminate_handler);
@@ -352,6 +429,10 @@ int main(int argc, char**argv)
   options.log_level = 0;
   options.alarms_enabled = false;
   options.memcached_write_format = MemcachedWriteFormat::JSON;
+  options.target_latency_us = 100000;
+  options.max_tokens = 20;
+  options.init_token_rate = 100.0;
+  options.min_token_rate = 10.0;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -400,6 +481,19 @@ int main(int argc, char**argv)
     LOG_STATUS("Access logging enabled to %s", options.access_log_directory.c_str());
     access_logger = new AccessLogger(options.access_log_directory);
   }
+
+  HealthChecker* hc = new HealthChecker();
+  pthread_t health_check_thread;
+  pthread_create(&health_check_thread,
+                 NULL,
+                 &HealthChecker::static_main_thread_function,
+                 (void*)hc);
+
+  // Create an exception handler. The exception handler doesn't need
+  // to quiesce the process before killing it.
+  exception_handler = new ExceptionHandler(options.exception_max_ttl,
+                                           false,
+                                           hc);
 
   SAS::init(options.sas_system_name,
             "memento",
@@ -462,10 +556,10 @@ int main(int argc, char**argv)
                                         deserializers,
                                         options.digest_timeout);
 
-  LoadMonitor* load_monitor = new LoadMonitor(100000, // Initial target latency (us)
-                                              20, // Maximum token bucket size.
-                                              10.0, // Initial token fill rate (per sec).
-                                              10.0); // Minimum token fill rate (pre sec).
+  LoadMonitor* load_monitor = new LoadMonitor(options.target_latency_us,
+                                              options.max_tokens,
+                                              options.init_token_rate,
+                                              options.min_token_rate);
 
   LastValueCache* stats_aggregator = new MementoLVC();
 
@@ -489,7 +583,7 @@ int main(int argc, char**argv)
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
   call_list_store->initialize();
-  call_list_store->configure("localhost", 9160, 0, 0, cass_comm_monitor);
+  call_list_store->configure("localhost", 9160, exception_handler, 0, 0, cass_comm_monitor);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
@@ -509,12 +603,12 @@ int main(int argc, char**argv)
   HttpStack* http_stack = HttpStack::get_instance();
   HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
 
-  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator);
+  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc);
 
   MementoSasLogger sas_logger;
   HttpStackUtils::PingHandler ping_handler;
   HttpStackUtils::SpawningHandler<CallListTask, CallListTask::Config> call_list_handler(&call_list_config, &sas_logger);
-  HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads);
+  HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads, exception_handler);
 
   try
   {
@@ -522,6 +616,7 @@ int main(int argc, char**argv)
     http_stack->configure(options.http_address,
                           options.http_port,
                           options.http_threads,
+                          exception_handler,
                           access_logger,
                           load_monitor,
                           &stats_manager);
@@ -553,6 +648,9 @@ int main(int argc, char**argv)
   call_list_store->stop();
   call_list_store->wait_stopped();
 
+  hc->terminate();
+  pthread_join(health_check_thread, NULL);
+
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
@@ -561,6 +659,9 @@ int main(int argc, char**argv)
   delete auth_store; auth_store = NULL;
   delete call_list_store; call_list_store = NULL;
   delete m_store; m_store = NULL;
+  delete exception_handler; exception_handler = NULL;
+  delete hc; hc = NULL;
+
 
   if (options.alarms_enabled)
   {

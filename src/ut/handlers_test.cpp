@@ -42,6 +42,7 @@
 #include "localstore.h"
 #include "fakehomesteadconnection.hpp"
 #include "memento_lvc.h"
+#include "health_checker.h"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -62,6 +63,7 @@ public:
   AuthStore* _auth_store;
   MockCallListStore* _call_store;
   FakeHomesteadConnection* _hc;
+  HealthChecker* _health_checker;
   CallListTask::Config* _cfg;
 
   HandlersTest()
@@ -70,11 +72,13 @@ public:
     _auth_store = new AuthStore(_store, 20);
     _call_store = new MockCallListStore();
     _hc = new FakeHomesteadConnection();
-    _cfg = new CallListTask::Config(_auth_store, _hc, _call_store, "localhost", _stats_aggregator);
+    _health_checker = new HealthChecker();
+    _cfg = new CallListTask::Config(_auth_store, _hc, _call_store, "localhost", _stats_aggregator, _health_checker);
 
   }
   virtual ~HandlersTest()
   {
+    delete _health_checker;
     delete _auth_store;
     delete _store;
     delete _call_store;
