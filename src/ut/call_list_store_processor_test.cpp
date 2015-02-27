@@ -81,7 +81,7 @@ public:
                                            10);
 
     // No maximum call length and 1 worker thread
-    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 0, 1, CALL_LIST_TTL, _stats_aggregator);
+    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 0, 1, CALL_LIST_TTL, _stats_aggregator, NULL);
   }
 
   virtual ~CallListStoreProcessorTest()
@@ -110,7 +110,7 @@ public:
                                            10);
 
     // Maximum call length of 4 and 2 worker threads
-    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 4, 2, CALL_LIST_TTL, _stats_aggregator);
+    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 4, 2, CALL_LIST_TTL, _stats_aggregator, NULL);
   }
 
   virtual ~CallListStoreProcessorWithLimitTest()

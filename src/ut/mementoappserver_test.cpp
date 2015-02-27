@@ -285,7 +285,8 @@ TEST_F(MementoAppServerTest, CreateMementoAppServer)
                                                1000000,
                                                20,
                                                100.0,
-                                               10.0);
+                                               10.0,
+                                               NULL); // Exception Handler
 
   // Test creating an app server transaction with an invalid method -
   // it shouldn't be created.

@@ -583,7 +583,7 @@ int main(int argc, char**argv)
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
   call_list_store->initialize();
-  call_list_store->configure("localhost", 9160, 0, 0, cass_comm_monitor);
+  call_list_store->configure("localhost", 9160, exception_handler, 0, 0, cass_comm_monitor);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
@@ -608,7 +608,7 @@ int main(int argc, char**argv)
   MementoSasLogger sas_logger;
   HttpStackUtils::PingHandler ping_handler;
   HttpStackUtils::SpawningHandler<CallListTask, CallListTask::Config> call_list_handler(&call_list_config, &sas_logger);
-  HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads);
+  HttpStackUtils::HandlerThreadPool pool(options.http_worker_threads, exception_handler);
 
   try
   {

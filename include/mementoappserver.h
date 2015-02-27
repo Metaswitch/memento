@@ -87,7 +87,8 @@ public:
                    const int cass_target_latency_us,
                    const int max_tokens,
                    const float init_token_rate,
-                   const float min_token_rate);
+                   const float min_token_rate,
+                   ExceptionHandler* exception_handler);
 
   /// Virtual destructor.
   ~MementoAppServer();
