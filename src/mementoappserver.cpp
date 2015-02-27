@@ -77,7 +77,8 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                    const int cass_target_latency,
                                    const int max_tokens,
                                    const float init_token_rate,
-                                   const float min_token_rate) :
+                                   const float min_token_rate,
+                                   ExceptionHandler* exception_handler) :
   AppServer(service_name),
   _service_name(service_name),
   _home_domain(home_domain),
@@ -90,7 +91,8 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                                         max_call_list_length,
                                                         memento_threads,
                                                         call_list_ttl,
-                                                        stats_aggregator)),
+                                                        stats_aggregator,
+                                                        exception_handler)),
   _stat_calls_not_recorded_due_to_overload("memento_not_recorded_overload",
                                            stats_aggregator)
 {

@@ -42,7 +42,7 @@
 class MockCallListStoreProcessor : public CallListStoreProcessor
 {
 public:
-  MockCallListStoreProcessor() : CallListStoreProcessor(NULL, NULL, 0, 0, 0, NULL) {}
+  MockCallListStoreProcessor() : CallListStoreProcessor(NULL, NULL, 0, 0, 0, NULL, NULL) {}
   virtual ~MockCallListStoreProcessor() {};
 
   MOCK_METHOD6(write_call_list_entry, void(std::string impu,
