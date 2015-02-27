@@ -433,6 +433,7 @@ int main(int argc, char**argv)
   options.max_tokens = 20;
   options.init_token_rate = 100.0;
   options.min_token_rate = 10.0;
+  options.exception_max_ttl = 600;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -488,7 +489,7 @@ int main(int argc, char**argv)
                  NULL,
                  &HealthChecker::static_main_thread_function,
                  (void*)hc);
-  
+
   // Create an exception handler. The exception handler doesn't need
   // to quiesce the process before killing it.
   exception_handler = new ExceptionHandler(options.exception_max_ttl,
@@ -602,7 +603,7 @@ int main(int argc, char**argv)
 
   HttpStack* http_stack = HttpStack::get_instance();
   HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
-  
+
   CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc);
 
   MementoSasLogger sas_logger;
@@ -650,7 +651,7 @@ int main(int argc, char**argv)
 
   hc->terminate();
   pthread_join(health_check_thread, NULL);
-  
+
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
@@ -662,7 +663,7 @@ int main(int argc, char**argv)
   delete exception_handler; exception_handler = NULL;
   delete hc; hc = NULL;
 
-  
+
   if (options.alarms_enabled)
   {
     // Stop the alarm request agent
