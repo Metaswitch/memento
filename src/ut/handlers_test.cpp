@@ -42,7 +42,7 @@
 #include "localstore.h"
 #include "fakehomesteadconnection.hpp"
 #include "memento_lvc.h"
-#include "health_checker.h"
+#include "mock_health_checker.hpp"
 
 using ::testing::Return;
 using ::testing::SetArgReferee;
@@ -449,3 +449,42 @@ TEST_F(HandlersTest, DbError)
   EXPECT_EQ("", req.content());
   delete handler;
 }
+
+TEST_F(HandlersTest, HTTPOKPassesHealthCheck)
+{
+  MockHealthChecker mock_health_checker;
+  CallListTask::Config cfg(_auth_store, _hc, _call_store, "localhost", _stats_aggregator, &mock_health_checker);
+
+  MockHttpStack::Request req(_httpstack, "/", "", "");
+
+  CallListTask* handler = new CallListTask(req, &cfg, 0);
+
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
+    .WillOnce(Return(CassandraStore::ResultCode::NOT_FOUND));
+
+  EXPECT_CALL(mock_health_checker, health_check_passed()).Times(1);
+  EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
+  handler->respond_when_authenticated();
+
+  delete handler;
+}
+
+TEST_F(HandlersTest, HTTPErrorFailsHealthCheck)
+{
+  MockHealthChecker mock_health_checker;
+  CallListTask::Config cfg(_auth_store, _hc, _call_store, "localhost", _stats_aggregator, &mock_health_checker);
+
+  MockHttpStack::Request req(_httpstack, "/", "", "");
+
+  CallListTask* handler = new CallListTask(req, &cfg, 0);
+
+  EXPECT_CALL(*_call_store, get_call_fragments_sync(_, _, _))
+    .WillOnce(Return(CassandraStore::ResultCode::RESOURCE_ERROR));
+
+  EXPECT_CALL(mock_health_checker, health_check_passed()).Times(0);
+  EXPECT_CALL(*_httpstack, send_reply(_, 500, _));
+  handler->respond_when_authenticated();
+
+  delete handler;
+}
+
