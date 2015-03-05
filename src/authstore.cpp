@@ -337,6 +337,7 @@ AuthStore::Digest* AuthStore::JsonSerializerDeserializer::
 
   try
   {
+    JSON_ASSERT_OBJECT(doc);
     JSON_ASSERT_CONTAINS(doc, JSON_DIGEST);
     JSON_ASSERT_OBJECT(doc[JSON_DIGEST]);
     const rapidjson::Value& digest_block = doc[JSON_DIGEST];
