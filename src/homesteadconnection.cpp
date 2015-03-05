@@ -117,8 +117,7 @@ HTTPCode HomesteadConnection::get_digest_and_parse(const std::string& path,
 
     if (doc.HasParseError())
     {
-      LOG_WARNING("Failed to parse JSON body, offset: %lu - %s. JSON is: %s",
-                  doc.GetErrorOffset(), doc.GetParseError(), json_data.c_str());
+      LOG_WARNING("Failed to parse JSON body %s", json_data.c_str());
       rc = HTTP_BAD_RESULT;
     }
     else if (!doc.HasMember("digest"))
