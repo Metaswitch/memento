@@ -30,7 +30,7 @@ On Ubuntu 14.04,
 
 2.  install the required packages
 
-        sudo apt-get install libboost-all-dev make cmake flex bison libtool libcloog-ppl1 git gcc g++ bison flex libxml2-utils autoconf libevent-dev libzmq3-dev pkg-config libcurl4-openssl-dev valgrind
+        sudo apt-get install libboost-all-dev make cmake flex bison libtool libcloog-ppl1 git gcc g++ bison flex libxml2-utils autoconf libevent-dev libzmq3-dev pkg-config libcurl4-openssl-dev valgrind devscripts debhelper
         
 Getting the Code
 ----------------
