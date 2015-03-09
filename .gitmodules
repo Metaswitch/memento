@@ -22,15 +22,12 @@
 [submodule "modules/libmemcached"]
 	path = modules/libmemcached
 	url = git@github.com:Metaswitch/libmemcached-upstream.git
-[submodule "modules/libevent"]
-	path = modules/libevent
-	url = git@github.com:libevent/libevent.git
 [submodule "build-infra"]
 	path = build-infra
 	url = git@github.com:Metaswitch/clearwater-build-infra.git
 [submodule "modules/thrift"]
 	path = modules/thrift
-	url = https://github.com/apache/thrift.git
+	url = git@github.com:Metaswitch/thrift
 [submodule "modules/rapidjson"]
 	path = modules/rapidjson
 	url = git@github.com:miloyip/rapidjson.git
