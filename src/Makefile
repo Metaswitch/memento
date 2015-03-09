@@ -14,6 +14,7 @@ TARGET_TEST := memento_test
 TARGET_SOURCES := localstore.cpp \
                   memcachedstore.cpp \
                   memcachedstoreview.cpp \
+                  memcached_config.cpp \
                   signalhandler.cpp \
                   logger.cpp \
                   saslogger.cpp \
