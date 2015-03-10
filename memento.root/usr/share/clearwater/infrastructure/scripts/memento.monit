@@ -36,11 +36,6 @@
 
 . /etc/clearwater/config
 
-if [ -z $memento_hostname ]
-then
-  memento_hostname="memento.$home_domain"
-fi
-
 # Set up the monit configuration for memento with the right IP addresses and ports
 cat > /etc/monit/conf.d/memento.monit <<EOF
 # Check the Memento process.
