@@ -532,7 +532,7 @@ int main(int argc, char**argv)
     AlarmState::clear_all("memento");
   }
 
-  MemcachedStore* m_store = new MemcachedStore(false,
+  MemcachedStore* m_store = new MemcachedStore(true,
                                                "./cluster_settings",
                                                mc_comm_monitor,
                                                mc_vbucket_alarm);
