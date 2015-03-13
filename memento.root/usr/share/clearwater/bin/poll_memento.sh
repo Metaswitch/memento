@@ -34,6 +34,7 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
+# Note this doesn't work in multiple networks
 . /etc/clearwater/config
 http_ip=$(/usr/share/clearwater/bin/bracket_ipv6_address.py $local_ip)
 /usr/share/clearwater/bin/poll-http $http_ip:11888
