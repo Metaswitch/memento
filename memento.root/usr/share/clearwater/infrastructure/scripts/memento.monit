@@ -40,6 +40,23 @@
 cat > /etc/monit/conf.d/memento.monit <<EOF
 # Check the Memento process.
 
+# Monitor the service's PID file and memory use.
+check process memento with pidfile /var/run/memento.pid
+
+  # The start, stop and restart commands are linked to alarms
+  start program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento start'"
+  stop program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento stop'"
+  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento restart'"
+
+  # Check the service's resource usage, and abort the process if it's too high. This will
+  # generate a core file and trigger diagnostics collection.
+  if memory > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort'"
+
+  # Clear any alarms if the process has been running for 30 seconds
+  if uptime < 30 seconds
+     then exec "/bin/true"
+     else if succeeded then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5000.1"
+
 # Check the HTTP interface. This depends on the Memento process (and so won't run
 # unless the Memento process is running)
 check program poll_memento with path "/usr/share/clearwater/bin/poll_memento.sh"
@@ -57,24 +74,6 @@ check program poll_memento_https with path "/usr/share/clearwater/bin/poll_memen
     then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5007.3"
     else if succeeded
         then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5007.1"
-
-# Monitor the service's PID file, CPU and memory use.
-check process memento with pidfile /var/run/memento.pid
-
-  # The start, stop and restart commands are linked to alarms
-  start program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento start'"
-  stop program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento stop'"
-  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento restart'"
-
-  # Check the service's resource usage, and abort the process if it's too high. This will
-  # generate a core file and trigger diagnostics collection.
-  if cpu > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort'"
-  if memory > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort'"
-
-  # Clear any alarms if the process has been running for 30 seconds
-  if uptime < 30 seconds
-     then exec "/bin/true"
-     else if succeeded then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5000.1"
 EOF
 chmod 0644 /etc/monit/conf.d/memento.monit
 
