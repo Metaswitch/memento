@@ -72,8 +72,7 @@ public:
     EXPECT_CALL(_store, get_client()).WillRepeatedly(Return(&_client));
     EXPECT_CALL(_store, release_client()).WillRepeatedly(Return());
 
-    _store.initialize();
-    _store.configure("localhost", 1234, NULL);
+    _store.configure_connection("localhost", 1234, NULL);
     CassandraStore::ResultCode rc = _store.start();
     EXPECT_EQ(rc, CassandraStore::OK);
   }
