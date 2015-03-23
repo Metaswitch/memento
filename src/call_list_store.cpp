@@ -165,7 +165,7 @@ WriteCallFragment::WriteCallFragment(const std::string& impu,
 WriteCallFragment::~WriteCallFragment()
 {}
 
-bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
+bool WriteCallFragment::perform(CassandraStore::Client* client,
                                 SAS::TrailId trail)
 {
   // Log the start of the write.
@@ -201,12 +201,11 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
   std::vector<std::string> keys;
   keys.push_back(_impu);
 
-  put_columns(client,
-              COLUMN_FAMILY,
-              keys,
-              columns,
-              _cass_timestamp,
-              _ttl);
+  client->put_columns(COLUMN_FAMILY,
+                      keys,
+                      columns,
+                      _cass_timestamp,
+                      _ttl);
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_WRITE_OK, 0);
@@ -250,7 +249,7 @@ GetCallFragments::GetCallFragments(const std::string& impu) :
 GetCallFragments::~GetCallFragments()
 {}
 
-bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
+bool GetCallFragments::perform(CassandraStore::Client* client,
                                SAS::TrailId trail)
 {
   // Log the start of the read
@@ -264,11 +263,10 @@ bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
 
   // Get all the call columns for the IMPU's cassandra row.
   std::vector<cass::ColumnOrSuperColumn> columns;
-  ha_get_columns_with_prefix(client,
-                             COLUMN_FAMILY,
-                             _impu,
-                             CALL_COLUMN_PREFIX,
-                             columns);
+  client->ha_get_columns_with_prefix(COLUMN_FAMILY,
+                                     _impu,
+                                     CALL_COLUMN_PREFIX,
+                                     columns);
 
   for(std::vector<cass::ColumnOrSuperColumn>::const_iterator column_it = columns.begin();
       column_it != columns.end();
@@ -350,7 +348,7 @@ DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
 DeleteOldCallFragments::~DeleteOldCallFragments()
 {}
 
-bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
+bool DeleteOldCallFragments::perform(CassandraStore::Client* client,
                                      SAS::TrailId trail)
 {
   LOG_DEBUG("Deleting %d call fragments for IMPU '%s'",
@@ -384,9 +382,8 @@ bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
     to_delete.push_back(CassandraStore::RowColumns(COLUMN_FAMILY, _impu, columns));
   }
 
-  delete_columns(client,
-                 to_delete,
-                 _cass_timestamp);
+  client->delete_columns(to_delete,
+                         _cass_timestamp);
 
   LOG_DEBUG("Successfully deleted call fragments");
 

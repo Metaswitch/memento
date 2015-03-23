@@ -59,7 +59,7 @@ const SAS::TrailId FAKE_TRAIL = 0x123456;
 class TestCallListStore : public CallListStore::Store
 {
 public:
-  MOCK_METHOD0(get_client, CassandraStore::ClientInterface*());
+  MOCK_METHOD0(get_client, CassandraStore::Client*());
   MOCK_METHOD0(release_client, void());
 };
 
