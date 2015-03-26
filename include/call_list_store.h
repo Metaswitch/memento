@@ -88,7 +88,7 @@ public:
   virtual ~WriteCallFragment();
 
 protected:
-  bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  bool perform(CassandraStore::Client* client, SAS::TrailId trail);
   void unhandled_exception(CassandraStore::ResultCode status,
                            std::string& description,
                            SAS::TrailId trail);
@@ -118,7 +118,7 @@ public:
   void get_result(std::vector<CallFragment>& fragments);
 
 protected:
-  bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  bool perform(CassandraStore::Client* client, SAS::TrailId trail);
   void unhandled_exception(CassandraStore::ResultCode status,
                            std::string& description,
                            SAS::TrailId trail);
@@ -147,7 +147,7 @@ public:
   virtual ~DeleteOldCallFragments();
 
 protected:
-  bool perform(CassandraStore::ClientInterface* client, SAS::TrailId trail);
+  bool perform(CassandraStore::Client* client, SAS::TrailId trail);
   void unhandled_exception(CassandraStore::ResultCode status,
                            std::string& description,
                            SAS::TrailId trail);

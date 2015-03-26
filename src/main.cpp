@@ -583,8 +583,7 @@ int main(int argc, char**argv)
 
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->initialize();
-  call_list_store->configure("localhost", 9160, exception_handler, 0, 0, cass_comm_monitor);
+  call_list_store->configure_connection("localhost", 9160, cass_comm_monitor);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
