@@ -131,7 +131,7 @@ HTTPCode HTTPDigestAuthenticate::check_auth_header(std::string authorization_hea
     else
     {
       LOG_DEBUG("Private ID can't be derived from the public ID (%s)", _impu.c_str());
-      rc = HTTP_BAD_RESULT;
+      rc = HTTP_BAD_REQUEST;
     }
   }
   else
@@ -149,7 +149,7 @@ HTTPCode HTTPDigestAuthenticate::check_auth_header(std::string authorization_hea
         if (response->_qop != "auth")
         {
           LOG_DEBUG("Client requesting non-auth (%s) digest", response->_qop.c_str());
-          return HTTP_BAD_RESULT;
+          return HTTP_BAD_REQUEST;
         }
       }
 
@@ -172,7 +172,7 @@ HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header,
   if (digest_pos != 0)
   {
     LOG_DEBUG("Authorization header doesn't contain Digest credentials");
-    return HTTP_BAD_RESULT;
+    return HTTP_BAD_REQUEST;
   }
 
   std::string rest_of_header = auth_header.substr(digest.length());
@@ -264,7 +264,7 @@ HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header,
   else
   {
     LOG_DEBUG("Authorization header not valid");
-    rc = HTTP_BAD_RESULT;
+    rc = HTTP_BAD_REQUEST;
   }
 
   return rc;
@@ -307,7 +307,7 @@ HTTPCode HTTPDigestAuthenticate::request_digest_and_store(std::string& www_auth_
                                                           bool include_stale,
                                                           Response* response)
 {
-  HTTPCode rc = HTTP_BAD_RESULT;
+  HTTPCode rc = HTTP_BAD_REQUEST;
   std::string ha1;
   std::string realm;
   LOG_DEBUG("Request digest for IMPU: %s, IMPI: %s", _impu.c_str(), _impi.c_str());
@@ -367,13 +367,13 @@ HTTPCode HTTPDigestAuthenticate::check_if_matches(AuthStore::Digest* digest,
   {
     LOG_DEBUG("The opaque value in the request (%s) doesn't match the stored value (%s)",
               response->_opaque.c_str(), digest->_opaque.c_str());
-    return HTTP_BAD_RESULT;
+    return HTTP_BAD_REQUEST;
   }
   else if (response->_realm != digest->_realm)
   {
     LOG_DEBUG("Request not targeted at the stored domain. Target: %s, Realm: %s",
               response->_realm.c_str(), digest->_realm.c_str());
-    return HTTP_BAD_RESULT;
+    return HTTP_BAD_REQUEST;
   }
 
   unsigned char ha2[Utils::MD5_HASH_SIZE];
