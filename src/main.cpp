@@ -85,6 +85,7 @@ struct options
   float init_token_rate;
   float min_token_rate;
   int exception_max_ttl;
+  int http_blacklist_duration;
 };
 
 // Enum for option types not assigned short-forms
@@ -108,31 +109,33 @@ enum OptionTypes
   MAX_TOKENS,
   INIT_TOKEN_RATE,
   MIN_TOKEN_RATE,
-  EXCEPTION_MAX_TTL
+  EXCEPTION_MAX_TTL,
+  HTTP_BLACKLIST_DURATION
 };
 
 const static struct option long_opt[] =
 {
-  {"localhost",              required_argument, NULL, LOCAL_HOST},
-  {"http",                   required_argument, NULL, HTTP_ADDRESS},
-  {"http-threads",           required_argument, NULL, HTTP_THREADS},
-  {"http-worker-threads",    required_argument, NULL, HTTP_WORKER_THREADS},
-  {"homestead-http-name",    required_argument, NULL, HOMESTEAD_HTTP_NAME},
-  {"digest-timeout",         required_argument, NULL, DIGEST_TIMEOUT},
-  {"home-domain",            required_argument, NULL, HOME_DOMAIN},
-  {"sas",                    required_argument, NULL, SAS_CONFIG},
-  {"access-log",             required_argument, NULL, ACCESS_LOG},
-  {"alarms-enabled",         no_argument,       NULL, ALARMS_ENABLED},
-  {"memcached-write-format", required_argument, NULL, MEMCACHED_WRITE_FORMAT},
-  {"log-file",               required_argument, NULL, LOG_FILE},
-  {"log-level",              required_argument, NULL, LOG_LEVEL},
-  {"help",                   no_argument,       NULL, HELP},
-  {"target-latency-us",      required_argument, NULL, TARGET_LATENCY_US},
-  {"max-tokens",             required_argument, NULL, MAX_TOKENS},
-  {"init-token-rate",        required_argument, NULL, INIT_TOKEN_RATE},
-  {"min-token-rate",         required_argument, NULL, MIN_TOKEN_RATE},
-  {"exception-max-ttl",      required_argument, NULL, EXCEPTION_MAX_TTL},
-  {NULL,                     0,                 NULL, 0},
+  {"localhost",                required_argument, NULL, LOCAL_HOST},
+  {"http",                     required_argument, NULL, HTTP_ADDRESS},
+  {"http-threads",             required_argument, NULL, HTTP_THREADS},
+  {"http-worker-threads",      required_argument, NULL, HTTP_WORKER_THREADS},
+  {"homestead-http-name",      required_argument, NULL, HOMESTEAD_HTTP_NAME},
+  {"digest-timeout",           required_argument, NULL, DIGEST_TIMEOUT},
+  {"home-domain",              required_argument, NULL, HOME_DOMAIN},
+  {"sas",                      required_argument, NULL, SAS_CONFIG},
+  {"access-log",               required_argument, NULL, ACCESS_LOG},
+  {"alarms-enabled",           no_argument,       NULL, ALARMS_ENABLED},
+  {"memcached-write-format",   required_argument, NULL, MEMCACHED_WRITE_FORMAT},
+  {"log-file",                 required_argument, NULL, LOG_FILE},
+  {"log-level",                required_argument, NULL, LOG_LEVEL},
+  {"help",                     no_argument,       NULL, HELP},
+  {"target-latency-us",        required_argument, NULL, TARGET_LATENCY_US},
+  {"max-tokens",               required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",          required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",           required_argument, NULL, MIN_TOKEN_RATE},
+  {"exception-max-ttl",        required_argument, NULL, EXCEPTION_MAX_TTL},
+  { "http-blacklist-duration", required_argument, NULL, HTTP_BLACKLIST_DURATION},
+  {NULL,                       0,                 NULL, 0},
 };
 
 void usage(void)
@@ -170,6 +173,8 @@ void usage(void)
        " --exception-max-ttl <secs>\n"
        "                            The maximum time before the process exits if it hits an exception.\n"
        "                            The actual time is randomised.\n"
+       " --http-blacklist-duration <secs>\n"
+       "                            The amount of time to blacklist an HTTP peer when it is unresponsive.\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -353,7 +358,13 @@ int init_options(int argc, char**argv, struct options& options)
     case EXCEPTION_MAX_TTL:
       options.exception_max_ttl = atoi(optarg);
       LOG_INFO("Max TTL after an exception set to %d",
-      options.exception_max_ttl);
+               options.exception_max_ttl);
+      break;
+
+    case HTTP_BLACKLIST_DURATION:
+      options.http_blacklist_duration = atoi(optarg);
+      LOG_INFO("HTTP blacklist duration set to %d",
+               options.http_blacklist_duration);
       break;
 
     case LOG_FILE:
@@ -574,7 +585,9 @@ int main(int argc, char**argv)
   }
 
   DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
-  HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
+  HttpResolver* http_resolver = new HttpResolver(dns_resolver,
+                                                 af,
+                                                 options.http_blacklist_duration);
   HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name,
                                                                 http_resolver,
                                                                 load_monitor,
