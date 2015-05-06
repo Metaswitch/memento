@@ -89,6 +89,7 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
   if (auth_info)
   {
     SAS::Event event(trail, SASEvent::AUTHENTICATION_PRESENT, 0);
+    event.add_var_param(authorization_header);
     SAS::report_event(event);
 
     rc = retrieve_digest_from_store(www_auth_header, response);
@@ -96,7 +97,6 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
   else
   {
     SAS::Event event(trail, SASEvent::NO_AUTHENTICATION_PRESENT, 0);
-    event.add_var_param(authorization_header);
     SAS::report_event(event);
 
     rc = request_digest_and_store(www_auth_header, false, response);

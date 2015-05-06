@@ -134,6 +134,12 @@ public:
   HTTPCode parse_request();
   HTTPCode authenticate_request();
 
+  /// Gets the user part of an IMPU (expected to be a SIP URI).  
+  ///
+  /// @param impu            IMPU.
+  /// @returns               The user part of the IMPU
+  std::string user_from_impu(std::string impu);
+
 protected:
   const Config* _cfg;
   HTTPDigestAuthenticate* _auth_mod;
