@@ -89,6 +89,7 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
   if (auth_info)
   {
     SAS::Event event(trail, SASEvent::AUTHENTICATION_PRESENT, 0);
+    event.add_var_param(authorization_header);
     SAS::report_event(event);
 
     rc = retrieve_digest_from_store(www_auth_header, response);
@@ -96,7 +97,6 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
   else
   {
     SAS::Event event(trail, SASEvent::NO_AUTHENTICATION_PRESENT, 0);
-    event.add_var_param(authorization_header);
     SAS::report_event(event);
 
     rc = request_digest_and_store(www_auth_header, false, response);
@@ -246,6 +246,15 @@ HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header,
                             cnonce_entry->second,
                             response_entry->second,
                             opaque_entry->second);
+
+    LOG_DEBUG("Raising correlating marker with opaque value = %s",
+              opaque_entry->second.c_str());
+    SAS::Marker corr(_trail, MARKED_ID_GENERIC_CORRELATOR, 0);
+    corr.add_var_param(opaque_entry->second);
+
+    // The marker should be trace-scoped, and should not reactivate any trail
+    // groups 
+    SAS::report_marker(corr, SAS::Marker::Scope::Trace, false);      
   }
   else if ((username_entry != response_key_values.end()) &&
            (realm_entry == response_key_values.end()) &&
@@ -531,6 +540,15 @@ void HTTPDigestAuthenticate::generate_www_auth_header(std::string& www_auth_head
   }
 
   LOG_DEBUG("WWW-Authenticate header generated: %s", www_auth_header.c_str());
+
+  LOG_DEBUG("Raising correlating marker with opaque value = %s",
+            digest->_opaque.c_str());
+  SAS::Marker corr(_trail, MARKED_ID_GENERIC_CORRELATOR, 0);
+  corr.add_var_param(digest->_opaque);
+
+  // The marker should be trace-scoped, and should not reactivate any trail
+  // groups
+  SAS::report_marker(corr, SAS::Marker::Scope::Trace, false);
 }
 
 // Set up the member variables (split into separate function for UTs)
