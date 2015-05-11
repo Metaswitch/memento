@@ -100,7 +100,7 @@ case "$1" in
         memento_get_current_use > $MEMENTO_DISK_USAGE_FILE
 
         # Stop the cluster manager, so that it is restarted by Monit and picks
-        # up the new Cassandra scaling plugin.
+        # up the new plugins.
         service clearwater-cluster-manager stop || /bin/true
 
         # Restart memento.  Always do this by terminating memento so monit will
