@@ -40,39 +40,46 @@ from metaswitch.clearwater.cluster_manager import constants
 import logging
 import os
 
-_log = logging.getLogger("memento_memcached_plugin")
+_log = logging.getLogger("memento_remote_memcached_plugin")
 
 
-class MementoMemcachedPlugin(SynchroniserPluginBase):
-    def __init__(self, _ip, local_site, _remote_site):
-        issue_alarm(constants.RAISE_MEMCACHED_NOT_YET_CLUSTERED)
-        self._key = "/clearwater/{}/memento/clustering/memcached".format(local_site)
+class MementoRemoteMemcachedPlugin(SynchroniserPluginBase):
+    def __init__(self, _ip, local_site, remote_site):
+        self._key = "/clearwater/{}/memento/clustering/memcached".format(remote_site)
+        self._remote_site = remote_site
 
     def key(self):
         return self._key
 
+    def should_be_in_cluster(self):
+        return False
+
     def files(self):
-        return ["/etc/clearwater/cluster_settings"]
+        return ["/etc/clearwater/remote_cluster_settings"]
 
     def on_cluster_changing(self, cluster_view):
-        write_memcached_cluster_settings("/etc/clearwater/cluster_settings",
-                                         cluster_view)
-        run_command("service memento reload")
+        if self._remote_site != "":
+            write_memcached_cluster_settings("/etc/clearwater/remote_cluster_settings",
+                                             cluster_view)
+            run_command("service memento reload")
 
     def on_joining_cluster(self, cluster_view):
-        self.on_cluster_changing(cluster_view)
+        # We should never join the remote cluster, because it's the *remote*
+        # cluster
+        pass
 
     def on_new_cluster_config_ready(self, cluster_view):
-        run_command("service astaire reload")
-        run_command("service astaire wait-sync")
+        # No Astaire resync needed - the remote site handles that
+        pass
 
     def on_stable_cluster(self, cluster_view):
         self.on_cluster_changing(cluster_view)
-        issue_alarm(constants.CLEAR_MEMCACHED_NOT_YET_CLUSTERED)
 
     def on_leaving_cluster(self, cluster_view):
+        # We should never leave the remote cluster, because it's the *remote*
+        # cluster
         pass
 
 
 def load_as_plugin(ip, local_site, remote_site):
-    return MementoMemcachedPlugin(ip, local_site, remote_site)
+    return MementoRemoteMemcachedPlugin(ip, local_site, remote_site)
