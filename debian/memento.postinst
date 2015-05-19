@@ -94,7 +94,7 @@ case "$1" in
             $SCRIPT
         done
 
-        /usr/share/clearwater/cassandra-schemas/memento.sh
+        /usr/share/clearwater/cassandra-schemas/memento.sh || /bin/true
 
         # Record disk usage now - it will be kept up-to-date by a cron job
         memento_get_current_use > $MEMENTO_DISK_USAGE_FILE
