@@ -51,7 +51,7 @@ class MementoCassandraPlugin(SynchroniserPluginBase):
         issue_alarm(constants.RAISE_CASSANDRA_NOT_YET_CLUSTERED)
 
     def key(self):
-        return "/memento/clustering/cassandra"
+        return "/clearwater/memento/clustering/cassandra"
 
     def on_cluster_changing(self, cluster_view):
         pass
