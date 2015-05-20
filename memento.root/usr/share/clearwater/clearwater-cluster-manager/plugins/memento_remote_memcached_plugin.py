@@ -61,7 +61,7 @@ class MementoRemoteMemcachedPlugin(SynchroniserPluginBase):
         if self._remote_site != "":
             write_memcached_cluster_settings("/etc/clearwater/remote_cluster_settings",
                                              cluster_view)
-            run_command("service memento reload")
+            run_command("/usr/share/clearwater/bin/reload_memcached_users")
 
     def on_joining_cluster(self, cluster_view):
         # We should never join the remote cluster, because it's the *remote*
