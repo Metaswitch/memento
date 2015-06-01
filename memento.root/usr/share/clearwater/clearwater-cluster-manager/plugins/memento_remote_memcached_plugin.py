@@ -82,5 +82,5 @@ class MementoRemoteMemcachedPlugin(SynchroniserPluginBase):
 
 
 def load_as_plugin(params):
-    if remote_site != "":
+    if params.remote_site != "":
         return MementoRemoteMemcachedPlugin(params)
