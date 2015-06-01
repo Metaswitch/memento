@@ -44,9 +44,9 @@ _log = logging.getLogger("memento_remote_memcached_plugin")
 
 
 class MementoRemoteMemcachedPlugin(SynchroniserPluginBase):
-    def __init__(self, _ip, local_site, remote_site):
-        self._key = "/clearwater/{}/memento/clustering/memcached".format(remote_site)
-        self._remote_site = remote_site
+    def __init__(self, params):
+        self._key = "/clearwater/{}/memento/clustering/memcached".format(params.remote_site)
+        self._remote_site = params.remote_site
 
     def key(self):
         return self._key
@@ -81,6 +81,6 @@ class MementoRemoteMemcachedPlugin(SynchroniserPluginBase):
         pass
 
 
-def load_as_plugin(ip, local_site, remote_site):
+def load_as_plugin(params):
     if remote_site != "":
-        return MementoRemoteMemcachedPlugin(ip, local_site, remote_site)
+        return MementoRemoteMemcachedPlugin(params)

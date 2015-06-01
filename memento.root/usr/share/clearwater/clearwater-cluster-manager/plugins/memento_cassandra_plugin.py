@@ -44,9 +44,10 @@ _log = logging.getLogger("memento_cassandra_plugin")
 
 
 class MementoCassandraPlugin(SynchroniserPluginBase):
-    def __init__(self, ip, local_site, remote_site):
-        self._ip = ip
-        self._local_site = local_site
+    def __init__(self, params):
+        self._ip = params.ip
+        self._local_site = params.local_site
+        self._sig_namespace = params.signaling_namespace
         _log.debug("Raising Cassandra not-clustered alarm")
         issue_alarm(constants.RAISE_CASSANDRA_NOT_YET_CLUSTERED)
 
@@ -63,7 +64,7 @@ class MementoCassandraPlugin(SynchroniserPluginBase):
                                self._ip,
                                self._local_site)
 
-        if (self._ip == sorted(cluster_view.keys())[0]): 
+        if (self._ip == sorted(cluster_view.keys())[0]):
             _log.debug("Adding Memento schema")
             run_command("/usr/share/clearwater/cassandra-schemas/memento.sh")
 
@@ -78,7 +79,7 @@ class MementoCassandraPlugin(SynchroniserPluginBase):
 
     def on_leaving_cluster(self, cluster_view):
         issue_alarm(constants.RAISE_CASSANDRA_NOT_YET_DECOMMISSIONED)
-        leave_cassandra_cluster()
+        leave_cassandra_cluster(self._sig_namespace)
         issue_alarm(constants.CLEAR_CASSANDRA_NOT_YET_DECOMMISSIONED)
         pass
 
@@ -86,5 +87,5 @@ class MementoCassandraPlugin(SynchroniserPluginBase):
         return ["/etc/cassandra/cassandra.yaml"]
 
 
-def load_as_plugin(ip, local_site, remote_site):
-    return MementoCassandraPlugin(ip, local_site, remote_site)
+def load_as_plugin(params):
+    return MementoCassandraPlugin(params)
