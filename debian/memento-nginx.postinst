@@ -56,12 +56,6 @@ case "$1" in
         # Restart clearwater-infrastructure to run the script that creates the
         # Memento site.
         service clearwater-infrastructure restart
-
-        # Enable the new Memento site
-        if ( nginx_ensite memento > /dev/null )
-        then
-            service nginx stop
-        fi
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
