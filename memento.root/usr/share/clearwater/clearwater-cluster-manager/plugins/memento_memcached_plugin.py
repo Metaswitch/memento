@@ -52,10 +52,10 @@ class MementoMemcachedPlugin(SynchroniserPluginBase):
         return self._key
 
     def files(self):
-        return ["/etc/clearwater/cluster_settings"]
+        return ["/etc/clearwater/memento_cluster_settings"]
 
     def on_cluster_changing(self, cluster_view):
-        write_memcached_cluster_settings("/etc/clearwater/cluster_settings",
+        write_memcached_cluster_settings("/etc/clearwater/memento_cluster_settings",
                                          cluster_view)
         run_command("/usr/share/clearwater/bin/reload_memcached_users")
 

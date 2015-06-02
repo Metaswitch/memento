@@ -90,7 +90,7 @@ get_settings()
   homestead_http_name=$(python /usr/share/clearwater/bin/bracket_ipv6_address.py $hs_hostname)
 
   # Set up a default cluster_settings file if it does not exist.
-  [ -f /etc/clearwater/cluster_settings ] || echo "servers=$local_ip:11211" > /etc/clearwater/cluster_settings
+  [ -f /etc/clearwater/memento_cluster_settings ] || echo "servers=$local_ip:11211" > /etc/clearwater/memento_cluster_settings
 
   # Set up defaults for user settings then pull in any overrides.
   log_level=2
