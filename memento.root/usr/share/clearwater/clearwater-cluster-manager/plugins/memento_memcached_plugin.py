@@ -36,8 +36,7 @@ from metaswitch.clearwater.cluster_manager.plugin_base import \
 from metaswitch.clearwater.cluster_manager.plugin_utils import \
     run_command, write_memcached_cluster_settings
 from metaswitch.clearwater.cluster_manager.alarms import issue_alarm
-from metaswitch.clearwater.cluster_manager import pdlogs
-from metaswitch.clearwater.cluster_manager import constants
+from metaswitch.clearwater.cluster_manager import pdlogs, constants
 import logging
 import os
 
@@ -57,7 +56,7 @@ class MementoMemcachedPlugin(SynchroniserPluginBase):
         return ["/etc/clearwater/memento_cluster_settings"]
 
     def cluster_description(self):
-        return "local memcached cluster"
+        return "local Memento memcached cluster"
 
     def on_cluster_changing(self, cluster_view):
         write_memcached_cluster_settings("/etc/clearwater/memento_cluster_settings",
