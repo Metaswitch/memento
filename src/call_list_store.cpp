@@ -81,7 +81,7 @@ std::string fragment_type_to_string(CallFragment::Type type)
       // LCOV_EXCL_START - We should never reach this code.  The function must
       // be passed a value in the enumeration, and we have already handled all
       // of them.
-      LOG_ERROR("Unexpected call fragment type %d", (int)type);
+      TRC_ERROR("Unexpected call fragment type %d", (int)type);
       return (std::string("UNKNOWN (") + std::to_string(type) + std::string(")"));
       // LCOV_EXCL_STOP
   }
@@ -169,7 +169,7 @@ bool WriteCallFragment::perform(CassandraStore::Client* client,
                                 SAS::TrailId trail)
 {
   // Log the start of the write.
-  LOG_DEBUG("Writing %s call fragment for IMPU '%s'",
+  TRC_DEBUG("Writing %s call fragment for IMPU '%s'",
             fragment_type_to_string(_fragment.type).c_str(),
             _impu.c_str());
 
@@ -221,7 +221,7 @@ void WriteCallFragment::unhandled_exception(CassandraStore:: ResultCode status,
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
 
-  LOG_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
+  TRC_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
               _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_WRITE_FAILED,
@@ -253,7 +253,7 @@ bool GetCallFragments::perform(CassandraStore::Client* client,
                                SAS::TrailId trail)
 {
   // Log the start of the read
-  LOG_DEBUG("Get call fragments for IMPU: '%s'", _impu.c_str());
+  TRC_DEBUG("Get call fragments for IMPU: '%s'", _impu.c_str());
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_READ_STARTED, 0);
@@ -294,7 +294,7 @@ bool GetCallFragments::perform(CassandraStore::Client* client,
     _fragments.push_back(fragment);
   }
 
-  LOG_DEBUG("Retrieved %d call fragments from the store", _fragments.size());
+  TRC_DEBUG("Retrieved %d call fragments from the store", _fragments.size());
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_READ_OK, 0);
@@ -313,7 +313,7 @@ void GetCallFragments::unhandled_exception(CassandraStore::ResultCode status,
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
 
-  LOG_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
+  TRC_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
               _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_READ_FAILED,
@@ -351,7 +351,7 @@ DeleteOldCallFragments::~DeleteOldCallFragments()
 bool DeleteOldCallFragments::perform(CassandraStore::Client* client,
                                      SAS::TrailId trail)
 {
-  LOG_DEBUG("Deleting %d call fragments for IMPU '%s'",
+  TRC_DEBUG("Deleting %d call fragments for IMPU '%s'",
             _fragments.size(),
             _impu.c_str());
 
@@ -385,7 +385,7 @@ bool DeleteOldCallFragments::perform(CassandraStore::Client* client,
   client->delete_columns(to_delete,
                          _cass_timestamp);
 
-  LOG_DEBUG("Successfully deleted call fragments");
+  TRC_DEBUG("Successfully deleted call fragments");
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_TRIM_OK, 0);
@@ -401,7 +401,7 @@ void DeleteOldCallFragments::unhandled_exception(CassandraStore::ResultCode stat
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
 
-  LOG_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
+  TRC_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
               _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_TRIM_FAILED,
