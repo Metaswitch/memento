@@ -122,7 +122,7 @@ AppServerTsx* MementoAppServer::get_app_tsx(AppServerTsxHelper* helper,
       (!_load_monitor->admit_request()))
   {
     // LCOV_EXCL_START
-    LOG_WARNING("No available tokens - no memento processing of request");
+    TRC_WARNING("No available tokens - no memento processing of request");
     SAS::Event event(helper->trail(), SASEvent::CALL_LIST_OVERLOAD, 0);
     SAS::report_event(event);
     _stat_calls_not_recorded_due_to_overload.increment();
@@ -130,7 +130,7 @@ AppServerTsx* MementoAppServer::get_app_tsx(AppServerTsxHelper* helper,
     // LCOV_EXCL_STOP
   }
 
-  LOG_DEBUG("Getting a MementoAppServerTsx");
+  TRC_DEBUG("Getting a MementoAppServerTsx");
 
   MementoAppServerTsx* memento_tsx =
                     new MementoAppServerTsx(helper,
@@ -169,7 +169,7 @@ MementoAppServerTsx::~MementoAppServerTsx() {}
 
 void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
 {
-  LOG_DEBUG("Memento processing an initial request of type %s",
+  TRC_DEBUG("Memento processing an initial request of type %s",
            (req->line.req.method.id == PJSIP_INVITE_METHOD) ? "INVITE" : "BYE");
 
   // Get the current time
@@ -194,7 +194,7 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
     if ((sescase != NULL) &&
         (pj_stricmp(&sescase->value, &ORIG) == 0))
     {
-      LOG_DEBUG("Request is originating");
+      TRC_DEBUG("Request is originating");
 
       _outgoing = true;
     }
@@ -222,7 +222,7 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
     }
     else
     {
-      LOG_WARNING("INVITE missing P-Asserted-Identity");
+      TRC_WARNING("INVITE missing P-Asserted-Identity");
       send_request(req);
       return;
     }
@@ -264,7 +264,7 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
 
 void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 {
-  LOG_DEBUG("Mememto processing an in_dialog_request");
+  TRC_DEBUG("Mememto processing an in_dialog_request");
 
   // Get the dialog id. It has the format:
   //  <YYYYMMDDHHMMSS>_<unique_id>_<base64 encoded impu>
@@ -277,7 +277,7 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
   if (dialog_values.size() != 3)
   {
     // LCOV_EXCL_START
-    LOG_WARNING("Invalid dialog ID (%s)", dialogid.c_str());
+    TRC_WARNING("Invalid dialog ID (%s)", dialogid.c_str());
     send_request(req);
     return;
     // LCOV_EXCL_STOP
@@ -326,7 +326,7 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 
 void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 {
-  LOG_DEBUG("Memento processing a response");
+  TRC_DEBUG("Memento processing a response");
 
   pjsip_cseq_hdr* cseq = (pjsip_cseq_hdr*)pjsip_msg_find_hdr(rsp,
                                                              PJSIP_H_CSEQ,
@@ -341,7 +341,7 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 
   if (_stored_entry)
   {
-    LOG_DEBUG("Already received a final response, no further processing");
+    TRC_DEBUG("Already received a final response, no further processing");
     send_response(rsp);
     return;
   }

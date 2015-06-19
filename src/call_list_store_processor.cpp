@@ -151,7 +151,7 @@ void CallListStoreProcessor::Pool::process_work(
   else
   {
     // The write failed - log this and don't retry
-    LOG_ERROR("Writing call list entry for IMPU: %s failed with rc %d",
+    TRC_ERROR("Writing call list entry for IMPU: %s failed with rc %d",
                                                 clr->impu.c_str(), rc);
   }
 
@@ -159,7 +159,7 @@ void CallListStoreProcessor::Pool::process_work(
   latency_us = 0;
   if (clr->stop_watch.read(latency_us))
   {
-    LOG_DEBUG("Request latency = %ldus", latency_us);
+    TRC_DEBUG("Request latency = %ldus", latency_us);
     _load_monitor->request_complete(latency_us);
   }
 
@@ -185,7 +185,7 @@ void CallListStoreProcessor::Pool::perform_call_trim(
   if (rc != CassandraStore::OK)
   {
     // The delete failed - log this and don't retry
-    LOG_ERROR("Deleting call list entries for IMPU: %s failed with rc %d",
+    TRC_ERROR("Deleting call list entries for IMPU: %s failed with rc %d",
                                                           impu.c_str(), rc);
   }
 }
@@ -267,7 +267,7 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(
         records_to_delete.push_back(records[ii]);
       }
 
-      LOG_DEBUG("Need to remove %d calls entries", num_to_delete);
+      TRC_DEBUG("Need to remove %d calls entries", num_to_delete);
 
       SAS::Event event(trail, SASEvent::CALL_LIST_TRIM_NEEDED, 0);
       event.add_var_param(impu);
@@ -281,7 +281,7 @@ bool CallListStoreProcessor::Pool::is_call_trim_needed(
   else
   {
     // The read failed - log this and don't retry
-    LOG_ERROR("Reading call list entries for IMPU: %s failed with rc %d",
+    TRC_ERROR("Reading call list entries for IMPU: %s failed with rc %d",
                                                               impu.c_str(), rc);
   }
 
