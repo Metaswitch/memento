@@ -94,10 +94,17 @@ case "$1" in
             $SCRIPT
         done
 
-        /usr/share/clearwater/cassandra-schemas/memento.sh
+        /usr/share/clearwater/cassandra-schemas/memento.sh || /bin/true
 
         # Record disk usage now - it will be kept up-to-date by a cron job
         memento_get_current_use > $MEMENTO_DISK_USAGE_FILE
+
+        # Stop the cluster manager, so that it is restarted by Monit and picks
+        # and picks up the new plugins. We check whether the process is 
+        # installed to avoid warning logs when etcd isn't being used
+        if [ -x "/etc/init.d/clearwater-cluster-manager" ]; then
+          service clearwater-cluster-manager stop || /bin/true
+        fi  
 
         # Restart memento.  Always do this by terminating memento so monit will
         # restart it more-or-less immediately.  (monit restart seems to have

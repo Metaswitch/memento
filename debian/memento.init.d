@@ -90,7 +90,7 @@ get_settings()
   homestead_http_name=$(python /usr/share/clearwater/bin/bracket_ipv6_address.py $hs_hostname)
 
   # Set up a default cluster_settings file if it does not exist.
-  [ -f /etc/clearwater/cluster_settings ] || echo "servers=$local_ip:11211" > /etc/clearwater/cluster_settings
+  [ -f /etc/clearwater/memento_cluster_settings ] || echo "servers=$local_ip:11211" > /etc/clearwater/memento_cluster_settings
 
   # Set up defaults for user settings then pull in any overrides.
   log_level=2
@@ -155,6 +155,7 @@ do_start()
                      --log-file $log_directory
                      --log-level $log_level
                      --sas $sas_server,$NAME@$public_hostname"
+        [ "$http_blacklist_duration" = "" ] || DAEMON_ARGS="$DAEMON_ARGS --http-blacklist-duration=$http_blacklist_duration"
 
         $namespace_prefix start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON --chuid $NAME --chdir $HOME -- $DAEMON_ARGS \
                 || return 2
@@ -285,6 +286,10 @@ case "$1" in
                 log_end_msg 1
                 ;;
         esac
+        ;;
+  abort)
+        log_daemon_msg "Aborting $DESC" "$NAME"
+        do_abort
         ;;
   abort-restart)
         log_daemon_msg "Abort-Restarting $DESC" "$NAME"

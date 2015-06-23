@@ -52,10 +52,24 @@ void CallListTask::run()
     return;
   }
 
-  LOG_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
+  SAS::Marker start_marker(trail(), MARKER_ID_START, 1u);
+  SAS::report_marker(start_marker);
+
+  TRC_DEBUG("Parsed Call Lists request. Public ID: %s", _impu.c_str());
   SAS::Event rx_event(trail(), SASEvent::CALL_LIST_REQUEST_RX, 0);
   rx_event.add_var_param(_impu);
   SAS::report_event(rx_event);
+
+  // This will only be usable for SAS if the user is numeric - which
+  // may not be true. Still, this is the best we can do at the moment
+  // and it matches Sprout's function
+  std::string dn = user_from_impu(_impu);
+  SAS::Marker calling_dn(trail(), MARKER_ID_CALLING_DN, 1u);
+  calling_dn.add_var_param(dn);
+  SAS::report_marker(calling_dn);
+  SAS::Marker called_dn(trail(), MARKER_ID_CALLED_DN, 1u);
+  called_dn.add_var_param(dn);
+  SAS::report_marker(called_dn);
 
   std::string www_auth_header;
   std::string auth_header = _req.header("Authorization");
@@ -66,13 +80,13 @@ void CallListTask::run()
   //LCOV_EXCL_START - These cases are tested thoroughly in individual tests
   if (rc == HTTP_UNAUTHORIZED)
   {
-    LOG_DEBUG("Authorization data missing or out of date, responding with 401");
+    TRC_DEBUG("Authorization data missing or out of date, responding with 401");
     _req.add_header("WWW-Authenticate", www_auth_header);
     send_http_reply(rc);
   }
   else if (rc != HTTP_OK)
   {
-    LOG_DEBUG("Authorization failed, responding with %d", rc);
+    TRC_DEBUG("Authorization failed, responding with %d", rc);
     send_http_reply(rc);
   }
   else
@@ -80,6 +94,9 @@ void CallListTask::run()
     respond_when_authenticated();
   }
   // LCOV_EXCL_STOP
+
+  SAS::Marker end_marker(trail(), MARKER_ID_END, 1u);
+  SAS::report_marker(end_marker);
 
   delete this;
   return;
@@ -103,7 +120,7 @@ void CallListTask::respond_when_authenticated()
     db_err_event.add_var_param(_impu);
     SAS::report_event(db_err_event);
 
-    LOG_DEBUG("get_call_records_sync failed with result code %d", db_rc);
+    TRC_DEBUG("get_call_records_sync failed with result code %d", db_rc);
     send_http_reply(HTTP_SERVER_ERROR);
     return;
   }
@@ -150,4 +167,27 @@ HTTPCode CallListTask::parse_request()
     return HTTP_BADMETHOD;
   }
   return HTTP_OK;
+}
+
+std::string CallListTask::user_from_impu(std::string impu)
+{
+  // Returns the user part of an IMPU (should be a SIP URI). We 
+  // use simple string manipulation to pull out the user part (ideally
+  // we'd use something like PJSIP for this manipulation, but this isn't
+  // used by Memento HTTP). 
+  std::size_t is_sip = impu.find("sip:");
+  if (is_sip == std::string::npos)
+  {
+    // We won't be able to search for traces in SAS with this, but it's
+    // our best guess to the Calling/Called DNs (it also matches Sprout's
+    // behaviour). 
+    return impu;  // LCOV_EXCL_LINE
+  }
+  else
+  {
+    std::string impi = impu.substr(4);
+    std::vector<std::string> uri_parts;
+    Utils::split_string(impi, '@', uri_parts, 0, false);
+    return uri_parts[0];
+  }
 }

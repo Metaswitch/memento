@@ -85,6 +85,7 @@ struct options
   float init_token_rate;
   float min_token_rate;
   int exception_max_ttl;
+  int http_blacklist_duration;
 };
 
 // Enum for option types not assigned short-forms
@@ -108,31 +109,33 @@ enum OptionTypes
   MAX_TOKENS,
   INIT_TOKEN_RATE,
   MIN_TOKEN_RATE,
-  EXCEPTION_MAX_TTL
+  EXCEPTION_MAX_TTL,
+  HTTP_BLACKLIST_DURATION
 };
 
 const static struct option long_opt[] =
 {
-  {"localhost",              required_argument, NULL, LOCAL_HOST},
-  {"http",                   required_argument, NULL, HTTP_ADDRESS},
-  {"http-threads",           required_argument, NULL, HTTP_THREADS},
-  {"http-worker-threads",    required_argument, NULL, HTTP_WORKER_THREADS},
-  {"homestead-http-name",    required_argument, NULL, HOMESTEAD_HTTP_NAME},
-  {"digest-timeout",         required_argument, NULL, DIGEST_TIMEOUT},
-  {"home-domain",            required_argument, NULL, HOME_DOMAIN},
-  {"sas",                    required_argument, NULL, SAS_CONFIG},
-  {"access-log",             required_argument, NULL, ACCESS_LOG},
-  {"alarms-enabled",         no_argument,       NULL, ALARMS_ENABLED},
-  {"memcached-write-format", required_argument, NULL, MEMCACHED_WRITE_FORMAT},
-  {"log-file",               required_argument, NULL, LOG_FILE},
-  {"log-level",              required_argument, NULL, LOG_LEVEL},
-  {"help",                   no_argument,       NULL, HELP},
-  {"target-latency-us",      required_argument, NULL, TARGET_LATENCY_US},
-  {"max-tokens",             required_argument, NULL, MAX_TOKENS},
-  {"init-token-rate",        required_argument, NULL, INIT_TOKEN_RATE},
-  {"min-token-rate",         required_argument, NULL, MIN_TOKEN_RATE},
-  {"exception-max-ttl",      required_argument, NULL, EXCEPTION_MAX_TTL},
-  {NULL,                     0,                 NULL, 0},
+  {"localhost",                required_argument, NULL, LOCAL_HOST},
+  {"http",                     required_argument, NULL, HTTP_ADDRESS},
+  {"http-threads",             required_argument, NULL, HTTP_THREADS},
+  {"http-worker-threads",      required_argument, NULL, HTTP_WORKER_THREADS},
+  {"homestead-http-name",      required_argument, NULL, HOMESTEAD_HTTP_NAME},
+  {"digest-timeout",           required_argument, NULL, DIGEST_TIMEOUT},
+  {"home-domain",              required_argument, NULL, HOME_DOMAIN},
+  {"sas",                      required_argument, NULL, SAS_CONFIG},
+  {"access-log",               required_argument, NULL, ACCESS_LOG},
+  {"alarms-enabled",           no_argument,       NULL, ALARMS_ENABLED},
+  {"memcached-write-format",   required_argument, NULL, MEMCACHED_WRITE_FORMAT},
+  {"log-file",                 required_argument, NULL, LOG_FILE},
+  {"log-level",                required_argument, NULL, LOG_LEVEL},
+  {"help",                     no_argument,       NULL, HELP},
+  {"target-latency-us",        required_argument, NULL, TARGET_LATENCY_US},
+  {"max-tokens",               required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",          required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",           required_argument, NULL, MIN_TOKEN_RATE},
+  {"exception-max-ttl",        required_argument, NULL, EXCEPTION_MAX_TTL},
+  {"http-blacklist-duration",  required_argument, NULL, HTTP_BLACKLIST_DURATION},
+  {NULL,                       0,                 NULL, 0},
 };
 
 void usage(void)
@@ -170,6 +173,8 @@ void usage(void)
        " --exception-max-ttl <secs>\n"
        "                            The maximum time before the process exits if it hits an exception.\n"
        "                            The actual time is randomised.\n"
+       " --http-blacklist-duration <secs>\n"
+       "                            The amount of time to blacklist an HTTP peer when it is unresponsive.\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -215,27 +220,27 @@ int init_options(int argc, char**argv, struct options& options)
     switch (opt)
     {
     case LOCAL_HOST:
-      LOG_INFO("Local host: %s", optarg);
+      TRC_INFO("Local host: %s", optarg);
       options.local_host = std::string(optarg);
       break;
 
     case HTTP_ADDRESS:
-      LOG_INFO("HTTP bind address: %s", optarg);
+      TRC_INFO("HTTP bind address: %s", optarg);
       options.http_address = std::string(optarg);
       break;
 
     case HTTP_THREADS:
-      LOG_INFO("Number of HTTP threads: %s", optarg);
+      TRC_INFO("Number of HTTP threads: %s", optarg);
       options.http_threads = atoi(optarg);
       break;
 
     case HTTP_WORKER_THREADS:
-      LOG_INFO("Number of HTTP worker threads: %s", optarg);
+      TRC_INFO("Number of HTTP worker threads: %s", optarg);
       options.http_worker_threads = atoi(optarg);
       break;
 
     case HOMESTEAD_HTTP_NAME:
-      LOG_INFO("Homestead HTTP address: %s", optarg);
+      TRC_INFO("Homestead HTTP address: %s", optarg);
       options.homestead_http_name = std::string(optarg);
       break;
 
@@ -249,12 +254,12 @@ int init_options(int argc, char**argv, struct options& options)
         options.digest_timeout = 300;
       }
 
-      LOG_INFO("Digest timeout: %s", optarg);
+      TRC_INFO("Digest timeout: %s", optarg);
       break;
 
     case HOME_DOMAIN:
       options.home_domain = std::string(optarg);
-      LOG_INFO("Home domain: %s", optarg);
+      TRC_INFO("Home domain: %s", optarg);
       break;
 
     case SAS_CONFIG:
@@ -268,41 +273,41 @@ int init_options(int argc, char**argv, struct options& options)
       {
         options.sas_server = sas_options[0];
         options.sas_system_name = sas_options[1];
-        LOG_INFO("SAS set to %s\n", options.sas_server.c_str());
-        LOG_INFO("System name is set to %s\n", options.sas_system_name.c_str());
+        TRC_INFO("SAS set to %s\n", options.sas_server.c_str());
+        TRC_INFO("System name is set to %s\n", options.sas_system_name.c_str());
       }
       else
       {
-        LOG_INFO("Invalid --sas option, SAS disabled\n");
+        TRC_INFO("Invalid --sas option, SAS disabled\n");
       }
     }
     break;
 
     case ACCESS_LOG:
-      LOG_INFO("Access log: %s", optarg);
+      TRC_INFO("Access log: %s", optarg);
       options.access_log_enabled = true;
       options.access_log_directory = std::string(optarg);
       break;
 
     case ALARMS_ENABLED:
-      LOG_INFO("SNMP alarms are enabled");
+      TRC_INFO("SNMP alarms are enabled");
       options.alarms_enabled = true;
       break;
 
     case MEMCACHED_WRITE_FORMAT:
       if (strcmp(optarg, "binary") == 0)
       {
-        LOG_INFO("Memcached write format set to 'binary'");
+        TRC_INFO("Memcached write format set to 'binary'");
         options.memcached_write_format = MemcachedWriteFormat::BINARY;
       }
       else if (strcmp(optarg, "json") == 0)
       {
-        LOG_INFO("Memcached write format set to 'json'");
+        TRC_INFO("Memcached write format set to 'json'");
         options.memcached_write_format = MemcachedWriteFormat::JSON;
       }
       else
       {
-        LOG_WARNING("Invalid value for memcached-write-format, using '%s'."
+        TRC_WARNING("Invalid value for memcached-write-format, using '%s'."
                     "Got '%s', valid vales are 'json' and 'binary'",
                     ((options.memcached_write_format == MemcachedWriteFormat::JSON) ?
                      "json" : "binary"),
@@ -315,7 +320,7 @@ int init_options(int argc, char**argv, struct options& options)
 
       if (options.target_latency_us <= 0)
       {
-        LOG_ERROR("Invalid --target-latency-us option %s", optarg);
+        TRC_ERROR("Invalid --target-latency-us option %s", optarg);
         return -1;
       }
       break;
@@ -325,7 +330,7 @@ int init_options(int argc, char**argv, struct options& options)
 
       if (options.max_tokens <= 0)
       {
-        LOG_ERROR("Invalid --max-tokens option %s", optarg);
+        TRC_ERROR("Invalid --max-tokens option %s", optarg);
         return -1;
       }
       break;
@@ -335,7 +340,7 @@ int init_options(int argc, char**argv, struct options& options)
 
       if (options.init_token_rate <= 0)
       {
-        LOG_ERROR("Invalid --init-token-rate option %s", optarg);
+        TRC_ERROR("Invalid --init-token-rate option %s", optarg);
         return -1;
       }
       break;
@@ -345,15 +350,21 @@ int init_options(int argc, char**argv, struct options& options)
 
       if (options.min_token_rate <= 0)
       {
-        LOG_ERROR("Invalid --min-token-rate option %s", optarg);
+        TRC_ERROR("Invalid --min-token-rate option %s", optarg);
         return -1;
       }
       break;
 
     case EXCEPTION_MAX_TTL:
       options.exception_max_ttl = atoi(optarg);
-      LOG_INFO("Max TTL after an exception set to %d",
-      options.exception_max_ttl);
+      TRC_INFO("Max TTL after an exception set to %d",
+               options.exception_max_ttl);
+      break;
+
+    case HTTP_BLACKLIST_DURATION:
+      options.http_blacklist_duration = atoi(optarg);
+      TRC_INFO("HTTP blacklist duration set to %d",
+               options.http_blacklist_duration);
       break;
 
     case LOG_FILE:
@@ -366,7 +377,7 @@ int init_options(int argc, char**argv, struct options& options)
       return -1;
 
     default:
-      LOG_ERROR("Unknown option. Run with --help for options.\n");
+      TRC_ERROR("Unknown option. Run with --help for options.\n");
       return -1;
     }
   }
@@ -391,11 +402,11 @@ void signal_handler(int sig)
   signal(SIGSEGV, signal_handler);
 
   // Log the signal, along with a backtrace.
-  LOG_BACKTRACE("Signal %d caught", sig);
+  TRC_BACKTRACE("Signal %d caught", sig);
 
   // Ensure the log files are complete - the core file created by abort() below
   // will trigger the log files to be copied to the diags bundle
-  LOG_COMMIT();
+  TRC_COMMIT();
 
   // Check if there's a stored jmp_buf on the thread and handle if there is
   exception_handler->handle_exception();
@@ -434,6 +445,7 @@ int main(int argc, char**argv)
   options.init_token_rate = 100.0;
   options.min_token_rate = 10.0;
   options.exception_max_ttl = 600;
+  options.http_blacklist_duration = HttpResolver::DEFAULT_BLACKLIST_DURATION;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -456,7 +468,7 @@ int main(int argc, char**argv)
     Log::setLogger(new Logger(options.log_directory, prog_name));
   }
 
-  LOG_STATUS("Log level set to %d", options.log_level);
+  TRC_STATUS("Log level set to %d", options.log_level);
 
   std::stringstream options_ss;
 
@@ -468,7 +480,7 @@ int main(int argc, char**argv)
 
   std::string options_str = "Command-line options were: " + options_ss.str();
 
-  LOG_INFO(options_str.c_str());
+  TRC_INFO(options_str.c_str());
 
   if (init_options(argc, argv, options) != 0)
   {
@@ -479,7 +491,7 @@ int main(int argc, char**argv)
 
   if (options.access_log_enabled)
   {
-    LOG_STATUS("Access logging enabled to %s", options.access_log_directory.c_str());
+    TRC_STATUS("Access logging enabled to %s", options.access_log_directory.c_str());
     access_logger = new AccessLogger(options.access_log_directory);
   }
 
@@ -527,13 +539,13 @@ int main(int argc, char**argv)
     cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
     cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm);
 
-    LOG_DEBUG("Starting alarm request agent");
+    TRC_DEBUG("Starting alarm request agent");
     AlarmReqAgent::get_instance().start();
     AlarmState::clear_all("memento");
   }
 
-  MemcachedStore* m_store = new MemcachedStore(false,
-                                               "./cluster_settings",
+  MemcachedStore* m_store = new MemcachedStore(true,
+                                               "./memento_cluster_settings",
                                                mc_comm_monitor,
                                                mc_vbucket_alarm);
 
@@ -569,12 +581,14 @@ int main(int argc, char**argv)
   struct in6_addr dummy_addr;
   if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
   {
-    LOG_DEBUG("Local host is an IPv6 address");
+    TRC_DEBUG("Local host is an IPv6 address");
     af = AF_INET6;
   }
 
   DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
-  HttpResolver* http_resolver = new HttpResolver(dns_resolver, af);
+  HttpResolver* http_resolver = new HttpResolver(dns_resolver,
+                                                 af,
+                                                 options.http_blacklist_duration);
   HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name,
                                                                 http_resolver,
                                                                 load_monitor,
@@ -583,8 +597,7 @@ int main(int argc, char**argv)
 
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->initialize();
-  call_list_store->configure("localhost", 9160, exception_handler, 0, 0, cass_comm_monitor);
+  call_list_store->configure_connection("localhost", 9160, cass_comm_monitor);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
@@ -597,7 +610,7 @@ int main(int argc, char**argv)
 
   if (store_rc != CassandraStore::OK)
   {
-    LOG_ERROR("Unable to create call list store (RC = %d)", store_rc);
+    TRC_ERROR("Unable to create call list store (RC = %d)", store_rc);
     exit(3);
   }
 
@@ -628,13 +641,13 @@ int main(int argc, char**argv)
   }
   catch (HttpStack::Exception& e)
   {
-    LOG_ERROR("Failed to initialize HttpStack stack - function %s, rc %d", e._func, e._rc);
+    TRC_ERROR("Failed to initialize HttpStack stack - function %s, rc %d", e._func, e._rc);
     exit(2);
   }
 
-  LOG_STATUS("Start-up complete - wait for termination signal");
+  TRC_STATUS("Start-up complete - wait for termination signal");
   sem_wait(&term_sem);
-  LOG_STATUS("Termination signal received - terminating");
+  TRC_STATUS("Termination signal received - terminating");
 
   try
   {
@@ -643,7 +656,7 @@ int main(int argc, char**argv)
   }
   catch (HttpStack::Exception& e)
   {
-    LOG_ERROR("Failed to stop HttpStack stack - function %s, rc %d", e._func, e._rc);
+    TRC_ERROR("Failed to stop HttpStack stack - function %s, rc %d", e._func, e._rc);
   }
 
   call_list_store->stop();

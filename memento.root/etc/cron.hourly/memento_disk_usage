@@ -112,7 +112,7 @@ then
   then
     log warning "Disk usage still over capacity, truncating database"
     echo "USE memento ;
-          TRUNCATE call_lists ;" | cqlsh -3
+          TRUNCATE call_lists ;" | cqlsh
     nodetool clearsnapshot memento
   fi
 

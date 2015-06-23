@@ -81,7 +81,7 @@ std::string fragment_type_to_string(CallFragment::Type type)
       // LCOV_EXCL_START - We should never reach this code.  The function must
       // be passed a value in the enumeration, and we have already handled all
       // of them.
-      LOG_ERROR("Unexpected call fragment type %d", (int)type);
+      TRC_ERROR("Unexpected call fragment type %d", (int)type);
       return (std::string("UNKNOWN (") + std::to_string(type) + std::string(")"));
       // LCOV_EXCL_STOP
   }
@@ -165,11 +165,11 @@ WriteCallFragment::WriteCallFragment(const std::string& impu,
 WriteCallFragment::~WriteCallFragment()
 {}
 
-bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
+bool WriteCallFragment::perform(CassandraStore::Client* client,
                                 SAS::TrailId trail)
 {
   // Log the start of the write.
-  LOG_DEBUG("Writing %s call fragment for IMPU '%s'",
+  TRC_DEBUG("Writing %s call fragment for IMPU '%s'",
             fragment_type_to_string(_fragment.type).c_str(),
             _impu.c_str());
 
@@ -201,12 +201,11 @@ bool WriteCallFragment::perform(CassandraStore::ClientInterface* client,
   std::vector<std::string> keys;
   keys.push_back(_impu);
 
-  put_columns(client,
-              COLUMN_FAMILY,
-              keys,
-              columns,
-              _cass_timestamp,
-              _ttl);
+  client->put_columns(COLUMN_FAMILY,
+                      keys,
+                      columns,
+                      _cass_timestamp,
+                      _ttl);
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_WRITE_OK, 0);
@@ -222,7 +221,7 @@ void WriteCallFragment::unhandled_exception(CassandraStore:: ResultCode status,
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
 
-  LOG_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
+  TRC_WARNING("Failed to write call list fragment for IMPU %s because '%s' (RC = %d)",
               _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_WRITE_FAILED,
@@ -250,11 +249,11 @@ GetCallFragments::GetCallFragments(const std::string& impu) :
 GetCallFragments::~GetCallFragments()
 {}
 
-bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
+bool GetCallFragments::perform(CassandraStore::Client* client,
                                SAS::TrailId trail)
 {
   // Log the start of the read
-  LOG_DEBUG("Get call fragments for IMPU: '%s'", _impu.c_str());
+  TRC_DEBUG("Get call fragments for IMPU: '%s'", _impu.c_str());
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_READ_STARTED, 0);
@@ -264,11 +263,10 @@ bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
 
   // Get all the call columns for the IMPU's cassandra row.
   std::vector<cass::ColumnOrSuperColumn> columns;
-  ha_get_columns_with_prefix(client,
-                             COLUMN_FAMILY,
-                             _impu,
-                             CALL_COLUMN_PREFIX,
-                             columns);
+  client->ha_get_columns_with_prefix(COLUMN_FAMILY,
+                                     _impu,
+                                     CALL_COLUMN_PREFIX,
+                                     columns);
 
   for(std::vector<cass::ColumnOrSuperColumn>::const_iterator column_it = columns.begin();
       column_it != columns.end();
@@ -296,7 +294,7 @@ bool GetCallFragments::perform(CassandraStore::ClientInterface* client,
     _fragments.push_back(fragment);
   }
 
-  LOG_DEBUG("Retrieved %d call fragments from the store", _fragments.size());
+  TRC_DEBUG("Retrieved %d call fragments from the store", _fragments.size());
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_READ_OK, 0);
@@ -315,7 +313,7 @@ void GetCallFragments::unhandled_exception(CassandraStore::ResultCode status,
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
 
-  LOG_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
+  TRC_WARNING("Failed to get call list fragments for IMPU %s because '%s' (RC = %d)",
               _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_READ_FAILED,
@@ -350,10 +348,10 @@ DeleteOldCallFragments::DeleteOldCallFragments(const std::string& impu,
 DeleteOldCallFragments::~DeleteOldCallFragments()
 {}
 
-bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
+bool DeleteOldCallFragments::perform(CassandraStore::Client* client,
                                      SAS::TrailId trail)
 {
-  LOG_DEBUG("Deleting %d call fragments for IMPU '%s'",
+  TRC_DEBUG("Deleting %d call fragments for IMPU '%s'",
             _fragments.size(),
             _impu.c_str());
 
@@ -384,11 +382,10 @@ bool DeleteOldCallFragments::perform(CassandraStore::ClientInterface* client,
     to_delete.push_back(CassandraStore::RowColumns(COLUMN_FAMILY, _impu, columns));
   }
 
-  delete_columns(client,
-                 to_delete,
-                 _cass_timestamp);
+  client->delete_columns(to_delete,
+                         _cass_timestamp);
 
-  LOG_DEBUG("Successfully deleted call fragments");
+  TRC_DEBUG("Successfully deleted call fragments");
 
   { // New scope to avoid accidentally operating on the wrong SAS event.
     SAS::Event ev(trail, SASEvent::CALL_LIST_TRIM_OK, 0);
@@ -404,7 +401,7 @@ void DeleteOldCallFragments::unhandled_exception(CassandraStore::ResultCode stat
 {
   CassandraStore::Operation::unhandled_exception(status, description, trail);
 
-  LOG_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
+  TRC_WARNING("Failed to delete old call list fragments for IMPU %s because '%s' (RC = %d)",
               _impu.c_str(), description.c_str(), status);
   sas_log_cassandra_failure(trail,
                             SASEvent::CALL_LIST_TRIM_FAILED,

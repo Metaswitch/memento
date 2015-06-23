@@ -40,7 +40,7 @@
 #include "call_list_store.h"
 #include "mock_cassandra_store.h"
 
-class MockCallListStore : public MockCassandraStore<CallListStore::Store>
+class MockCallListStore : public CallListStore::Store
 {
 public:
   virtual ~MockCallListStore() {};

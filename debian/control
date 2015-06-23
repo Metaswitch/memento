@@ -24,6 +24,7 @@ Description: Debugging symbols for memento
 
 Package: memento-libs
 Architecture: any
+Depends: libevent-2.0-5, libevent-pthreads-2.0-5
 Description: Libraries for memento
 
 Package: memento-libs-dbg

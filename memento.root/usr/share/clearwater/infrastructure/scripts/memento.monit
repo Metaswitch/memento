@@ -38,26 +38,45 @@
 
 # Set up the monit configuration for memento with the right IP addresses and ports
 cat > /etc/monit/conf.d/memento.monit <<EOF
-# Check the server's public interfaces.  We put this first so that we process
-# failed polls (and maybe kill the server) before we process the restart.
+# Check the Memento process.
 
-check program poll_memento with path "/usr/share/clearwater/bin/poll_memento.sh"
+# Monitor the service's PID file and memory use.
+check process memento_process with pidfile /var/run/memento.pid
+  group memento
 
-  if status != 0 for 2 cycles
-    then exec "/etc/init.d/memento abort"
+  # The start, stop and restart commands are linked to alarms
+  start program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento start'"
+  stop program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento stop'"
+  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento restart'"
 
-check process memento pidfile /var/run/memento.pid
-  start program   = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento start'"
-  stop program    = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento stop'"
-  restart program = "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort-restart'"
+  # Check the service's resource usage, and abort the process if it's too high. This will
+  # generate a core file and trigger diagnostics collection.
+  if memory > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort'"
 
-  if memory is greater than 80% for 3 cycles
-     then restart
-
+  # Clear any alarms if the process has been running for 30 seconds
   if uptime < 30 seconds
      then exec "/bin/true"
-     else if succeeded
-         then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5000.1"
+     else if succeeded then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5000.1"
+
+# Check the HTTP interface. This depends on the Memento process (and so won't run
+# unless the Memento process is running)
+check program poll_memento with path "/usr/share/clearwater/bin/poll_memento.sh"
+  group memento
+  depends on memento_process
+
+  # Aborting generates a core file and triggers diagnostic collection.
+  if status != 0 for 2 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue_alarm.py monit 5000.3; /etc/init.d/memento abort'"
+
+# Check the server's public interfaces via HTTPS to nginx and raise an alarm if
+# the server isn't reachable
+check program poll_memento_https with path "/usr/share/clearwater/bin/poll_memento_https.sh"
+  group memento
+  depends on memento_process
+
+  if status != 0 for 2 cycles
+    then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5007.3"
+    else if succeeded
+        then exec "/usr/share/clearwater/bin/issue_alarm.py monit 5007.1"
 EOF
 chmod 0644 /etc/monit/conf.d/memento.monit
 

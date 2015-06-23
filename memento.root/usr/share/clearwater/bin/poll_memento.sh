@@ -34,29 +34,8 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-# This script checks that port 11888 is open to poll memento and check whether it
-# is healthy.
-
-# In case memento has only just restarted, give it a few seconds to come up
-sleep 5
-
-# Read the config, defaulting appropriately.
+# Note this doesn't work in multiple networks
 . /etc/clearwater/config
-
-# For HTTP, we need to wrap IPv6 addresses in square brackets.
 http_ip=$(/usr/share/clearwater/bin/bracket_ipv6_address.py $local_ip)
-
-# Send HTTP request and check that the response is "OK".
-http_url=http://$http_ip:11888/ping
-curl -f -g -m 2 -s $http_url 2> /tmp/poll-memento.sh.stderr.$$ | tee /tmp/poll-memento.sh.stdout.$$ | head -1 | egrep -q "^OK$"
-rc=$?
-
-# Check the return code and log if appropriate.
-if [ $rc != 0 ] ; then
-  echo HTTP failed to $http_url        >&2
-  cat /tmp/poll-memento.sh.stderr.$$ >&2
-  cat /tmp/poll-memento.sh.stdout.$$ >&2
-fi
-rm -f /tmp/poll-memento.sh.stderr.$$ /tmp/poll-memento.sh.stdout.$$
-
-exit $rc
+/usr/share/clearwater/bin/poll-http $http_ip:11888
+exit $?
