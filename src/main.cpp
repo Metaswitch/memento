@@ -592,7 +592,6 @@ int main(int argc, char**argv)
   HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name,
                                                                 http_resolver,
                                                                 load_monitor,
-                                                                stats_aggregator,
                                                                 hs_comm_monitor);
 
   // Create and start the call list store.
