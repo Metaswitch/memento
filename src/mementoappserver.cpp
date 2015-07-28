@@ -413,8 +413,8 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 
   doc.append_node(from);
 
-  // Set outgoing to 0 if the call is incoming, and 1 otherwise.
-  std::string outgoing_str = _outgoing ? "0" : "1";
+  // Set outgoing to 1 if the call is incoming, and 0 otherwise.
+  std::string outgoing_str = _outgoing ? "1" : "0";
   rapidxml::xml_node<>* outgoing = doc.allocate_node(
                                          rapidxml::node_element,
 					 MementoXML::OUTGOING,
@@ -432,7 +432,7 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 
   if (rsp->line.status.code >= 300)
   {
-    // If the call was rejected, set answered to 1.
+    // If the call was rejected, set answered to 0.
     rapidxml::xml_node<>* answered = doc.allocate_node(rapidxml::node_element,
                                                        MementoXML::ANSWERED,
                                                        "0");
@@ -441,7 +441,7 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   }
   else
   {
-    // If the call was rejected, set answered to 0. Also fill in the answer time
+    // If the call was answered, set answered to 1. Also fill in the answer time
     // with the current time.
     rapidxml::xml_node<>* answered = doc.allocate_node(rapidxml::node_element,
                                                        MementoXML::ANSWERED,
