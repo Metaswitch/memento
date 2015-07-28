@@ -195,7 +195,7 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
 
     if (((sescase != NULL) &&
          (pj_stricmp(&sescase->value, &ORIG) == 0)) ||
-	(orig_cdiv != NULL))
+        (orig_cdiv != NULL))
     {
       TRC_DEBUG("Request is originating");
 
