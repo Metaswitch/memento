@@ -48,7 +48,7 @@
 #include "handlers.h"
 #include "sas.h"
 #include "load_monitor.h"
-#include "alarmdefinition.h"
+#include "memento_alarmdefinition.h"
 #include "communicationmonitor.h"
 #include "authstore.h"
 #include "mementosaslogger.h"

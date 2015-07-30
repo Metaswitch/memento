@@ -106,6 +106,11 @@ case "$1" in
           service clearwater-cluster-manager stop || /bin/true
         fi  
 
+        # Restart the alarm agent
+        if [ -x "/etc/init.d/clearwater-snmp-alarm-agent" ]; then
+          service clearwater-snmp-alarms-agent stop || /bin/true
+        fi
+
         # Restart memento.  Always do this by terminating memento so monit will
         # restart it more-or-less immediately.  (monit restart seems to have
         # significant lag.)
