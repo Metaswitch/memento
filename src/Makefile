@@ -44,6 +44,7 @@ TARGET_SOURCES := localstore.cpp \
                   base64.cpp \
                   unique.cpp \
                   alarm.cpp \
+                  base_communication_monitor.cpp \
                   communicationmonitor.cpp \
                   zmq_lvc.cpp \
                   counter.cpp \
@@ -184,6 +185,8 @@ ifdef JUSTTEST
   EXTRA_TEST_ARGS ?= --gtest_filter=*$(JUSTTEST)*
 endif
 
+build: ${ROOT}/usr/include/memento_alarmdefinition.h
+
 include ${MK_DIR}/platform.mk
 include ${ROOT}/modules/cpp-common/makefiles/alarm-utils.mk
 
@@ -276,8 +279,6 @@ vg_raw: build_test | $(TEST_OUT_DIR)
 
 .PHONY: distclean
 distclean: clean
-
-build: ${ROOT}/usr/include/memento_alarmdefinition.h
 
 ${ROOT}/usr/include/memento_alarmdefinition.h : ${BUILD_DIR}/bin/alarm_header ${ROOT}/memento.root/usr/share/clearwater/infrastructure/alarms/memento_alarms.json
 	${BUILD_DIR}/bin/alarm_header -j "${ROOT}/memento.root/usr/share/clearwater/infrastructure/alarms/memento_alarms.json" -n "memento"
