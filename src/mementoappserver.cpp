@@ -413,7 +413,7 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
 
   doc.append_node(from);
 
-  // Set outgoing to 1 if the call is incoming, and 0 otherwise.
+  // Set outgoing to 1 if the call is outgoing, and 0 otherwise.
   std::string outgoing_str = _outgoing ? "1" : "0";
   rapidxml::xml_node<>* outgoing = doc.allocate_node(
                                          rapidxml::node_element,
