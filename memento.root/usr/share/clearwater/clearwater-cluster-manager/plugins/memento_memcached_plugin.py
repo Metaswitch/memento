@@ -47,7 +47,7 @@ class MementoMemcachedPlugin(SynchroniserPluginBase):
     def __init__(self, params):
         issue_alarm(alarm_constants.MEMCACHED_NOT_YET_CLUSTERED_MAJOR)
         pdlogs.NOT_YET_CLUSTERED_ALARM.log(cluster_desc=self.cluster_description())
-        self._key = "/clearwater/{}/memento/clustering/memcached".format(params.local_site)
+        self._key = "/{}/{}/memento/clustering/memcached".format(params.etcd_key, params.local_site)
 
     def key(self):
         return self._key
