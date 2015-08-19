@@ -89,11 +89,7 @@ case "$1" in
         [ ! -x /usr/share/clearwater/bin/clearwater-logging-update ] || /usr/share/clearwater/bin/clearwater-logging-update
         add_section /etc/security/limits.conf memento /etc/security/limits.conf.memento
 
-        for SCRIPT in $(ls -1 /usr/share/clearwater/infrastructure/scripts/$NAME* 2>/dev/null)
-        do
-            $SCRIPT
-        done
-
+        service clearwater-infrastructure restart
         /usr/share/clearwater/cassandra-schemas/memento.sh || /bin/true
 
         # Record disk usage now - it will be kept up-to-date by a cron job
