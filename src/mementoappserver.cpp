@@ -160,7 +160,8 @@ MementoAppServerTsx::MementoAppServerTsx(
     _callee_uri(""),
     _stored_entry(false),
     _unique_id(""),
-    _impu("")
+    _impu(""),
+    _includes_initial_request(false)
 {
 }
 
@@ -171,6 +172,9 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
 {
   TRC_DEBUG("Memento processing an initial request of type %s",
            (req->line.req.method.id == PJSIP_INVITE_METHOD) ? "INVITE" : "BYE");
+
+  // Mark that memento should care about this transaction's response.
+  _includes_initial_request = true;
 
   // Get the current time
   time_t rawtime;
@@ -266,6 +270,13 @@ void MementoAppServerTsx::on_in_dialog_request(pjsip_msg* req)
 {
   TRC_DEBUG("Mememto processing an in_dialog_request");
 
+  if (req->line.req.method.id != PJSIP_BYE_METHOD)
+  {
+    // Request isn't a BYE request, e.g. it's a reINVITE. Do nothing.
+    send_request(req);
+    return;
+  }
+
   // Get the dialog id. It has the format:
   //  <YYYYMMDDHHMMSS>_<unique_id>_<base64 encoded impu>
   std::string dialogid = dialog_id();
@@ -332,9 +343,9 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
                                                              PJSIP_H_CSEQ,
                                                              NULL);
 
-  if (cseq == NULL || cseq->method.id != PJSIP_INVITE_METHOD)
+  if (cseq == NULL || cseq->method.id != PJSIP_INVITE_METHOD || !_includes_initial_request)
   {
-    // Response isn't for the INVITE, do nothing
+    // Response isn't for the initial INVITE, do nothing
     send_response(rsp);
     return;
   }

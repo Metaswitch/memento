@@ -212,6 +212,9 @@ private:
 
   /// IMPU of the call list owner
   std::string _impu;
+
+  /// Flag for whether this transaction includes the initial dialog request.
+  bool _includes_initial_request;
 };
 
 /// Utility methods
