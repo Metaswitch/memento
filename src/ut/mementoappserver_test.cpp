@@ -515,6 +515,10 @@ TEST_F(MementoAppServerWithDialogIDTest, OnInDialogRequestTest)
   pjsip_msg* rsp = parse_msg(msg.get_response());
   as_tsx.on_response(rsp, 0);
 
+  // On a non-BYE in dialog request, nothing is written to the store
+  EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
+  as_tsx.on_in_dialog_request(parse_msg(msg.get_request()));
+
   // On a BYE in dialog request the as_tsx generates an END call
   // fragment and writes it to the call list store.
   std::string impu = "sip:6505551234@homedomain";
@@ -523,6 +527,7 @@ TEST_F(MementoAppServerWithDialogIDTest, OnInDialogRequestTest)
   std::string xml = std::string("<end-time>").append(timestamp).append("</end-time>\n\n");
   EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
   EXPECT_CALL(*_clsp, write_call_list_entry(impu, _, _, CallListStore::CallFragment::Type::END, xml, _));
+  msg._method = "BYE";
   as_tsx.on_in_dialog_request(parse_msg(msg.get_request()));
 }
 
