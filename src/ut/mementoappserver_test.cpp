@@ -500,22 +500,40 @@ TEST_F(MementoAppServerWithDialogIDTest, OnInDialogRequestTest)
   Message msg;
   std::string service_name = "memento";
   std::string home_domain = "home.domain";
-  MementoAppServerTsx as_tsx(_helper, _clsp, service_name, home_domain);
+
+  // Intial INVITE transaction
+  MementoAppServerTsx as_tsx_initial(_helper, _clsp, service_name, home_domain);
 
   // Message is parsed successfully. The on_initial_request method
   // adds a Record-Route header.
   EXPECT_CALL(*_helper, add_to_dialog(_));
   EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
-  as_tsx.on_initial_request(parse_msg(msg.get_request()));
+  as_tsx_initial.on_initial_request(parse_msg(msg.get_request()));
 
-  // On a 200 OK response the as_tsx generates a BEGIN call fragment
+  // On a 200 OK response the as_tsx_initial generates a BEGIN call fragment
   // writes it to the call list store
   EXPECT_CALL(*_clsp, write_call_list_entry(_, _, _, _, _, _));
   EXPECT_CALL(*_helper, send_response(_));
   pjsip_msg* rsp = parse_msg(msg.get_response());
-  as_tsx.on_response(rsp, 0);
+  as_tsx_initial.on_response(rsp, 0);
 
-  // On a BYE in dialog request the as_tsx generates an END call
+  // In dialog reINVITE transaction
+  MementoAppServerTsx as_tsx_during(_helper, _clsp, service_name, home_domain);
+
+  // On a reINVITE in dialog request, nothing is written to the store
+  EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
+  as_tsx_during.on_in_dialog_request(parse_msg(msg.get_request()));
+
+  // On a 200 OK response to that request, nothing is written to the store
+  EXPECT_CALL(*_helper, send_response(_));
+  rsp = parse_msg(msg.get_response());
+  as_tsx_during.on_response(rsp, 0);
+
+  // In dialog BYE transaction
+  MementoAppServerTsx as_tsx_end(_helper, _clsp, service_name, home_domain);
+  msg._method = "BYE";
+
+  // On a BYE in dialog request the as_tsx_initial generates an END call
   // fragment and writes it to the call list store.
   std::string impu = "sip:6505551234@homedomain";
   std::string timestamp = get_formatted_timestamp();
@@ -523,7 +541,12 @@ TEST_F(MementoAppServerWithDialogIDTest, OnInDialogRequestTest)
   std::string xml = std::string("<end-time>").append(timestamp).append("</end-time>\n\n");
   EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
   EXPECT_CALL(*_clsp, write_call_list_entry(impu, _, _, CallListStore::CallFragment::Type::END, xml, _));
-  as_tsx.on_in_dialog_request(parse_msg(msg.get_request()));
+  as_tsx_end.on_in_dialog_request(parse_msg(msg.get_request()));
+
+  // On a 200 OK response to that BYE, nothing is written to the store
+  EXPECT_CALL(*_helper, send_response(_));
+  rsp = parse_msg(msg.get_response());
+  as_tsx_end.on_response(rsp, 0);
 }
 
 std::string get_formatted_timestamp()
