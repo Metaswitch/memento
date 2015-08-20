@@ -279,6 +279,14 @@ bool GetCallFragments::perform(CassandraStore::Client* client,
     std::vector<std::string> tokens;
     Utils::split_string(column_it->column.name, '_', tokens);
 
+    if (tokens.size() != 3)
+    {
+      // LCOV_EXCL_START
+      TRC_WARNING("Invalid column name (%s)", column_it->column.name.c_str());
+      continue;
+      // LCOV_EXCL_STOP
+    }
+
     std::string& timestamp_str = tokens[0];
     std::string& id_str = tokens[1];
     std::string& type_str = tokens[2];
