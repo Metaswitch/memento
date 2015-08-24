@@ -90,7 +90,6 @@ case "$1" in
         add_section /etc/security/limits.conf memento /etc/security/limits.conf.memento
 
         service clearwater-infrastructure restart
-        /usr/share/clearwater/cassandra-schemas/memento.sh || /bin/true
 
         # Record disk usage now - it will be kept up-to-date by a cron job
         memento_get_current_use > $MEMENTO_DISK_USAGE_FILE
