@@ -197,6 +197,10 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
          (pj_stricmp(&sescase->value, &ORIG) == 0)) ||
         (orig_cdiv != NULL))
     {
+      // orig-cdiv is treated as originating. Note that this means the served
+      // subscriber will see this call in their call logs, despite their endpoint
+      // not being involved in this call. Because of this, we don't recommend
+      // invoking memento on orig-cdiv in their IFCs.
       TRC_DEBUG("Request is originating");
 
       _outgoing = true;
