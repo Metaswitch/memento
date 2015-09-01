@@ -335,7 +335,7 @@ TEST_F(MementoAppServerTest, MainlineIncomingTest)
   // Check that the xml, impu and CallFragment type are as expected
   std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n</to>\n<from>" \
                                 "\n\t<URI>sip:6505551000@homedomain</URI>\n\t<name>Alice</name>" \
-                                "\n</from>\n<outgoing>1</outgoing>\n<start-time>").
+                                "\n</from>\n<outgoing>0</outgoing>\n<start-time>").
                     append(timestamp).append("</start-time>\n<answered>1</answered>\n<answer-time>").
                     append(timestamp).append("</answer-time>\n\n");
   std::string impu = "sip:6505551234@homedomain";
@@ -378,7 +378,7 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
 
   std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n\t<name>Bob</name>\n" \
                                 "</to>\n<from>\n\t<URI>sip:6505550000@homedomain</URI>\n\t<name>Alice</name>\n" \
-                                "</from>\n<outgoing>0</outgoing>\n<start-time>").
+                                "</from>\n<outgoing>1</outgoing>\n<start-time>").
                     append(timestamp).append("</start-time>\n<answered>1</answered>\n<answer-time>").
                     append(timestamp).append("</answer-time>\n\n");
   std::string impu = "sip:6505550000@homedomain";
@@ -485,7 +485,7 @@ TEST_F(MementoAppServerTest, OnErrorResponse)
   // Check that the xml, impu and CallFragment type are as expected
   std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n</to>\n<from>" \
                                 "\n\t<URI>sip:6505551000@homedomain</URI>\n\t<name>Alice</name>" \
-                                "\n</from>\n<outgoing>1</outgoing>\n<start-time>").
+                                "\n</from>\n<outgoing>0</outgoing>\n<start-time>").
                     append(timestamp).append("</start-time>\n<answered>0</answered>\n\n");
   std::string impu = "sip:6505551234@homedomain";
   EXPECT_CALL(*_clsp, write_call_list_entry(impu, _, _, CallListStore::CallFragment::Type::REJECTED, xml, _));
