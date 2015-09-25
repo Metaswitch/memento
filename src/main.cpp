@@ -545,7 +545,7 @@ int main(int argc, char**argv)
   }
 
   MemcachedStore* m_store = new MemcachedStore(true,
-                                               "./memento_cluster_settings",
+                                               "./cluster_settings",
                                                mc_comm_monitor,
                                                mc_vbucket_alarm);
 
