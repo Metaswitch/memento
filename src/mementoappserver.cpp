@@ -48,6 +48,7 @@ static const char* TIMESTAMP_PATTERN = "%Y%m%d%H%M%S";
 static const char* XML_PATTERN = "%Y-%m-%dT%H:%M:%S";
 
 static const pj_str_t ORIG = pj_str((char*)"orig");
+static const pj_str_t ORIG_CDIV = pj_str((char*)"orig-cdiv");
 static const pj_str_t P_SERVED_USER = pj_str((char*)"P-Served-User");
 static const pj_str_t P_ASSERTED_IDENTITY = pj_str((char*)"P-Asserted-Identity");
 static const pj_str_t SESCASE = pj_str((char*)"sescase");
@@ -194,10 +195,16 @@ void MementoAppServerTsx::on_initial_request(pjsip_msg* req)
     served_user = uri_to_string(PJSIP_URI_IN_ROUTING_HDR, uri);
 
     pjsip_param* sescase = pjsip_param_find(&psu_hdr->other_param, &SESCASE);
+    pjsip_param* orig_cdiv = pjsip_param_find(&psu_hdr->other_param, &ORIG_CDIV);
 
-    if ((sescase != NULL) &&
-        (pj_stricmp(&sescase->value, &ORIG) == 0))
+    if (((sescase != NULL) &&
+         (pj_stricmp(&sescase->value, &ORIG) == 0)) ||
+        (orig_cdiv != NULL))
     {
+      // orig-cdiv is treated as originating. Note that this means the served
+      // subscriber will see this call in their call logs, despite their endpoint
+      // not being involved in this call. Because of this, we don't recommend
+      // invoking memento on orig-cdiv in their IFCs.
       TRC_DEBUG("Request is originating");
 
       _outgoing = true;
