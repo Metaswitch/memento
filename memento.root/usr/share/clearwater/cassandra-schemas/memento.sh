@@ -1,8 +1,22 @@
 #! /bin/bash
 if [[ ! -e /var/lib/cassandra/data/memento ]];
 then
-    echo "CREATE KEYSPACE memento WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
-          USE memento;
-          CREATE TABLE call_lists (impu text PRIMARY KEY, dummy text) WITH COMPACT STORAGE and read_repair_chance = 1.0;
-    " | cqlsh
+  count=0
+  /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period
+
+  while [ $? -ne 0 ]; do
+    ((count++))
+    if [ $count -gt 120 ]; then
+      echo "Cassandra isn't responsive, unable to add schemas"
+      exit 1
+    fi
+
+    sleep 1
+    /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period
+  done
+
+  echo "CREATE KEYSPACE memento WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
+        USE memento;
+        CREATE TABLE call_lists (impu text PRIMARY KEY, dummy text) WITH COMPACT STORAGE and read_repair_chance = 1.0;
+  " | cqlsh
 fi
