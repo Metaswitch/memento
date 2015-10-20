@@ -34,5 +34,8 @@
 # under which the OpenSSL Project distributes the OpenSSL toolkit software,
 # as those licenses appear in the file LICENSE-OPENSSL.
 
-# Create Cassandra schema
-/usr/share/clearwater/cassandra-schemas/memento.sh || /bin/true
+# Create Cassandra schema if Cassandra is installed.
+if dpkg-query -W -f='${Status}' cassandra | grep -iq installed
+then
+  /usr/share/clearwater/cassandra-schemas/memento.sh || /bin/true
+fi
