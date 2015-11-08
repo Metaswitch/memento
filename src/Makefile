@@ -51,7 +51,8 @@ TARGET_SOURCES := localstore.cpp \
                   accumulator.cpp \
                   memento_lvc.cpp \
                   health_checker.cpp \
-                  exception_handler.cpp
+                  exception_handler.cpp \
+                  namespace_hop.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 

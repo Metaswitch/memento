@@ -54,6 +54,7 @@
 #include "mementosaslogger.h"
 #include "memento_lvc.h"
 #include "exception_handler.h"
+#include "namespace_hop.h"
 
 enum MemcachedWriteFormat
 {
@@ -487,11 +488,7 @@ int main(int argc, char**argv)
   }
 
   HealthChecker* hc = new HealthChecker();
-  pthread_t health_check_thread;
-  pthread_create(&health_check_thread,
-                 NULL,
-                 &HealthChecker::static_main_thread_function,
-                 (void*)hc);
+  hc->start_thread();
 
   // Create an exception handler. The exception handler doesn't need
   // to quiesce the process before killing it.
@@ -503,7 +500,8 @@ int main(int argc, char**argv)
             "memento",
             SASEvent::CURRENT_RESOURCE_BUNDLE,
             options.sas_server,
-            sas_write);
+            sas_write,
+            create_connection_in_management_namespace);
 
   // Ensure our random numbers are unpredictable.
   unsigned int seed;
@@ -641,8 +639,7 @@ int main(int argc, char**argv)
   call_list_store->stop();
   call_list_store->wait_stopped();
 
-  hc->terminate();
-  pthread_join(health_check_thread, NULL);
+  hc->stop_thread();
 
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
