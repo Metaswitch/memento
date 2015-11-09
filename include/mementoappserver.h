@@ -180,9 +180,6 @@ private:
   /// Home domain of deployment.
   std::string _home_domain;
 
-  /// Flag for whether the call has been answered or rejected
-  bool _answered;
-
   /// Flag for whether the call is incoming or outgoing
   bool _outgoing;
 
@@ -201,6 +198,12 @@ private:
 
   /// Callee URI
   std::string _callee_uri;
+
+  /// Answerer name (can be empty)
+  std::string _answerer_name;
+
+  /// Answerer URI
+  std::string _answerer_uri;
 
   /// Flag for whether a response has already been received on this
   /// transaction

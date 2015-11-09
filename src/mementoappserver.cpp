@@ -62,6 +62,7 @@ namespace MementoXML
   static const char* URI = "URI";
   static const char* OUTGOING = "outgoing";
   static const char* ANSWERED = "answered";
+  static const char* ANSWERER = "answerer";
   static const char* START_TIME = "start-time";
   static const char* END_TIME = "end-time";
   static const char* ANSWER_TIME = "answer-time";
@@ -151,7 +152,6 @@ MementoAppServerTsx::MementoAppServerTsx(
     _call_list_store_processor(call_list_store_processor),
     _service_name(service_name),
     _home_domain(home_domain),
-    _answered(false),
     _outgoing(false),
     _start_time_xml(""),
     _start_time_cassandra(""),
@@ -159,6 +159,8 @@ MementoAppServerTsx::MementoAppServerTsx(
     _caller_uri(""),
     _callee_name(""),
     _callee_uri(""),
+    _answerer_name(""),
+    _answerer_uri(""),
     _stored_entry(false),
     _unique_id(""),
     _impu(""),
@@ -389,6 +391,10 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
   //  <start-time>_start_time</start-time>
   //  <answer-time><current time></answer-time> - Only present if
   //                                              call was answered
+  //  <answerer> - may be absent
+  //    <URI>_answerer_uri</URI>
+  //    <name>_answerer_name</name> - may be absent
+  //  </answerer>
   rapidxml::xml_document<> doc;
 
   // Fill in the 'to' values from the callee values.
@@ -475,6 +481,57 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
                                       MementoXML::ANSWER_TIME,
                                       doc.allocate_string(answer_timestamp.c_str()));
     doc.append_node(answer_time);
+
+    // Also, pick up the answerer from the P-A-I header, as long as the
+    // responder hasn't requested this to be private.  Look for the 'id'
+    // value in the Privacy header.
+    bool privacy_requested = false;
+    pj_str_t privacy_hdr_name = pj_str("Privacy");
+    pjsip_generic_string_hdr* privacy = (pjsip_generic_string_hdr*)
+                    pjsip_msg_find_hdr_by_name(rsp, &privacy_hdr_name, NULL);
+
+    if (privacy)
+    {
+      if (!pj_stricmp2(&privacy->hvalue, "id"))
+      {
+        // Responder has requested ID to be private.
+        privacy_requested = true;
+      }
+    }
+
+    if (!privacy_requested)
+    {
+      pjsip_routing_hdr* asserted_id = (pjsip_routing_hdr*)
+                 pjsip_msg_find_hdr_by_name(rsp, &P_ASSERTED_IDENTITY, NULL);
+
+      if (asserted_id != NULL)
+      {
+        _answerer_uri = uri_to_string(PJSIP_URI_IN_FROMTO_HDR,
+                         (pjsip_uri*)pjsip_uri_get_uri(&asserted_id->name_addr));
+        _answerer_name = pj_str_to_string(&asserted_id->name_addr.display);
+
+        // Fill in the 'answerer' values from the answerer values.
+        rapidxml::xml_node<>* answerer = doc.allocate_node(rapidxml::node_element,
+                                                           MementoXML::ANSWERER);
+        rapidxml::xml_node<>* answerer_uri = doc.allocate_node(
+                                       rapidxml::node_element,
+                                       MementoXML::URI,
+                                       doc.allocate_string(_answerer_uri.c_str()));
+        answerer->append_node(answerer_uri);
+
+        if (!_answerer_name.empty())
+        {
+          rapidxml::xml_node<>* answerer_name = doc.allocate_node(
+                                      rapidxml::node_element,
+                                      MementoXML::NAME,
+                                      doc.allocate_string(_answerer_name.c_str()));
+          answerer->append_node(answerer_name);
+        }
+
+        doc.append_node(answerer);
+      }
+    }
+
     type = CallListStore::CallFragment::Type::BEGIN;
   }
 
