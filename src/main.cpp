@@ -86,6 +86,7 @@ struct options
   float min_token_rate;
   int exception_max_ttl;
   int http_blacklist_duration;
+  std::string api_key;
 };
 
 // Enum for option types not assigned short-forms
@@ -110,7 +111,8 @@ enum OptionTypes
   INIT_TOKEN_RATE,
   MIN_TOKEN_RATE,
   EXCEPTION_MAX_TTL,
-  HTTP_BLACKLIST_DURATION
+  HTTP_BLACKLIST_DURATION,
+  API_KEY
 };
 
 const static struct option long_opt[] =
@@ -134,6 +136,7 @@ const static struct option long_opt[] =
   {"min-token-rate",           required_argument, NULL, MIN_TOKEN_RATE},
   {"exception-max-ttl",        required_argument, NULL, EXCEPTION_MAX_TTL},
   {"http-blacklist-duration",  required_argument, NULL, HTTP_BLACKLIST_DURATION},
+  {"api-key",                  required_argument, NULL, API_KEY},
   {NULL,                       0,                 NULL, 0},
 };
 
@@ -173,6 +176,9 @@ void usage(void)
        "                            The actual time is randomised.\n"
        " --http-blacklist-duration <secs>\n"
        "                            The amount of time to blacklist an HTTP peer when it is unresponsive.\n"
+       " --api-key <key>            Value of NGV-API-Key header that is used to authenticate requests\n"
+       "                            for servers in the cluster.  These requests do not require user\n"
+       "                            authentication.\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -358,6 +364,12 @@ int init_options(int argc, char**argv, struct options& options)
       options.http_blacklist_duration = atoi(optarg);
       TRC_INFO("HTTP blacklist duration set to %d",
                options.http_blacklist_duration);
+      break;
+
+    case API_KEY:
+      options.api_key = std::string(optarg);
+      TRC_INFO("HTTP API key set to %s",
+               options.api_key.c_str());
       break;
 
     case LOG_FILE:
@@ -594,7 +606,7 @@ int main(int argc, char**argv)
   HttpStack* http_stack = HttpStack::get_instance();
   HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
 
-  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc);
+  CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc, options.api_key);
 
   MementoSasLogger sas_logger;
   HttpStackUtils::PingHandler ping_handler;
