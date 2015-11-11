@@ -52,7 +52,8 @@ TARGET_SOURCES := localstore.cpp \
                   memento_lvc.cpp \
                   health_checker.cpp \
                   exception_handler.cpp \
-                  namespace_hop.cpp
+                  namespace_hop.cpp \
+                  httpnotifier.cpp
 
 TARGET_SOURCES_BUILD := main.cpp
 
@@ -72,7 +73,9 @@ TARGET_SOURCES_TEST := test_main.cpp \
                        faketransport_udp.cpp \
                        faketransport_tcp.cpp \
                        mock_sas.cpp \
-                       memento_lvc.cpp
+                       memento_lvc.cpp \
+                       httpnotifier_test.cpp \
+                       mockhttpnotifier.cpp
 
 TARGET_EXTRA_OBJS_TEST := gmock-all.o \
                           gtest-all.o

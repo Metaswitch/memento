@@ -35,6 +35,7 @@
  */
 #include "mementoappserver.h"
 #include "call_list_store_processor.h"
+#include "httpnotifier.h"
 #include "log.h"
 #include "rapidxml/rapidxml.hpp"
 #include "rapidxml/rapidxml_print.hpp"
@@ -79,7 +80,9 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                    const int max_tokens,
                                    const float init_token_rate,
                                    const float min_token_rate,
-                                   ExceptionHandler* exception_handler) :
+                                   ExceptionHandler* exception_handler,
+                                   HttpResolver* http_resolver,
+                                   const std::string& memento_notify_url) :
   AppServer(service_name),
   _service_name(service_name),
   _home_domain(home_domain),
@@ -87,16 +90,22 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                 max_tokens,
                                 init_token_rate,
                                 min_token_rate)),
+  _http_notifier(new HttpNotifier(http_resolver)),
   _call_list_store_processor(new CallListStoreProcessor(_load_monitor,
                                                         call_list_store,
                                                         max_call_list_length,
                                                         memento_threads,
                                                         call_list_ttl,
                                                         stats_aggregator,
-                                                        exception_handler)),
+                                                        exception_handler,
+                                                        _http_notifier)),
   _stat_calls_not_recorded_due_to_overload("memento_not_recorded_overload",
                                            stats_aggregator)
 {
+  if (!memento_notify_url.empty())
+  {
+    _http_notifier->set_url(memento_notify_url);
+  }
 }
 
 /// Destructor.
@@ -104,6 +113,7 @@ MementoAppServer::~MementoAppServer()
 {
   delete _load_monitor; _load_monitor = NULL;
   delete _call_list_store_processor; _call_list_store_processor = NULL;
+  delete _http_notifier; _http_notifier = NULL;
 }
 
 // Returns an AppServerTsx if the load monitor admits the request, and if

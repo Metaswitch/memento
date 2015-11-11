@@ -1,8 +1,8 @@
 /**
- * @file mock_call_list_store_processor.h Mock call list store object.
+ * @file httpnotifier.h
  *
- * Project Clearwater - IMS in the cloud.
- * Copyright (C) 2014  Metaswitch Networks Ltd
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2015  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,23 +34,41 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_CALL_LIST_STORE_PROCESSOR_H_
-#define MOCK_CALL_LIST_STORE_PROCESSOR_H_
+#ifndef HTTPNOTIFIER_H__
+#define HTTPNOTIFIER_H__
 
-#include "call_list_store_processor.h"
+#include "httpconnection.h"
+#include "sas.h"
 
-class MockCallListStoreProcessor : public CallListStoreProcessor
+class HttpNotifier
 {
 public:
-  MockCallListStoreProcessor() : CallListStoreProcessor(NULL, NULL, 0, 0, 0, NULL, NULL, NULL) {}
-  virtual ~MockCallListStoreProcessor() {};
+  /// Constructor
+  HttpNotifier(HttpResolver* resolver);
 
-  MOCK_METHOD6(write_call_list_entry, void(std::string impu,
-                                           std::string timestamp,
-                                           std::string id,
-                                           CallListStore::CallFragment::Type type,
-                                           std::string xml,
-                                           SAS::TrailId trail));
+  /// Destructor
+  virtual ~HttpNotifier();
+
+  /// Set the URL to send notifications to.
+  void set_url(const std::string& notify_url);
+
+  /// This function sends a HTTP POST to the notify URL, to notify it of the
+  /// fact that a call list for a user has updated. This is synchronous.
+  /// Returns true iff the request was successful.
+  /// @param impu       IMPU of the member whose call list has been updated
+  /// @param trail      The SAS trail
+  bool send_notify(std::string impu, SAS::TrailId trail);
+
+private:
+
+  /// Resolver
+  HttpResolver *_http_resolver;
+
+  /// Connection
+  HttpConnection *_http_connection;
+
+  /// URL path
+  std::string _http_url_path;
 };
 
 #endif

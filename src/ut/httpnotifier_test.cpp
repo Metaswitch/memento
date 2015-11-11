@@ -1,8 +1,8 @@
 /**
- * @file mock_call_list_store_processor.h Mock call list store object.
+ * @file httpnotifier_test.cpp UT for Memento HTTP notifier
  *
- * Project Clearwater - IMS in the cloud.
- * Copyright (C) 2014  Metaswitch Networks Ltd
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2015  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,23 +34,51 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_CALL_LIST_STORE_PROCESSOR_H_
-#define MOCK_CALL_LIST_STORE_PROCESSOR_H_
+#include <string>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-#include "call_list_store_processor.h"
+#include "utils.h"
+#include "sas.h"
+#include "fakehttpresolver.hpp"
+#include "httpconnection.h"
+#include "httpnotifier.h"
+#include "fakecurl.hpp"
+#include "test_utils.hpp"
 
-class MockCallListStoreProcessor : public CallListStoreProcessor
+using namespace std;
+
+/// Fixture for HttpNotifierTest.
+class HttpNotifierTest : public ::testing::Test
 {
-public:
-  MockCallListStoreProcessor() : CallListStoreProcessor(NULL, NULL, 0, 0, 0, NULL, NULL, NULL) {}
-  virtual ~MockCallListStoreProcessor() {};
+  FakeHttpResolver _resolver;
+  HttpNotifier _http_notifier;
 
-  MOCK_METHOD6(write_call_list_entry, void(std::string impu,
-                                           std::string timestamp,
-                                           std::string id,
-                                           CallListStore::CallFragment::Type type,
-                                           std::string xml,
-                                           SAS::TrailId trail));
+  HttpNotifierTest() :
+    _resolver("10.42.42.42"),
+    _http_notifier(&_resolver)
+  {
+    fakecurl_responses.clear();
+    fakecurl_responses["http://10.42.42.42:80/notify"] = "";
+  }
+
+  virtual ~HttpNotifierTest()
+  {
+    fakecurl_responses.clear();
+    fakecurl_requests.clear();
+  }
 };
 
-#endif
+
+// Now test the higher-level methods.
+
+TEST_F(HttpNotifierTest, Notify)
+{
+  _http_notifier.set_url("http://notification.domain/notify");
+  bool ret = _http_notifier.send_notify("user@domain", 0);
+  EXPECT_TRUE(ret);
+  Request& req = fakecurl_requests["http://10.42.42.42:80/notify"];
+  EXPECT_EQ("POST", req._method);
+  EXPECT_EQ("{\"impu\":\"user@domain\"}", req._body);
+}
+
