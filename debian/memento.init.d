@@ -111,6 +111,7 @@ get_settings()
   [ -z "$min_token_rate" ] || min_token_rate_arg="--min-token-rate $min_token_rate"
   [ -z "$signaling_namespace" ] || namespace_prefix="ip netns exec $signaling_namespace"
   [ -z "$exception_max_ttl" ] || exception_max_ttl_arg="--exception-max-ttl $exception_max_ttl"
+  [ -z "$memento_api_key" ] || api_key_arg="--api-key $memento_api_key"
 }
 
 #
@@ -147,7 +148,8 @@ do_start()
                      $exception_max_ttl_arg
                      --log-file $log_directory
                      --log-level $log_level
-                     --sas $sas_server,$NAME@$public_hostname"
+                     --sas $sas_server,$NAME@$public_hostname
+                     $api_key_arg"
         [ "$http_blacklist_duration" = "" ] || DAEMON_ARGS="$DAEMON_ARGS --http-blacklist-duration=$http_blacklist_duration"
 
         $namespace_prefix start-stop-daemon --start --quiet --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON --chuid $NAME --chdir $HOME -- $DAEMON_ARGS \

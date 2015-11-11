@@ -40,6 +40,8 @@ This supports GETs to retrieve an entire call list for a public user identity; a
 
 Requests to this URL must be authenticated. Memento uses [HTTP Digest authentication] (http://tools.ietf.org/html/rfc2617), and supports the "auth" quality of protection. Memento uses the credentials provisioned in homestead for authenticating requests, in a similar way to how Sprout authenticates SIP REGISTERs. Memento also authorizes requests, ensuring that the authenticated IMPI is permitted to access the IMPU referred to in the URL of the request.
 
+Alternatively, trusted servers can authenticate requests using an NGV-API-Key header containing the API key defined by the `memento_api_key` setting in shared config.  Requests authenticated with this mechanism are authorized to access any call list.
+
 If the request has been authorized and authenticated Memento retrieves the call list fragments relating to the request IMPU from the call list store.
 If there are entries, Memento will create an XML document containing complete calls and return this to the client
 

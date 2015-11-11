@@ -82,6 +82,9 @@ server {
                 # The client may have instructed the server to close the
                 # connection - do not forward this upstream.
                 proxy_set_header Connection "";
+
+                # Do not forward any NGV-API-Key header upstream.
+                proxy_set_header NGV-API-Key "";
         }
 
         location /org.projectclearwater.call-list {
@@ -91,6 +94,9 @@ server {
                 # The client may have instructed the server to close the
                 # connection - do not forward this upstream.
                 proxy_set_header Connection "";
+
+                # Do not forward any NGV-API-Key header upstream.
+                proxy_set_header NGV-API-Key "";
 
                 gzip on;
                 gzip_types *;
