@@ -388,6 +388,113 @@ TEST_F(MementoAppServerTest, MainlineOutgoingTest)
   as_tsx.on_response(rsp, 0);
 }
 
+// Test that, when the P Asserted ID is present on the (200) response, the answerer is logged
+TEST_F(MementoAppServerTest, OnResponseRecordAnswerer)
+{
+  Message msg;
+  std::string service_name = "memento";
+  std::string home_domain = "home.domain";
+  MementoAppServerTsx as_tsx(_helper, _clsp, service_name, home_domain);
+
+  pjsip_msg* req = parse_msg(msg.get_request());
+
+  // Add a P-Asserted-Identity header.
+  void* mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  pjsip_routing_hdr* p_asserted_id = (pjsip_routing_hdr*)mem;
+  add_header(p_asserted_id, pj_str("P-Asserted-Identity"), "Alice <sip:6505550000@homedomain>", _pool);
+  pjsip_msg_add_hdr(req, (pjsip_hdr*)p_asserted_id);
+
+  // Add a P-Served-User header.
+  mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  pjsip_routing_hdr* p_served_user = (pjsip_routing_hdr*)mem;
+  add_header(p_served_user, pj_str("P-Served-User"), "<sip:6505551234@homedomain>", _pool);
+  add_parameter(p_served_user, pj_str("sescase"), pj_str("orig"), _pool);
+  pjsip_msg_add_hdr(req, (pjsip_hdr*)p_served_user);
+
+  EXPECT_CALL(*_helper, add_to_dialog(_));
+  EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
+  as_tsx.on_initial_request(req);
+
+  // Build the response to send. This contains the answerer's P-A-I
+  // (not necessarily the called URI, as Bob may have call forwarding)
+  pjsip_msg* rsp = parse_msg(msg.get_response());
+  mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  p_asserted_id = (pjsip_routing_hdr*)mem;
+  add_header(p_asserted_id, pj_str("P-Asserted-Identity"), "Bob's cell <sip:6505551235@homedomain>", _pool);
+  pjsip_msg_add_hdr(rsp, (pjsip_hdr*)p_asserted_id);
+
+  // On a 200 OK response the as_tsx generates a BEGIN call fragment
+  // writes it to the call list store. This contains the answerer
+  std::string timestamp = get_formatted_timestamp();
+
+  std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n\t<name>Bob</name>\n" \
+                                "</to>\n<from>\n\t<URI>sip:6505550000@homedomain</URI>\n\t<name>Alice</name>\n" \
+                                "</from>\n<outgoing>1</outgoing>\n<start-time>").
+                    append(timestamp).append("</start-time>\n<answered>1</answered>\n<answer-time>").
+                    append(timestamp).append("</answer-time>\n<answerer>\n\t<URI>sip:6505551235@homedomain</URI>\n" \
+                                "\t<name>Bob&apos;s cell</name>\n</answerer>\n\n");
+  std::string impu = "sip:6505550000@homedomain";
+  EXPECT_CALL(*_clsp, write_call_list_entry(impu, _, _, CallListStore::CallFragment::Type::BEGIN, xml, _));
+  EXPECT_CALL(*_helper, send_response(_));
+  as_tsx.on_response(rsp, 0);
+}
+
+// Test that, when privacy is requested, the answerer is not logged
+TEST_F(MementoAppServerTest, OnResponseNotRecordPrivateAnswerer)
+{
+  Message msg;
+  std::string service_name = "memento";
+  std::string home_domain = "home.domain";
+  MementoAppServerTsx as_tsx(_helper, _clsp, service_name, home_domain);
+
+  pjsip_msg* req = parse_msg(msg.get_request());
+
+  // Add a P-Asserted-Identity header.
+  void* mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  pjsip_routing_hdr* p_asserted_id = (pjsip_routing_hdr*)mem;
+  add_header(p_asserted_id, pj_str("P-Asserted-Identity"), "Alice <sip:6505550000@homedomain>", _pool);
+  pjsip_msg_add_hdr(req, (pjsip_hdr*)p_asserted_id);
+
+  // Add a P-Served-User header.
+  mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  pjsip_routing_hdr* p_served_user = (pjsip_routing_hdr*)mem;
+  add_header(p_served_user, pj_str("P-Served-User"), "<sip:6505551234@homedomain>", _pool);
+  add_parameter(p_served_user, pj_str("sescase"), pj_str("orig"), _pool);
+  pjsip_msg_add_hdr(req, (pjsip_hdr*)p_served_user);
+
+  EXPECT_CALL(*_helper, add_to_dialog(_));
+  EXPECT_CALL(*_helper, send_request(_)).WillOnce(Return(0));
+  as_tsx.on_initial_request(req);
+
+  // Build the response to send. This contains the answerer's P-A-I
+  // (not necessarily the called URI, as Bob may have call forwarding)
+  pjsip_msg* rsp = parse_msg(msg.get_response());
+  mem = pj_pool_alloc(_pool, sizeof(pjsip_routing_hdr));
+  p_asserted_id = (pjsip_routing_hdr*)mem;
+  add_header(p_asserted_id, pj_str("P-Asserted-Identity"), "Bob's cell <sip:6505551235@homedomain>", _pool);
+  pjsip_msg_add_hdr(rsp, (pjsip_hdr*)p_asserted_id);
+
+  // Add a Privacy header with value 'id'.
+  pj_str_t* privacy_name = pj_strset((pj_str_t*)pj_pool_alloc(_pool, sizeof(pj_str_t)), "Privacy", 7);
+  pj_str_t* privacy_value = pj_strset((pj_str_t*)pj_pool_alloc(_pool, sizeof(pj_str_t)), "id", 2);
+  pjsip_generic_string_hdr* privacy = pjsip_generic_string_hdr_create(_pool, privacy_name, privacy_value);
+  pjsip_msg_add_hdr(rsp, (pjsip_hdr*)privacy);
+
+  // On a 200 OK response the as_tsx generates a BEGIN call fragment
+  // writes it to the call list store. This doesn't contain the answerer
+  std::string timestamp = get_formatted_timestamp();
+
+  std::string xml = std::string("<to>\n\t<URI>sip:6505551234@homedomain</URI>\n\t<name>Bob</name>\n" \
+                                "</to>\n<from>\n\t<URI>sip:6505550000@homedomain</URI>\n\t<name>Alice</name>\n" \
+                                "</from>\n<outgoing>1</outgoing>\n<start-time>").
+                    append(timestamp).append("</start-time>\n<answered>1</answered>\n<answer-time>").
+                    append(timestamp).append("</answer-time>\n\n");
+  std::string impu = "sip:6505550000@homedomain";
+  EXPECT_CALL(*_clsp, write_call_list_entry(impu, _, _, CallListStore::CallFragment::Type::BEGIN, xml, _));
+  EXPECT_CALL(*_helper, send_response(_));
+  as_tsx.on_response(rsp, 0);
+}
+
 // Test when the P Asserted ID is missing
 TEST_F(MementoAppServerTest, OutgoingMissingPAssertedHeaderTest)
 {

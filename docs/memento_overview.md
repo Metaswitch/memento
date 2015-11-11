@@ -61,6 +61,10 @@ If there are entries, Memento will create an XML document containing complete ca
       <outgoing>1</outgoing>
       <start-time>2002-05-30T09:30:10</start-time>
       <answer-time>2002-05-30T09:30:20</answer-time>
+      <answerer>
+        <URI>bob@example.com</URI>
+        <name>Bob Barker</name>
+      </answerer>
       <end-time>2002-05-30T09:35:00</end-time>
     </call>
     <call>
