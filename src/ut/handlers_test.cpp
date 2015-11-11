@@ -149,10 +149,7 @@ TEST_F(HandlersTest, ApiKey)
   EXPECT_CALL(*_httpstack, send_reply(_, 200, _));
   handler->run();
 
-  EXPECT_EQ((
-              "<call-list><calls>"
-              "</calls></call-list>"),
-            req.content());
+  EXPECT_EQ("<call-list><calls></calls></call-list>", req.content());
 }
 
 TEST_F(HandlersTest, InvalidApiKey)
