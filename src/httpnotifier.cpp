@@ -53,8 +53,6 @@ HttpNotifier::HttpNotifier(HttpResolver* resolver, const std::string& notify_url
     _http_connection = new HttpConnection(url_server,
                                           true,
                                           _http_resolver,
-                                          NULL,
-                                          NULL,
                                           SASEvent::HttpLogLevel::PROTOCOL,
                                           NULL);
     _http_url_path = url_path;
@@ -93,10 +91,9 @@ bool HttpNotifier::send_notify(const std::string& impu,
   std::map<std::string, std::string> headers;
   std::string body = buffer.GetString();
 
-  HTTPCode http_code = _http_connection->send_post(
-      _http_url_path,
-      headers,
-      body,
-      trail);
+  HTTPCode http_code = _http_connection->send_post(_http_url_path,
+                                                   headers,
+                                                   body,
+                                                   trail);
   return (http_code == HTTP_OK);
 }
