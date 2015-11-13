@@ -44,6 +44,7 @@
 #include "call_list_store_processor.h"
 #include "mock_call_list_store.h"
 #include "mockloadmonitor.hpp"
+#include "mockhttpnotifier.h"
 #include "memento_lvc.h"
 
 using ::testing::Return;
@@ -79,9 +80,10 @@ public:
                                            known_stats,
                                            zmq_port,
                                            10);
+    _http_notifier = new MockHttpNotifier();
 
     // No maximum call length and 1 worker thread
-    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 0, 1, CALL_LIST_TTL, _stats_aggregator, NULL);
+    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 0, 1, CALL_LIST_TTL, _stats_aggregator, NULL, _http_notifier);
   }
 
   virtual ~CallListStoreProcessorTest()
@@ -89,12 +91,14 @@ public:
     delete _cls; _cls = NULL;
     delete _stats_aggregator; _stats_aggregator = NULL;
     delete _clsp; _clsp = NULL;
+    delete _http_notifier; _http_notifier = NULL;
   }
 
   StrictMock<MockLoadMonitor> _load_monitor;
   CallListStoreProcessor* _clsp;
   MockCallListStore* _cls;
   LastValueCache* _stats_aggregator;
+  MockHttpNotifier* _http_notifier;
 };
 
 // Fixture for tests that has a low limit to the number of stored call lists
@@ -108,9 +112,10 @@ public:
                                            known_stats,
                                            zmq_port,
                                            10);
+    _http_notifier = new MockHttpNotifier();
 
     // Maximum call length of 4 and 2 worker threads
-    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 4, 2, CALL_LIST_TTL, _stats_aggregator, NULL);
+    _clsp = new CallListStoreProcessor(&_load_monitor, _cls, 4, 2, CALL_LIST_TTL, _stats_aggregator, NULL, _http_notifier);
   }
 
   virtual ~CallListStoreProcessorWithLimitTest()
@@ -118,12 +123,14 @@ public:
     delete _cls; _cls = NULL;
     delete _stats_aggregator; _stats_aggregator = NULL;
     delete _clsp; _clsp = NULL;
+    delete _http_notifier; _http_notifier = NULL;
   }
 
   StrictMock<MockLoadMonitor> _load_monitor;
   CallListStoreProcessor* _clsp;
   MockCallListStore* _cls;
   LastValueCache* _stats_aggregator;
+  MockHttpNotifier* _http_notifier;
 };
 
 // Create a vector of call list store fragments that the mock
@@ -264,6 +271,7 @@ TEST_F(CallListStoreProcessorTest, CallListIsCountNeededNoLimit)
 TEST_F(CallListStoreProcessorTest, CallListWriteBegin)
 {
   EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
+  EXPECT_CALL(*_http_notifier, send_notify(_, _)).Times(1);
 
   EXPECT_CALL(*_cls, write_call_fragment_sync(IMPU, _, _, CALL_LIST_TTL, FAKE_SAS_TRAIL)).WillOnce(Return(CassandraStore::ResultCode::OK));
   _clsp->write_call_list_entry(IMPU, TIMESTAMP, "id", CallListStore::CallFragment::Type::BEGIN, "xml", FAKE_SAS_TRAIL);
@@ -273,6 +281,7 @@ TEST_F(CallListStoreProcessorTest, CallListWriteBegin)
 TEST_F(CallListStoreProcessorTest, CallListWriteEnd)
 {
   EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
+  EXPECT_CALL(*_http_notifier, send_notify(_, _)).Times(1);
 
   EXPECT_CALL(*_cls, write_call_fragment_sync(IMPU, _, _, CALL_LIST_TTL, FAKE_SAS_TRAIL)).WillOnce(Return(CassandraStore::ResultCode::OK));
   _clsp->write_call_list_entry(IMPU, TIMESTAMP, "id", CallListStore::CallFragment::Type::END, "xml", FAKE_SAS_TRAIL);
@@ -282,6 +291,7 @@ TEST_F(CallListStoreProcessorTest, CallListWriteEnd)
 TEST_F(CallListStoreProcessorTest, CallListWriteRejected)
 {
   EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
+  EXPECT_CALL(*_http_notifier, send_notify(_, _)).Times(1);
 
   EXPECT_CALL(*_cls, write_call_fragment_sync(IMPU, _, _, CALL_LIST_TTL, FAKE_SAS_TRAIL)).WillOnce(Return(CassandraStore::ResultCode::OK));
   _clsp->write_call_list_entry(IMPU, TIMESTAMP, "id", CallListStore::CallFragment::Type::REJECTED, "xml", FAKE_SAS_TRAIL);
@@ -302,6 +312,7 @@ TEST_F(CallListStoreProcessorWithLimitTest, CallListWriteWithTrim)
   create_records(records);
 
   EXPECT_CALL(_load_monitor, request_complete(_)).Times(1);
+  EXPECT_CALL(*_http_notifier, send_notify(_, _)).Times(1);
   EXPECT_CALL(*_cls, write_call_fragment_sync(_, _, _, _, _)).WillOnce(Return(CassandraStore::ResultCode::OK));
   EXPECT_CALL(*_cls, get_call_fragments_sync(_,_,_)).WillOnce(DoAll(SetArgReferee<1>(records),
                                                                     Return(CassandraStore::ResultCode::OK)));

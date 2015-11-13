@@ -44,6 +44,7 @@
 #include "mementosasevent.h"
 #include "counter.h"
 #include "accumulator.h"
+#include "httpnotifier.h"
 
 class CallListStoreProcessor
 {
@@ -55,7 +56,8 @@ public:
                          const int memento_thread,
                          const int call_list_ttl,
                          LastValueCache* stats_aggregator,
-                         ExceptionHandler* exception_handler);
+                         ExceptionHandler* exception_handler,
+                         HttpNotifier* notifier);
 
   /// Destructor
   virtual ~CallListStoreProcessor();
@@ -116,6 +118,7 @@ private:
          unsigned int num_threads,
          ExceptionHandler* exception_handler,
          void (*callback)(CallListStoreProcessor::CallListRequest* work),
+         HttpNotifier* http_notifier,
          unsigned int max_queue = 0);
 
     /// Destructor
@@ -159,6 +162,9 @@ private:
 
     /// Parent call list store processor.
     CallListStoreProcessor* _call_list_store_proc;
+
+    /// Notifier
+    HttpNotifier* _http_notifier;
   };
 
   friend class Pool;

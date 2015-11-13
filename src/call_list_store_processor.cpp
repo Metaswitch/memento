@@ -42,7 +42,8 @@ CallListStoreProcessor::CallListStoreProcessor(LoadMonitor* load_monitor,
                                                const int memento_threads,
                                                const int call_list_ttl,
                                                LastValueCache* stats_aggregator,
-                                               ExceptionHandler* exception_handler) :
+                                               ExceptionHandler* exception_handler,
+                                               HttpNotifier* http_notifier) :
   _thread_pool(new Pool(this,
                         call_list_store,
                         load_monitor,
@@ -50,7 +51,8 @@ CallListStoreProcessor::CallListStoreProcessor(LoadMonitor* load_monitor,
                         call_list_ttl,
                         memento_threads,
                         exception_handler,
-                        &exception_callback)),
+                        &exception_callback,
+                        http_notifier)),
   _stat_completed_calls_recorded("memento_completed_calls", stats_aggregator),
   _stat_failed_calls_recorded("memento_failed_calls", stats_aggregator),
   _stat_cassandra_read_latency("memento_cassandra_read_latency", stats_aggregator),
@@ -146,6 +148,12 @@ void CallListStoreProcessor::Pool::process_work(
     if (is_call_trim_needed(clr->impu, records_to_delete, clr->trail))
     {
       perform_call_trim(clr->impu, records_to_delete, cass_timestamp, clr->trail);
+    }
+
+    // Notify anyone listening for updates
+    if (_http_notifier != NULL)
+    {
+      _http_notifier->send_notify(clr->impu, clr->trail);
     }
   }
   else
@@ -296,6 +304,7 @@ CallListStoreProcessor::Pool::Pool(CallListStoreProcessor* call_list_store_proce
                                    unsigned int num_threads,
                                    ExceptionHandler* exception_handler, 
                                    void (*callback)(CallListStoreProcessor::CallListRequest*),
+                                   HttpNotifier* http_notifier,
                                    unsigned int max_queue) :
   ThreadPool<CallListStoreProcessor::CallListRequest*>(num_threads, 
                                                        exception_handler, 
@@ -305,7 +314,8 @@ CallListStoreProcessor::Pool::Pool(CallListStoreProcessor* call_list_store_proce
   _load_monitor(load_monitor),
   _max_call_list_length(max_call_list_length),
   _call_list_ttl(call_list_ttl),
-  _call_list_store_proc(call_list_store_processor)
+  _call_list_store_proc(call_list_store_processor),
+  _http_notifier(http_notifier)
 {}
 
 

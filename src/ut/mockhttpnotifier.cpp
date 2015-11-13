@@ -1,8 +1,8 @@
 /**
- * @file mock_call_list_store_processor.h Mock call list store object.
+ * @file mockhttpnotifier.cpp Mock http notifier.
  *
- * Project Clearwater - IMS in the cloud.
- * Copyright (C) 2014  Metaswitch Networks Ltd
+ * Project Clearwater - IMS in the Cloud
+ * Copyright (C) 2015  Metaswitch Networks Ltd
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,23 +34,10 @@
  * as those licenses appear in the file LICENSE-OPENSSL.
  */
 
-#ifndef MOCK_CALL_LIST_STORE_PROCESSOR_H_
-#define MOCK_CALL_LIST_STORE_PROCESSOR_H_
+#include "mockhttpnotifier.h"
 
-#include "call_list_store_processor.h"
+MockHttpNotifier::MockHttpNotifier() :
+    HttpNotifier(NULL, "")
+  {}
 
-class MockCallListStoreProcessor : public CallListStoreProcessor
-{
-public:
-  MockCallListStoreProcessor() : CallListStoreProcessor(NULL, NULL, 0, 0, 0, NULL, NULL, NULL) {}
-  virtual ~MockCallListStoreProcessor() {};
-
-  MOCK_METHOD6(write_call_list_entry, void(std::string impu,
-                                           std::string timestamp,
-                                           std::string id,
-                                           CallListStore::CallFragment::Type type,
-                                           std::string xml,
-                                           SAS::TrailId trail));
-};
-
-#endif
+MockHttpNotifier::~MockHttpNotifier() {}
