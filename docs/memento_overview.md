@@ -86,6 +86,15 @@ If there are no entries, Memento will respond with an empty call list, i.e.:
 
 Memento supports gzip compression of the call list document, and will compress it in the HTTP response if the requesting client indicates it is willing to accept gzip encoding.
 
+HTTP Notification Interface
+---------------------------
+
+Mement supports notifications via HTTP whenever a subscriber's call list is updated.  When a notification URL is configured, memento will make a POST to that URL each time call list is updated.  The body of the POST request will be a JSON document of the form:
+
+```json
+{ "impu": "<subscriber's IMPU>" }
+```
+
 Configuration
 -------------
 
@@ -110,12 +119,13 @@ An example IFC is:
 </InitialFilterCriteria>
 ```
 
-There are also four deployment wide configuration options. These should be set in /etc/clearwater/config:
+There are also five deployment wide configuration options. These should be set in /etc/clearwater/config:
 
 * `max_call_list_length`: This determines the maximum number of complete calls a subscriber can have in the call list store. This defaults to no limit.
 * `call_list_store_ttl`: This determines how long each call list fragment should be kept in the call list store. This defaults to 604800 seconds (1 week).
 * `memento_threads`: This determines the number of threads dedicated to adding call list fragments to the call list store. This defaults to 25 threads
 * `memento_disk_limit`: This determines the maximum size that the call lists database may occupy. This defaults to 20% of disk space.
+* `memento_notify_url`: If set, memento will make a POST request to this URL whenever a subscriber's call list is changed.
 
 Scalability
 -----------
