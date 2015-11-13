@@ -41,24 +41,9 @@
 #include "rapidjson/stringbuffer.h"
 
 /// Constructor.
-HttpNotifier::HttpNotifier(HttpResolver* resolver) :
+HttpNotifier::HttpNotifier(HttpResolver* resolver, const std::string& notify_url) :
   _http_resolver(resolver),
-  _http_connection(NULL),
-  _http_url_path()
-{
-}
-
-/// Destructor.
-HttpNotifier::~HttpNotifier()
-{
-  if (_http_connection != NULL)
-  {
-    delete _http_connection; _http_connection = NULL;
-  }
-}
-
-/// Set notification URL.
-void HttpNotifier::set_url(const std::string& notify_url)
+  _http_connection(NULL)
 {
   std::string url_server;
   std::string url_path;
@@ -76,8 +61,17 @@ void HttpNotifier::set_url(const std::string& notify_url)
   }
 }
 
+/// Destructor.
+HttpNotifier::~HttpNotifier()
+{
+  if (_http_connection != NULL)
+  {
+    delete _http_connection; _http_connection = NULL;
+  }
+}
+
 /// Notify that a subscriber's call list has changed
-bool HttpNotifier::send_notify(std::string impu,
+bool HttpNotifier::send_notify(const std::string& impu,
                                SAS::TrailId trail)
 {
   if (_http_connection == NULL)

@@ -37,7 +37,7 @@
 #include "mockhttpnotifier.h"
 
 MockHttpNotifier::MockHttpNotifier() :
-    HttpNotifier(NULL)
+    HttpNotifier(NULL, "")
   {}
 
 MockHttpNotifier::~MockHttpNotifier() {}

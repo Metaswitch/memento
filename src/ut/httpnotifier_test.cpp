@@ -56,7 +56,7 @@ class HttpNotifierTest : public ::testing::Test
 
   HttpNotifierTest() :
     _resolver("10.42.42.42"),
-    _http_notifier(&_resolver)
+    _http_notifier(&_resolver, "http://notification.domain/notify")
   {
     fakecurl_responses.clear();
     fakecurl_responses["http://10.42.42.42:80/notify"] = "";
@@ -74,7 +74,6 @@ class HttpNotifierTest : public ::testing::Test
 
 TEST_F(HttpNotifierTest, Notify)
 {
-  _http_notifier.set_url("http://notification.domain/notify");
   bool ret = _http_notifier.send_notify("user@domain", 0);
   EXPECT_TRUE(ret);
   Request& req = fakecurl_requests["http://10.42.42.42:80/notify"];
@@ -82,3 +81,34 @@ TEST_F(HttpNotifierTest, Notify)
   EXPECT_EQ("{\"impu\":\"user@domain\"}", req._body);
 }
 
+/// Fixture for HttpNotifierEmptyTest.
+class HttpNotifierEmptyTest : public ::testing::Test
+{
+  FakeHttpResolver _resolver;
+  HttpNotifier _http_notifier;
+
+  HttpNotifierEmptyTest() :
+    _resolver("10.42.42.42"),
+    _http_notifier(&_resolver, "")
+  {
+    fakecurl_responses.clear();
+    fakecurl_responses["http://10.42.42.42:80/notify"] = "";
+    fakecurl_requests.clear();
+  }
+
+  virtual ~HttpNotifierEmptyTest()
+  {
+    fakecurl_responses.clear();
+    fakecurl_requests.clear();
+  }
+};
+
+
+// Now test the higher-level methods.
+
+TEST_F(HttpNotifierEmptyTest, Notify)
+{
+  bool ret = _http_notifier.send_notify("user@domain", 0);
+  EXPECT_TRUE(ret);
+  EXPECT_TRUE(fakecurl_requests.empty());
+}

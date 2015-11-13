@@ -47,9 +47,6 @@ public:
   MockHttpNotifier();
   virtual ~MockHttpNotifier();
 
-  MOCK_METHOD1(set_url,
-               void(const std::string& url));
-
   MOCK_METHOD2(send_notify,
                bool(const std::string& impu,
                     SAS::TrailId triail));

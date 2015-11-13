@@ -44,20 +44,17 @@ class HttpNotifier
 {
 public:
   /// Constructor
-  HttpNotifier(HttpResolver* resolver);
+  HttpNotifier(HttpResolver* resolver, const std::string& notify_url);
 
   /// Destructor
   virtual ~HttpNotifier();
-
-  /// Set the URL to send notifications to.
-  void set_url(const std::string& notify_url);
 
   /// This function sends a HTTP POST to the notify URL, to notify it of the
   /// fact that a call list for a user has updated. This is synchronous.
   /// Returns true iff the request was successful.
   /// @param impu       IMPU of the member whose call list has been updated
   /// @param trail      The SAS trail
-  bool send_notify(std::string impu, SAS::TrailId trail);
+  virtual bool send_notify(const std::string& impu, SAS::TrailId trail);
 
 private:
 

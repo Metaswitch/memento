@@ -90,7 +90,7 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
                                 max_tokens,
                                 init_token_rate,
                                 min_token_rate)),
-  _http_notifier(new HttpNotifier(http_resolver)),
+  _http_notifier(new HttpNotifier(http_resolver, memento_notify_url)),
   _call_list_store_processor(new CallListStoreProcessor(_load_monitor,
                                                         call_list_store,
                                                         max_call_list_length,
@@ -102,10 +102,6 @@ MementoAppServer::MementoAppServer(const std::string& service_name,
   _stat_calls_not_recorded_due_to_overload("memento_not_recorded_overload",
                                            stats_aggregator)
 {
-  if (!memento_notify_url.empty())
-  {
-    _http_notifier->set_url(memento_notify_url);
-  }
 }
 
 /// Destructor.
