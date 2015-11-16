@@ -41,7 +41,7 @@ cat > /etc/monit/conf.d/memento.monit <<EOF
 # Check the Memento process.
 
 # Monitor the service's PID file and memory use.
-check process memento_process with pidfile /var/run/memento.pid
+check process memento_process with pidfile /var/run/memento/memento.pid
   group memento
 
   # The start, stop and restart commands are linked to alarms
