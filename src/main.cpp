@@ -47,6 +47,7 @@
 #include "saslogger.h"
 #include "handlers.h"
 #include "sas.h"
+#include "utils.h"
 #include "load_monitor.h"
 #include "memento_alarmdefinition.h"
 #include "communicationmonitor.h"
@@ -87,6 +88,7 @@ struct options
   int exception_max_ttl;
   int http_blacklist_duration;
   std::string api_key;
+  std::string pidfile;
 };
 
 // Enum for option types not assigned short-forms
@@ -112,7 +114,8 @@ enum OptionTypes
   MIN_TOKEN_RATE,
   EXCEPTION_MAX_TTL,
   HTTP_BLACKLIST_DURATION,
-  API_KEY
+  API_KEY,
+  PIDFILE
 };
 
 const static struct option long_opt[] =
@@ -137,6 +140,7 @@ const static struct option long_opt[] =
   {"exception-max-ttl",        required_argument, NULL, EXCEPTION_MAX_TTL},
   {"http-blacklist-duration",  required_argument, NULL, HTTP_BLACKLIST_DURATION},
   {"api-key",                  required_argument, NULL, API_KEY},
+  {"pidfile",                  required_argument, NULL, PIDFILE},
   {NULL,                       0,                 NULL, 0},
 };
 
@@ -179,6 +183,7 @@ void usage(void)
        " --api-key <key>            Value of NGV-API-Key header that is used to authenticate requests\n"
        "                            for servers in the cluster.  These requests do not require user\n"
        "                            authentication.\n"
+       " --pidfile=<filename>       Write pidfile\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -372,6 +377,10 @@ int init_options(int argc, char**argv, struct options& options)
                options.api_key.c_str());
       break;
 
+    case PIDFILE:
+      options.pidfile = std::string(optarg);
+      break;
+
     case LOG_FILE:
     case LOG_LEVEL:
       // Ignore these options - they're handled by init_logging_options
@@ -450,6 +459,7 @@ int main(int argc, char**argv)
   options.min_token_rate = 10.0;
   options.exception_max_ttl = 600;
   options.http_blacklist_duration = HttpResolver::DEFAULT_BLACKLIST_DURATION;
+  options.pidfile = "";
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -489,6 +499,17 @@ int main(int argc, char**argv)
   if (init_options(argc, argv, options) != 0)
   {
     return 1;
+  }
+
+  if (options.pidfile != "")
+  {
+    int rc = Utils::lock_and_write_pidfile(options.pidfile);
+    if (rc == -1)
+    {
+      // Failure to acquire pidfile lock
+      TRC_ERROR("Could not write pidfile - exiting");
+      return 2;
+    }
   }
 
   AccessLogger* access_logger = NULL;
