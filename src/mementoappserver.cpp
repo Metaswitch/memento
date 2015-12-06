@@ -492,7 +492,7 @@ void MementoAppServerTsx::on_response(pjsip_msg* rsp, int fork_id)
     // responder hasn't requested this to be private.  Look for the 'id'
     // value in the Privacy header.
     bool privacy_requested = false;
-    pj_str_t privacy_hdr_name = pj_str("Privacy");
+    pj_str_t privacy_hdr_name = pj_str(const_cast<char*>("Privacy"));
     pjsip_generic_string_hdr* privacy = (pjsip_generic_string_hdr*)
                     pjsip_msg_find_hdr_by_name(rsp, &privacy_hdr_name, NULL);
 
