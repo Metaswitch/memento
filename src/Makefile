@@ -109,8 +109,12 @@ memento_LDFLAGS := ${COMMON_LDFLAGS}
 memento_test_LDFLAGS := ${COMMON_LDFLAGS} -lcurl
 
 include ../build-infra/cpp.mk
+
+ROOT := $(abspath $(shell pwd)/../)
 include ../modules/cpp-common/makefiles/alarm-utils.mk
 
 ../usr/include/memento_alarmdefinition.h : ../build/bin/alarm_header ../memento.root/usr/share/clearwater/infrastructure/alarms/memento_alarms.json
 	$< -j "../memento.root/usr/share/clearwater/infrastructure/alarms/memento_alarms.json" -n "memento"
 	mv memento_alarmdefinition.h $@
+
+${memento_OBJECT_DIR}/main.o : ../usr/include/memento_alarmdefinition.h
