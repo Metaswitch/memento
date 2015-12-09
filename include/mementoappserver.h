@@ -175,9 +175,6 @@ public:
                       std::string& home_domain);
 
 private:
-  /// Transaction context to use for underlying service-related processing.
-  ServiceTsxHelper* _service_tsx_helper;
-
   /// Call list store processor.
   CallListStoreProcessor* _call_list_store_processor;
 
