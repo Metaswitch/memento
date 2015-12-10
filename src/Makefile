@@ -112,7 +112,7 @@ memento_test_LDFLAGS := ${COMMON_LDFLAGS} -lcurl
 
 include ../build-infra/cpp.mk
 
-ROOT := $(abspath $(shell pwd)/../)
+ROOT := ..
 MODULE_DIR := ${ROOT}/modules
 include ../modules/cpp-common/makefiles/alarm-utils.mk
 
