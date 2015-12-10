@@ -64,7 +64,9 @@ memento_test_SOURCES := ${COMMON_SOURCES} \
                         faketransport_tcp.cpp \
                         mock_sas.cpp \
                         httpnotifier_test.cpp \
-                        mockhttpnotifier.cpp
+                        mockhttpnotifier.cpp \
+                        snmp_ip_count_table.cpp \
+                        snmp_row.cpp
 
 COMMON_CPPFLAGS := -I../include \
                    -I../usr/include \
