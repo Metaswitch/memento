@@ -1,4 +1,6 @@
 #! /bin/bash
+. /usr/share/clearwater/cassandra-schemas/replication_string.sh
+
 if [[ ! -e /var/lib/cassandra/data/memento ]];
 then
   count=0
@@ -15,7 +17,9 @@ then
     /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period
   done
 
-  echo "CREATE KEYSPACE memento WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 2};
+  # replication_str is set up by
+  # /usr/share/clearwater/cassandra-schemas/replication_string.sh
+  echo "CREATE KEYSPACE memento WITH REPLICATION = $replication_str;
         USE memento;
         CREATE TABLE call_lists (impu text PRIMARY KEY, dummy text) WITH COMPACT STORAGE and read_repair_chance = 1.0;
   " | cqlsh
