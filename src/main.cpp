@@ -188,6 +188,8 @@ void usage(void)
        "                            The actual time is randomised.\n"
        " --http-blacklist-duration <secs>\n"
        "                            The amount of time to blacklist an HTTP peer when it is unresponsive.\n"
+       " --astaire-blacklist-duration <secs>\n"
+       "                            The amount of time to blacklist an Astaire node when it is unresponsive.\n"
        " --api-key <key>            Value of NGV-API-Key header that is used to authenticate requests\n"
        "                            for servers in the cluster.  These requests do not require user\n"
        "                            authentication.\n"
