@@ -39,9 +39,6 @@
 #include <semaphore.h>
 #include <strings.h>
 
-#include <iostream>
-#include <iterator>
-
 #include "memcachedstore.h"
 #include "httpstack.h"
 #include "homesteadconnection.h"
