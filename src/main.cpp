@@ -145,7 +145,7 @@ const static struct option long_opt[] =
   {"min-token-rate",             required_argument, NULL, MIN_TOKEN_RATE},
   {"exception-max-ttl",          required_argument, NULL, EXCEPTION_MAX_TTL},
   {"http-blacklist-duration",    required_argument, NULL, HTTP_BLACKLIST_DURATION},
-  {"astaire-blacklist-duration", required_argument, NULL, HTTP_BLACKLIST_DURATION},
+  {"astaire-blacklist-duration", required_argument, NULL, ASTAIRE_BLACKLIST_DURATION},
   {"api-key",                    required_argument, NULL, API_KEY},
   {"pidfile",                    required_argument, NULL, PIDFILE},
   {NULL,                         0,                 NULL, 0},
