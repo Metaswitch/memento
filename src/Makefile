@@ -42,7 +42,8 @@ COMMON_SOURCES := localstore.cpp \
                   health_checker.cpp \
                   exception_handler.cpp \
                   namespace_hop.cpp \
-                  httpnotifier.cpp
+                  httpnotifier.cpp \
+                  astaire_resolver.cpp
 
 memento_SOURCES := main.cpp ${COMMON_SOURCES}
 
