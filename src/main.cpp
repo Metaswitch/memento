@@ -566,12 +566,12 @@ int main(int argc, char**argv)
   // Create alarm and communication monitor objects for the conditions
   // reported by memento.
   Alarm* mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm);
+  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm, "Memento", "Memcached");
   Alarm* mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
   Alarm* hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm);
+  CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm, "Memento", "Homestead");
   Alarm* cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm);
+  CommunicationMonitor* cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm, "Memento", "Cassandra");
 
   TRC_DEBUG("Starting alarm request agent");
   AlarmReqAgent::get_instance().start();
