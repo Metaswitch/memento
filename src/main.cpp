@@ -565,9 +565,8 @@ int main(int argc, char**argv)
 
   // Create alarm and communication monitor objects for the conditions
   // reported by memento.
-  Alarm* mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm, "Memento", "Memcached");
-  Alarm* mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
+  Alarm* astaire_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_ASTAIRE_COMM_ERROR, AlarmDef::CRITICAL);
+  CommunicationMonitor* astaire_comm_monitor = new CommunicationMonitor(astaire_comm_alarm, "Memento", "Astaire");
   Alarm* hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
   CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm, "Memento", "Homestead");
   Alarm* cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
@@ -597,7 +596,7 @@ int main(int argc, char**argv)
   TopologyNeutralMemcachedStore* m_store =
                           new TopologyNeutralMemcachedStore(options.auth_store,
                                                             astaire_resolver,
-                                                            mc_comm_monitor);
+                                                            astaire_comm_monitor);
 
   AuthStore::SerializerDeserializer* serializer;
   std::vector<AuthStore::SerializerDeserializer*> deserializers;
@@ -719,9 +718,8 @@ int main(int argc, char**argv)
   // Stop the alarm request agent
   AlarmReqAgent::get_instance().stop();
 
-  delete mc_comm_monitor; mc_comm_monitor = NULL;
-  delete mc_comm_alarm; mc_comm_alarm = NULL;
-  delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
+  delete astaire_comm_monitor; astaire_comm_monitor = NULL;
+  delete astaire_comm_alarm; astaire_comm_alarm = NULL;
   delete hs_comm_monitor; hs_comm_monitor = NULL;
   delete hs_comm_alarm; hs_comm_alarm = NULL;
   delete cass_comm_monitor; cass_comm_monitor = NULL;
