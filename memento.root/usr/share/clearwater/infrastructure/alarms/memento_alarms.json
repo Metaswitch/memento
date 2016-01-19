@@ -20,7 +20,7 @@
         {
             "index": 5002,
             "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
-            "name": "MEMENTO_MEMCACHED_COMM_ERROR",
+            "name": "MEMENTO_ASTAIRE_COMM_ERROR",
             "levels": [
                 {
                     "severity": "CLEARED",
@@ -31,23 +31,6 @@
                     "severity": "MAJOR",
                     "details": "Memento is unable to contact any Memcacheds. It will periodically attempt to reconnect. If this alarm does not clear, ensure that at least one Memcached is operational and that network connectivity exists between it and Memento.",
                     "description": "Memento: Memcached communication error"
-                }
-            ]
-        },
-        {
-            "index": 5003,
-            "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
-            "name": "MEMENTO_MEMCACHED_VBUCKET_ERROR",
-            "levels": [
-                {
-                    "severity": "CLEARED",
-                    "details": "Memento communication to Memcached for a piece of data has been restored.",
-                    "description": "Memento: Memcached vBucket communication error cleared"
-                },
-                {
-                    "severity": "MAJOR",
-                    "details": "Memento is unable to contact any Memcacheds for a piece of data. Some subscriber data will be unavailable. If this alarm does not clear, ensure that all Memcacheds are operational and that network connectivity exists between them and Memento.",
-                    "description": "Memento: Memcached vBucket communication error"
                 }
             ]
         },
