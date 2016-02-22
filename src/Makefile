@@ -66,7 +66,8 @@ memento_test_SOURCES := ${COMMON_SOURCES} \
                         httpnotifier_test.cpp \
                         mockhttpnotifier.cpp \
                         snmp_ip_count_table.cpp \
-                        snmp_row.cpp
+                        snmp_row.cpp \
+                        curl_interposer.cpp
 
 COMMON_CPPFLAGS := -I../include \
                    -I../usr/include \
@@ -109,6 +110,13 @@ memento_LDFLAGS := ${COMMON_LDFLAGS}
 
 # Test build also uses libcurl (to verify HttpStack operation)
 memento_test_LDFLAGS := ${COMMON_LDFLAGS} -lcurl
+
+# Special extra objects for memento_test
+${BUILD_DIR}/bin/memento_test : ${memento_test_OBJECT_DIR}/curl_interposer.so
+
+${memento_test_OBJECT_DIR}/curl_interposer.so : ../modules/cpp-common/test_utils/curl_interposer.cpp ../modules/cpp-common/test_utils/curl_interposer.hpp ../modules/cpp-common/test_utils/fakecurl.cpp ../modules/cpp-common/test_utils/fakecurl.hpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(memento_test_CPPFLAGS) -shared -fPIC -ldl $< -o $@
+CLEANS += ${memento_test_OBJECT_DIR}/curl_interposer.so
 
 include ../build-infra/cpp.mk
 
