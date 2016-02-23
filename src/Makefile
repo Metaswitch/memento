@@ -37,8 +37,7 @@ COMMON_SOURCES := localstore.cpp \
                   memento_lvc.cpp \
                   health_checker.cpp \
                   exception_handler.cpp \
-                  namespace_hop.cpp \
-                  httpnotifier.cpp
+                  namespace_hop.cpp
 
 memento_SOURCES := main.cpp ${COMMON_SOURCES}
 
@@ -54,8 +53,6 @@ memento_test_SOURCES := ${COMMON_SOURCES} \
                         fakecurl.cpp \
                         fakehomesteadconnection.cpp \
                         mock_sas.cpp \
-                        httpnotifier_test.cpp \
-                        mockhttpnotifier.cpp \
                         curl_interposer.cpp
 
 COMMON_CPPFLAGS := -I../include \
