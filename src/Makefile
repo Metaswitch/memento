@@ -28,10 +28,6 @@ COMMON_SOURCES := localstore.cpp \
                   dnscachedresolver.cpp \
                   httpresolver.cpp \
                   mementosaslogger.cpp \
-                  call_list_store_processor.cpp \
-                  mementoappserver.cpp \
-                  base64.cpp \
-                  unique.cpp \
                   alarm.cpp \
                   base_communication_monitor.cpp \
                   communicationmonitor.cpp \
@@ -49,44 +45,40 @@ memento_SOURCES := main.cpp ${COMMON_SOURCES}
 memento_test_SOURCES := ${COMMON_SOURCES} \
                         test_main.cpp \
                         test_interposer.cpp \
-                        sip_common.cpp \
                         handlers_test.cpp \
                         authstore_test.cpp \
                         call_list_store_test.cpp \
                         homesteadconnection_test.cpp \
                         httpdigestauthenticate_test.cpp \
-                        call_list_store_processor_test.cpp \
-                        mementoappserver_test.cpp \
                         fakelogger.cpp \
                         fakecurl.cpp \
                         fakehomesteadconnection.cpp \
-                        faketransport_udp.cpp \
-                        faketransport_tcp.cpp \
                         mock_sas.cpp \
                         httpnotifier_test.cpp \
                         mockhttpnotifier.cpp \
-                        snmp_ip_count_table.cpp \
-                        snmp_row.cpp \
                         curl_interposer.cpp
 
 COMMON_CPPFLAGS := -I../include \
                    -I../usr/include \
+                   -I../modules/memento-common/include \
                    -I../modules/cpp-common/include \
                    -I../modules/cpp-common/test_utils \
-                   -I../modules/app-servers/include \
-                   -I../modules/app-servers/test \
                    -I../modules/sas-client/include \
                    -I../modules/rapidjson/include \
-                   `PKG_CONFIG_PATH=../usr/lib/pkgconfig pkg-config --cflags libpjproject` \
                    -fPIC
 
 memento_CPPFLAGS := ${COMMON_CPPFLAGS}
 memento_test_CPPFLAGS := ${COMMON_CPPFLAGS} -DGTEST_USE_OWN_TR1_TUPLE=0 -Wno-write-strings
 
+# We need to add coverage for memento-common here as well
+COVERAGE_ROOT := ..
+memento_test_COVERAGE_EXCLUSIONS := ^src/ut|^usr|^modules/gmock|^modules/cpp-common|^modules/rapidjson
+
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
-VPATH := ../modules/cpp-common/src ../modules/cpp-common/test_utils ../modules/app-servers/test ut
+VPATH := ../modules/cpp-common/src ../modules/cpp-common/test_utils ut ../modules/memento-common/src
 
 COMMON_LDFLAGS += -lzmq \
+                  -L../usr/lib \
                   -lssl \
                   -ldl \
                   -lcrypto \
@@ -103,8 +95,7 @@ COMMON_LDFLAGS += -lzmq \
                   -lboost_date_time \
                   -lthrift \
                   -lcassandra \
-                  `net-snmp-config --netsnmp-agent-libs` \
-                  `PKG_CONFIG_PATH=../usr/lib/pkgconfig pkg-config --libs libpjproject`
+                  `net-snmp-config --netsnmp-agent-libs`
 
 memento_LDFLAGS := ${COMMON_LDFLAGS}
 
