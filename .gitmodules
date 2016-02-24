@@ -1,9 +1,6 @@
 [submodule "modules/c-ares"]
 	path = modules/c-ares
 	url = git@github.com:bagder/c-ares.git
-[submodule "modules/gcovr"]
-	path = modules/gcovr
-	url = git@github.com:gcovr/gcovr.git
 [submodule "modules/cpp-common"]
 	path = modules/cpp-common
 	url = git@github.com:Metaswitch/cpp-common.git
@@ -34,9 +31,9 @@
 [submodule "modules/openssl"]
 	path = modules/openssl
 	url = git@github.com:openssl/openssl.git
-[submodule "modules/app-servers"]
-	path = modules/app-servers
-	url = git@github.com:Metaswitch/clearwater-app-servers.git
-[submodule "modules/pjsip"]
-	path = modules/pjsip
-	url = git@github.com:Metaswitch/pjsip-upstream.git
+[submodule "modules/memento-common"]
+	path = modules/memento-common
+	url = git@github.com:Metaswitch/memento-common.git
+[submodule "modules/gcovr"]
+	path = modules/gcovr
+	url = git@github.com:gcovr/gcovr.git
