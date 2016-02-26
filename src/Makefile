@@ -89,7 +89,6 @@ COMMON_LDFLAGS += -lzmq \
                   -lpthread \
                   -lcares \
                   -lboost_regex \
-                  -lboost_date_time \
                   -lthrift \
                   -lcassandra \
                   `net-snmp-config --netsnmp-agent-libs`
