@@ -553,7 +553,6 @@ int main(int argc, char**argv)
 
   TRC_DEBUG("Starting alarm request agent");
   AlarmReqAgent::get_instance().start();
-  AlarmState::clear_all("memento");
 
   MemcachedStore* m_store = new MemcachedStore(true,
                                                "./cluster_settings",
