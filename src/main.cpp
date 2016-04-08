@@ -574,7 +574,6 @@ int main(int argc, char**argv)
 
   TRC_DEBUG("Starting alarm request agent");
   AlarmReqAgent::get_instance().start();
-  AlarmState::clear_all("memento");
 
   // Create a DNS resolver. We'll use this to create specific HTTP and Astaire
   // resolvers later.

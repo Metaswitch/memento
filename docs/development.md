@@ -12,7 +12,7 @@ Memento consists of two main components, Memento SIP and Memento HTTP. Memento S
 ## Memento (SIP)
 
 Memento (SIP) is integrated into the Application Server framework provided by Sprout,
-and can be run on the Sprout nodes or as a standalone node. Memento (SIP) is built as part of the [Sprout build](https://github.com/Metaswitch/sprout/blob/dev/docs/Development.md).
+and can be run on the Sprout nodes or as a standalone node. Memento (SIP) is built as part of the [Sprout build](https://github.com/Metaswitch/sprout/blob/dev/docs/Development.md) and the code is mastered [here](https://github.com/Metaswitch/memento-as)
 
 ## Memento (HTTP)
 
