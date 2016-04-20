@@ -42,6 +42,7 @@
 #include "memcachedstore.h"
 #include "httpstack.h"
 #include "homesteadconnection.h"
+#include "astaire_resolver.h"
 #include "log.h"
 #include "logger.h"
 #include "saslogger.h"
@@ -73,6 +74,7 @@ struct options
   std::string homestead_http_name;
   int digest_timeout;
   std::string home_domain;
+  std::string auth_store;
   std::string sas_server;
   std::string sas_system_name;
   bool access_log_enabled;
@@ -87,6 +89,7 @@ struct options
   float min_token_rate;
   int exception_max_ttl;
   int http_blacklist_duration;
+  int astaire_blacklist_duration;
   std::string api_key;
   std::string pidfile;
   bool daemon;
@@ -102,6 +105,7 @@ enum OptionTypes
   HOMESTEAD_HTTP_NAME,
   DIGEST_TIMEOUT,
   HOME_DOMAIN,
+  AUTH_STORE,
   SAS_CONFIG,
   ACCESS_LOG,
   ALARMS_ENABLED,
@@ -115,6 +119,7 @@ enum OptionTypes
   MIN_TOKEN_RATE,
   EXCEPTION_MAX_TTL,
   HTTP_BLACKLIST_DURATION,
+  ASTAIRE_BLACKLIST_DURATION,
   API_KEY,
   PIDFILE,
   DAEMON,
@@ -122,29 +127,30 @@ enum OptionTypes
 
 const static struct option long_opt[] =
 {
-  {"localhost",                required_argument, NULL, LOCAL_HOST},
-  {"http",                     required_argument, NULL, HTTP_ADDRESS},
-  {"http-threads",             required_argument, NULL, HTTP_THREADS},
-  {"http-worker-threads",      required_argument, NULL, HTTP_WORKER_THREADS},
-  {"homestead-http-name",      required_argument, NULL, HOMESTEAD_HTTP_NAME},
-  {"digest-timeout",           required_argument, NULL, DIGEST_TIMEOUT},
-  {"home-domain",              required_argument, NULL, HOME_DOMAIN},
-  {"sas",                      required_argument, NULL, SAS_CONFIG},
-  {"access-log",               required_argument, NULL, ACCESS_LOG},
-  {"memcached-write-format",   required_argument, NULL, MEMCACHED_WRITE_FORMAT},
-  {"log-file",                 required_argument, NULL, LOG_FILE},
-  {"log-level",                required_argument, NULL, LOG_LEVEL},
-  {"help",                     no_argument,       NULL, HELP},
-  {"target-latency-us",        required_argument, NULL, TARGET_LATENCY_US},
-  {"max-tokens",               required_argument, NULL, MAX_TOKENS},
-  {"init-token-rate",          required_argument, NULL, INIT_TOKEN_RATE},
-  {"min-token-rate",           required_argument, NULL, MIN_TOKEN_RATE},
-  {"exception-max-ttl",        required_argument, NULL, EXCEPTION_MAX_TTL},
-  {"http-blacklist-duration",  required_argument, NULL, HTTP_BLACKLIST_DURATION},
-  {"api-key",                  required_argument, NULL, API_KEY},
-  {"pidfile",                  required_argument, NULL, PIDFILE},
-  {"daemon",                   no_argument,       NULL, DAEMON},
-  {NULL,                       0,                 NULL, 0},
+  {"localhost",                  required_argument, NULL, LOCAL_HOST},
+  {"http",                       required_argument, NULL, HTTP_ADDRESS},
+  {"http-threads",               required_argument, NULL, HTTP_THREADS},
+  {"http-worker-threads",        required_argument, NULL, HTTP_WORKER_THREADS},
+  {"homestead-http-name",        required_argument, NULL, HOMESTEAD_HTTP_NAME},
+  {"digest-timeout",             required_argument, NULL, DIGEST_TIMEOUT},
+  {"home-domain",                required_argument, NULL, HOME_DOMAIN},
+  {"auth-store",                 required_argument, NULL, AUTH_STORE},
+  {"sas",                        required_argument, NULL, SAS_CONFIG},
+  {"access-log",                 required_argument, NULL, ACCESS_LOG},
+  {"memcached-write-format",     required_argument, NULL, MEMCACHED_WRITE_FORMAT},
+  {"log-file",                   required_argument, NULL, LOG_FILE},
+  {"log-level",                  required_argument, NULL, LOG_LEVEL},
+  {"help",                       no_argument,       NULL, HELP},
+  {"target-latency-us",          required_argument, NULL, TARGET_LATENCY_US},
+  {"max-tokens",                 required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",            required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",             required_argument, NULL, MIN_TOKEN_RATE},
+  {"exception-max-ttl",          required_argument, NULL, EXCEPTION_MAX_TTL},
+  {"http-blacklist-duration",    required_argument, NULL, HTTP_BLACKLIST_DURATION},
+  {"astaire-blacklist-duration", required_argument, NULL, ASTAIRE_BLACKLIST_DURATION},
+  {"api-key",                    required_argument, NULL, API_KEY},
+  {"pidfile",                    required_argument, NULL, PIDFILE},
+  {NULL,                         0,                 NULL, 0},
 };
 
 void usage(void)
@@ -160,6 +166,8 @@ void usage(void)
        "                            Set HTTP address to contact Homestead\n"
        " --digest-timeout N         Time a digest is stored in memcached (in seconds)\n"
        " --home-domain <domain>     The home domain of the deployment\n"
+       " --auth-store <domain>[:port]\n"
+       "                            The location of the memcached site used for authentication vectors\n"
        " --sas <host>,<system name>\n"
        "                            Use specified host as Service Assurance Server and specified\n"
        "                            system name to identify this system to SAS. If this option isn't\n"
@@ -183,6 +191,8 @@ void usage(void)
        "                            The actual time is randomised.\n"
        " --http-blacklist-duration <secs>\n"
        "                            The amount of time to blacklist an HTTP peer when it is unresponsive.\n"
+       " --astaire-blacklist-duration <secs>\n"
+       "                            The amount of time to blacklist an Astaire node when it is unresponsive.\n"
        " --api-key <key>            Value of NGV-API-Key header that is used to authenticate requests\n"
        "                            for servers in the cluster.  These requests do not require user\n"
        "                            authentication.\n"
@@ -273,6 +283,11 @@ int init_options(int argc, char**argv, struct options& options)
     case HOME_DOMAIN:
       options.home_domain = std::string(optarg);
       TRC_INFO("Home domain: %s", optarg);
+      break;
+
+    case AUTH_STORE:
+      options.auth_store = std::string(optarg);
+      TRC_INFO("Authentication store: %s", optarg);
       break;
 
     case SAS_CONFIG:
@@ -373,6 +388,12 @@ int init_options(int argc, char**argv, struct options& options)
       options.http_blacklist_duration = atoi(optarg);
       TRC_INFO("HTTP blacklist duration set to %d",
                options.http_blacklist_duration);
+      break;
+
+    case ASTAIRE_BLACKLIST_DURATION:
+      options.astaire_blacklist_duration = atoi(optarg);
+      TRC_INFO("Astaire blacklist duration set to %d",
+               options.astaire_blacklist_duration);
       break;
 
     case API_KEY:
@@ -564,9 +585,8 @@ int main(int argc, char**argv)
 
   // Create alarm and communication monitor objects for the conditions
   // reported by memento.
-  Alarm* mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm, "Memento", "Memcached");
-  Alarm* mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
+  Alarm* astaire_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_ASTAIRE_COMM_ERROR, AlarmDef::CRITICAL);
+  CommunicationMonitor* astaire_comm_monitor = new CommunicationMonitor(astaire_comm_alarm, "Memento", "Astaire");
   Alarm* hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
   CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm, "Memento", "Homestead");
   Alarm* cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
@@ -575,10 +595,27 @@ int main(int argc, char**argv)
   TRC_DEBUG("Starting alarm request agent");
   AlarmReqAgent::get_instance().start();
 
-  MemcachedStore* m_store = new MemcachedStore(true,
-                                               "./cluster_settings",
-                                               mc_comm_monitor,
-                                               mc_vbucket_alarm);
+  // Create a DNS resolver. We'll use this to create specific HTTP and Astaire
+  // resolvers later.
+  int af = AF_INET;
+  struct in6_addr dummy_addr;
+  if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
+  {
+    TRC_DEBUG("Local host is an IPv6 address");
+    af = AF_INET6;
+  }
+
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
+
+  AstaireResolver* astaire_resolver =
+                        new AstaireResolver(dns_resolver,
+                                            af,
+                                            options.astaire_blacklist_duration);
+
+  TopologyNeutralMemcachedStore* m_store =
+                          new TopologyNeutralMemcachedStore(options.auth_store,
+                                                            astaire_resolver,
+                                                            astaire_comm_monitor);
 
   AuthStore::SerializerDeserializer* serializer;
   std::vector<AuthStore::SerializerDeserializer*> deserializers;
@@ -607,16 +644,6 @@ int main(int argc, char**argv)
 
   LastValueCache* stats_aggregator = new MementoLVC();
 
-  // Create a DNS resolver and an HTTP specific resolver.
-  int af = AF_INET;
-  struct in6_addr dummy_addr;
-  if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
-  {
-    TRC_DEBUG("Local host is an IPv6 address");
-    af = AF_INET6;
-  }
-
-  DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
   HttpResolver* http_resolver = new HttpResolver(dns_resolver,
                                                  af,
                                                  options.http_blacklist_duration);
@@ -696,6 +723,7 @@ int main(int argc, char**argv)
 
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
+  delete astaire_resolver; astaire_resolver = NULL;
   delete http_resolver; http_resolver = NULL;
   delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
@@ -709,9 +737,8 @@ int main(int argc, char**argv)
   // Stop the alarm request agent
   AlarmReqAgent::get_instance().stop();
 
-  delete mc_comm_monitor; mc_comm_monitor = NULL;
-  delete mc_comm_alarm; mc_comm_alarm = NULL;
-  delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
+  delete astaire_comm_monitor; astaire_comm_monitor = NULL;
+  delete astaire_comm_alarm; astaire_comm_alarm = NULL;
   delete hs_comm_monitor; hs_comm_monitor = NULL;
   delete hs_comm_alarm; hs_comm_alarm = NULL;
   delete cass_comm_monitor; cass_comm_monitor = NULL;

@@ -26,7 +26,7 @@
         {
             "index": 5002,
             "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
-            "name": "MEMENTO_MEMCACHED_COMM_ERROR",
+            "name": "MEMENTO_ASTAIRE_COMM_ERROR",
             "levels": [
                 {
                     "severity": "CLEARED",
@@ -37,35 +37,12 @@
                     "action": "No action."
                 },
                 {
-                    "severity": "MAJOR",
+                    "severity": "CRITICAL",
                     "details": "Memento is unable to contact any Memcacheds. It will periodically attempt to reconnect. If this alarm does not clear, ensure that at least one Memcached is operational and that network connectivity exists between it and Memento.",
                     "description": "Memento: Memcached communication error.",
                     "cause": "Memento is unable to contact any Memcacheds.",
                     "effect": "All attempts to retrieve call lists from this Memento server will fail, but no call list records will be lost.",
                     "action": "Monitor for this alarm to clear. If this alarm does not clear, ensure that at least one Memcached is operational and that network connectivity exists between it and Memento. If Memcached does not return to service then contact your support representative."
-                }
-            ]
-        },
-        {
-            "index": 5003,
-            "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
-            "name": "MEMENTO_MEMCACHED_VBUCKET_ERROR",
-            "levels": [
-                {
-                    "severity": "CLEARED",
-                    "details": "Memento communication to Memcached for a subset of data has been restored.",
-                    "description": "Memento: Memcached vBucket communication error cleared.",
-                    "cause": "Memento communication to Memcached for a vBucket has been restored. The previously issued alarm has been cleared.",
-                    "effect": "Normal Memento operation has been restored.",
-                    "action": "No action."
-                },
-                {
-                    "severity": "MAJOR",
-                    "details": "Memento is unable to contact any Memcacheds for a subset of data. Some subscriber data will be unavailable. If this alarm does not clear, ensure that all Memcacheds are operational and that network connectivity exists between them and Memento.",
-                    "description": "Memento: Memcached vBucket communication error.",
-                    "cause": "Memento is unable to contact any Memcacheds for a vbucket.",
-                    "effect": "Some attempts to retrieve call lists from this Memento server will fail, but no call list records will be lost.",
-                    "action": "Monitor for this alarm to clear. If this alarm does not clear, ensure that at least one Memcached vBucket is operational and that network connectivity exists between it and Memento. If Memcached does not return to service then contact your support representative."
                 }
             ]
         },

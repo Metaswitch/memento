@@ -85,16 +85,10 @@ get_settings()
   local num_cpus=$(grep processor /proc/cpuinfo | wc -l)
   num_http_threads=$num_cpus
   num_http_worker_threads=$(( $num_cpus * 50 ))
+  log_level=2
   . /etc/clearwater/config
 
   homestead_http_name=$(python /usr/share/clearwater/bin/bracket_ipv6_address.py $hs_hostname)
-
-  # Set up a default cluster_settings file if it does not exist.
-  [ -f /etc/clearwater/cluster_settings ] || echo "servers=$local_ip:11211" > /etc/clearwater/cluster_settings
-
-  # Set up defaults for user settings then pull in any overrides.
-  log_level=2
-  [ -r /etc/clearwater/user_settings ] && . /etc/clearwater/user_settings
 
   # Work out which features are enabled.
   if [ -d /etc/clearwater/features.d ]
@@ -144,6 +138,7 @@ do_start()
                      --http-worker-threads $num_http_worker_threads
                      --homestead-http-name $homestead_http_name
                      --home-domain $home_domain
+                     --auth-store $memento_auth_store
                      --access-log $log_directory
                      $target_latency_us_arg
                      $max_tokens_arg
@@ -155,6 +150,7 @@ do_start()
                      --sas $sas_server,$NAME@$public_hostname
                      $api_key_arg"
         [ "$http_blacklist_duration" = "" ] || DAEMON_ARGS="$DAEMON_ARGS --http-blacklist-duration=$http_blacklist_duration"
+        [ "$astaire_blacklist_duration" = "" ] || DAEMON_ARGS="$DAEMON_ARGS --astaire-blacklist-duration=$astaire_blacklist_duration"
 
         $namespace_prefix start-stop-daemon --start --quiet --background --pidfile $PIDFILE --exec $DAEMON --chuid $NAME --chdir $HOME -- $DAEMON_ARGS --daemon --pidfile=$PIDFILE \
                 || return 2
