@@ -37,7 +37,8 @@ COMMON_SOURCES := localstore.cpp \
                   memento_lvc.cpp \
                   health_checker.cpp \
                   exception_handler.cpp \
-                  namespace_hop.cpp
+                  namespace_hop.cpp \
+                  astaire_resolver.cpp
 
 memento_SOURCES := main.cpp ${COMMON_SOURCES}
 
