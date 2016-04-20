@@ -92,6 +92,7 @@ struct options
   int astaire_blacklist_duration;
   std::string api_key;
   std::string pidfile;
+  bool daemon;
 };
 
 // Enum for option types not assigned short-forms
@@ -120,7 +121,8 @@ enum OptionTypes
   HTTP_BLACKLIST_DURATION,
   ASTAIRE_BLACKLIST_DURATION,
   API_KEY,
-  PIDFILE
+  PIDFILE,
+  DAEMON,
 };
 
 const static struct option long_opt[] =
@@ -157,7 +159,7 @@ void usage(void)
        "\n"
        " --localhost <hostname>     Specify the local hostname or IP address\n"
        " --http <address>[:<port>]\n"
-       "              Set HTTP bind address and port (default: 0.0.0.0:11888)\n"
+       "                            Set HTTP bind address and port (default: 0.0.0.0:11888)\n"
        " --http-threads N           Number of HTTP threads (default: 1)\n"
        " --http-worker-threads N    Number of HTTP worker threads (default: 50)\n"
        " --homestead-http-name <name>\n"
@@ -167,9 +169,9 @@ void usage(void)
        " --auth-store <domain>[:port]\n"
        "                            The location of the memcached site used for authentication vectors\n"
        " --sas <host>,<system name>\n"
-       "    Use specified host as Service Assurance Server and specified\n"
-       "    system name to identify this system to SAS. If this option isn't\n"
-       "    specified, SAS is disabled\n"
+       "                            Use specified host as Service Assurance Server and specified\n"
+       "                            system name to identify this system to SAS. If this option isn't\n"
+       "                            specified, SAS is disabled\n"
        " --access-log <directory>\n"
        "                            Generate access logs in specified directory\n"
        " --memcached-write-format\n"
@@ -179,7 +181,7 @@ void usage(void)
        " --target-latency-us <usecs>\n"
        "                            Target latency above which throttling applies (default: 100000)\n"
        " --max-tokens N             Maximum number of tokens allowed in the token bucket (used by\n"
-       "                            the throttling code (default: 20))\n"
+       "                            the throttling code (default: 100))\n"
        " --init-token-rate N        Initial token refill rate of tokens in the token bucket (used by\n"
        "                            the throttling code (default: 100.0))\n"
        " --min-token-rate N         Minimum token refill rate of tokens in the token bucket (used by\n"
@@ -194,7 +196,8 @@ void usage(void)
        " --api-key <key>            Value of NGV-API-Key header that is used to authenticate requests\n"
        "                            for servers in the cluster.  These requests do not require user\n"
        "                            authentication.\n"
-       " --pidfile=<filename>       Write pidfile\n"
+       " --pidfile=<filename>       Write pidfile to given path\n"
+       " --daemon                   Run as a daemon\n"
        " --log-file <directory>\n"
        "                            Log to file in specified directory\n"
        " --log-level N              Set log level to N (default: 4)\n"
@@ -403,6 +406,10 @@ int init_options(int argc, char**argv, struct options& options)
       options.pidfile = std::string(optarg);
       break;
 
+    case DAEMON:
+      options.daemon = true;
+      break;
+
     case LOG_FILE:
     case LOG_LEVEL:
       // Ignore these options - they're handled by init_logging_options
@@ -476,12 +483,13 @@ int main(int argc, char**argv)
   options.log_level = 0;
   options.memcached_write_format = MemcachedWriteFormat::JSON;
   options.target_latency_us = 100000;
-  options.max_tokens = 20;
+  options.max_tokens = 100;
   options.init_token_rate = 100.0;
   options.min_token_rate = 10.0;
   options.exception_max_ttl = 600;
   options.http_blacklist_duration = HttpResolver::DEFAULT_BLACKLIST_DURATION;
   options.pidfile = "";
+  options.daemon = false;
 
   if (init_logging_options(argc, argv, options) != 0)
   {
@@ -521,6 +529,18 @@ int main(int argc, char**argv)
   if (init_options(argc, argv, options) != 0)
   {
     return 1;
+  }
+
+  if (options.daemon)
+  {
+    // Options parsed and validated, time to demonize before writing out our
+    // pidfile or spwaning threads.
+    int errnum = Utils::daemonize();
+    if (errnum != 0)
+    {
+      TRC_ERROR("Failed to convert to daemon, %d (%s)", errnum, strerror(errnum));
+      exit(0);
+    }
   }
 
   if (options.pidfile != "")
