@@ -564,13 +564,16 @@ int main(int argc, char**argv)
 
   // Create alarm and communication monitor objects for the conditions
   // reported by memento.
-  Alarm* mc_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(mc_comm_alarm, "Memento", "Memcached");
+  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR, AlarmDef::CRITICAL),
+                                                                   "Memento",
+                                                                   "Memcached");
   Alarm* mc_vbucket_alarm = new Alarm("memento", AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR, AlarmDef::MAJOR);
-  Alarm* hs_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(hs_comm_alarm, "Memento", "Homestead");
-  Alarm* cass_comm_alarm = new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL);
-  CommunicationMonitor* cass_comm_monitor = new CommunicationMonitor(cass_comm_alarm, "Memento", "Cassandra");
+  CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(new Alarm("memento", AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR, AlarmDef::CRITICAL),
+                                                                   "Memento",
+                                                                   "Homestead");
+  CommunicationMonitor* cass_comm_monitor = new CommunicationMonitor(new Alarm("memento", AlarmDef::MEMENTO_CASSANDRA_COMM_ERROR, AlarmDef::CRITICAL),
+                                                                     "Memento",
+                                                                     "Cassandra");
 
   TRC_DEBUG("Starting alarm request agent");
   AlarmReqAgent::get_instance().start();
@@ -710,12 +713,9 @@ int main(int argc, char**argv)
   AlarmReqAgent::get_instance().stop();
 
   delete mc_comm_monitor; mc_comm_monitor = NULL;
-  delete mc_comm_alarm; mc_comm_alarm = NULL;
   delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
   delete hs_comm_monitor; hs_comm_monitor = NULL;
-  delete hs_comm_alarm; hs_comm_alarm = NULL;
   delete cass_comm_monitor; cass_comm_monitor = NULL;
-  delete cass_comm_alarm; cass_comm_alarm = NULL;
 
   SAS::term();
 
