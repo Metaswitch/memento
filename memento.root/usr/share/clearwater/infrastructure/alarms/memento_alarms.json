@@ -65,7 +65,7 @@
                     "description": "Memento: Memcached vBucket communication error.",
                     "cause": "Memento is unable to contact any Memcached processes for a subset of subscribers.",
                     "effect": "Some attempts to retrieve call lists from this Memento server will fail, but no call list records will be lost.",
-                    "action": "Ensure that all Memcached processes are operational and that network connectivity exists between them and Ralf. If the alarm does not clear then contact your support representative."
+                    "action": "Ensure that all Memcached processes are operational and that network connectivity exists between them and Memento. If the alarm does not clear then contact your support representative."
                 }
             ]
         },
