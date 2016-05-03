@@ -533,7 +533,7 @@ int main(int argc, char**argv)
     }
   }
 
-  Utils::start_signal_handlers();
+  start_signal_handlers();
 
   AccessLogger* access_logger = NULL;
 
