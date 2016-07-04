@@ -478,6 +478,7 @@ int main(int argc, char**argv)
 
   Utils::daemon_log_setup(argc,
                           argv,
+                          options.daemon,
                           options.log_directory,
                           options.log_level,
                           options.log_to_file);
