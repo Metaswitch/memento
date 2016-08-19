@@ -2,6 +2,7 @@ TARGETS := memento
 TEST_TARGETS := memento_test
 
 COMMON_SOURCES := localstore.cpp \
+                  memcachedconnectionpool.cpp \
                   memcachedstore.cpp \
                   memcachedstoreview.cpp \
                   memcached_config.cpp \
