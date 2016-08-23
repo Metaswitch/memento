@@ -18,6 +18,7 @@ COMMON_SOURCES := localstore.cpp \
                   httpstack_utils.cpp \
                   accesslogger.cpp \
                   authstore.cpp \
+                  httpconnectionpool.cpp \
                   httpconnection.cpp \
                   homesteadconnection.cpp \
                   httpdigestauthenticate.cpp \
