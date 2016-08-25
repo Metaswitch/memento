@@ -2,7 +2,7 @@ TARGETS := memento
 TEST_TARGETS := memento_test
 
 COMMON_SOURCES := localstore.cpp \
-                  memcachedconnectionpool.cpp \
+                  memcached_connection_pool.cpp \
                   memcachedstore.cpp \
                   memcachedstoreview.cpp \
                   memcached_config.cpp \
@@ -18,6 +18,7 @@ COMMON_SOURCES := localstore.cpp \
                   httpstack_utils.cpp \
                   accesslogger.cpp \
                   authstore.cpp \
+                  http_connection_pool.cpp \
                   httpconnection.cpp \
                   homesteadconnection.cpp \
                   httpdigestauthenticate.cpp \
