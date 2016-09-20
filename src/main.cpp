@@ -80,6 +80,7 @@ struct options
   bool log_to_file;
   std::string log_directory;
   int log_level;
+  std::string cassandra;
   MemcachedWriteFormat memcached_write_format;
   int target_latency_us;
   int max_tokens;
@@ -105,6 +106,7 @@ enum OptionTypes
   SAS_CONFIG,
   ACCESS_LOG,
   ALARMS_ENABLED,
+  CASSANDRA,
   MEMCACHED_WRITE_FORMAT,
   LOG_FILE,
   LOG_LEVEL,
@@ -131,6 +133,7 @@ const static struct option long_opt[] =
   {"home-domain",              required_argument, NULL, HOME_DOMAIN},
   {"sas",                      required_argument, NULL, SAS_CONFIG},
   {"access-log",               required_argument, NULL, ACCESS_LOG},
+  {"cassandra",                required_argument, NULL, CASSANDRA},
   {"memcached-write-format",   required_argument, NULL, MEMCACHED_WRITE_FORMAT},
   {"log-file",                 required_argument, NULL, LOG_FILE},
   {"log-level",                required_argument, NULL, LOG_LEVEL},
@@ -166,6 +169,9 @@ void usage(void)
        "                            specified, SAS is disabled\n"
        " --access-log <directory>\n"
        "                            Generate access logs in specified directory\n"
+       " --cassandra <address>\n"
+       "                            Set the IP address or FQDN of the Cassandra database\n"
+       "                            (default: localhost)\n"
        " --memcached-write-format\n"
        "                            The data format to use when writing authentication\n"
        "                            digests to memcached. Values are 'binary' and 'json'\n"
@@ -304,6 +310,11 @@ int init_options(int argc, char**argv, struct options& options)
       TRC_INFO("Access log: %s", optarg);
       options.access_log_enabled = true;
       options.access_log_directory = std::string(optarg);
+      break;
+
+    case CASSANDRA:
+      TRC_INFO("Cassandra host: %s", optarg);
+      options.cassandra = std::string(optarg);
       break;
 
     case MEMCACHED_WRITE_FORMAT:
@@ -461,6 +472,7 @@ int main(int argc, char**argv)
   options.access_log_enabled = false;
   options.log_to_file = false;
   options.log_level = 0;
+  options.cassandra = "localhost";
   options.memcached_write_format = MemcachedWriteFormat::JSON;
   options.target_latency_us = 100000;
   options.max_tokens = 1000;
@@ -620,7 +632,7 @@ int main(int argc, char**argv)
 
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->configure_connection("localhost", 9160, cass_comm_monitor);
+  call_list_store->configure_connection(options.cassandra, 9160, cass_comm_monitor);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();

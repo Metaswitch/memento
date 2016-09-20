@@ -1,9 +1,16 @@
 #! /bin/bash
 . /usr/share/clearwater/cassandra_schema_utils.sh
 
+cassandra_hostname="127.0.0.1"
+
+. /etc/clearwater/config
+
 quit_if_no_cassandra
 
-if [[ ! -e /var/lib/cassandra/data/memento ]];
+CQLSH="/usr/share/clearwater/bin/run-in-signaling-namespace cqlsh $cassandra_hostname"
+
+if [[ ! -e /var/lib/cassandra/data/memento ]] || \
+   [[ $cassandra_hostname != "127.0.0.1" ]];
 then
   count=0
   /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period
@@ -24,5 +31,5 @@ then
   echo "CREATE KEYSPACE memento WITH REPLICATION = $replication_str;
         USE memento;
         CREATE TABLE call_lists (impu text PRIMARY KEY, dummy text) WITH COMPACT STORAGE and read_repair_chance = 1.0;
-  " | cqlsh
+  " | $CQLSH
 fi
