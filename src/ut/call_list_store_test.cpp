@@ -50,12 +50,12 @@
 #include "call_list_store.h"
 #include "mementosasevent.h"
 
-
 using namespace CassTestUtils;
 
 const SAS::TrailId FAKE_TRAIL = 0x123456;
 
 // The class under test.
+//
 // We don't test the Cache class directly as we need to use a
 // MockCassandraConnectionPool that we can use to return MockCassandraClients.
 // However all other methods are the real ones from Cache.

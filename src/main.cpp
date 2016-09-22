@@ -618,9 +618,10 @@ int main(int argc, char**argv)
                                                                 load_monitor,
                                                                 hs_comm_monitor);
 
+  // Default to a 30s blacklist duration and port 9160
   CassandraResolver* cass_resolver = new CassandraResolver(dns_resolver,
                                                            af,
-                                                           options.http_blacklist_duration,
+                                                           30,
                                                            9160);
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
