@@ -618,9 +618,13 @@ int main(int argc, char**argv)
                                                                 load_monitor,
                                                                 hs_comm_monitor);
 
+  CassandraResolver* cass_resolver = new CassandraResolver(dns_resolver,
+                                                           af,
+                                                           options.http_blacklist_duration,
+                                                           9160);
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->configure_connection("localhost", 9160, cass_comm_monitor);
+  call_list_store->configure_connection("localhost", 9160, cass_comm_monitor, cass_resolver);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
@@ -690,6 +694,7 @@ int main(int argc, char**argv)
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
+  delete cass_resolver; cass_resolver = NULL;
   delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
