@@ -403,7 +403,7 @@ int init_options(int argc, char**argv, struct options& options)
 
     case ASTAIRE_BLACKLIST_DURATION:
       options.astaire_blacklist_duration = atoi(optarg);
-      TRC_INFO("Astaire blacklist duration set to %d",
+      TRC_INFO("Astaire blacklist duration set to %d seconds",
                options.astaire_blacklist_duration);
       break;
 
