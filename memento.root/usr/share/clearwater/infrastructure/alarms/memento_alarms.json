@@ -26,46 +26,23 @@
         {
             "index": 5002,
             "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
-            "name": "MEMENTO_MEMCACHED_COMM_ERROR",
+            "name": "MEMENTO_ASTAIRE_COMM_ERROR",
             "levels": [
                 {
                     "severity": "CLEARED",
-                    "details": "Memento communication to Memcached has been restored.",
-                    "description": "Memento: Memcached communication error cleared.",
-                    "cause": "Memento communication to Memcached has been restored. The previously issued alarm has been cleared.",
+                    "details": "Memento has re-established connection to Astaire.",
+                    "description": "Memento: Astaire communication error cleared.",
+                    "cause": "Memento communication to at lest one Astaire process has been restored. The previously issued alarm has been cleared.",
                     "effect": "Normal Memento operation has been restored.",
                     "action": "No action."
                 },
                 {
                     "severity": "MAJOR",
-                    "details": "Memento is unable to contact any Memcached processes. It will periodically attempt to reconnect. Ensure that at least one Memcached is operational and that network connectivity exists between it and Memento.",
-                    "description": "Memento: Memcached communication error.",
-                    "cause": "Memento is unable to contact any Memcached processes.",
+                    "details": "Memento has failed to make a connection with the Astaire process in the cluster. If this alarm does not clear, network connection may have been lost, or the Astaire processes may have failed and be in an unrecoverable condition.",
+                    "description": "Memento: Astaire communication error.",
+                    "cause": "Memento is unable to contact any Astaire processes.",
                     "effect": "All attempts to retrieve call lists from this Memento server will fail, but no call list records will be lost.",
-                    "action": "Ensure that all Memcached processes are operational and that network connectivity exists between them and Memento. If the alarm does not clear then contact your support representative."
-                }
-            ]
-        },
-        {
-            "index": 5003,
-            "cause": "UNDERLYING_RESOURCE_UNAVAILABLE",
-            "name": "MEMENTO_MEMCACHED_VBUCKET_ERROR",
-            "levels": [
-                {
-                    "severity": "CLEARED",
-                    "details": "Memento communication to Memcached has been restored for all subscribers.",
-                    "description": "Memento: Memcached vBucket communication error cleared.",
-                    "cause": "Memento communication to Memcached has been restored for all subscribers. The previously issued alarm has been cleared.",
-                    "effect": "Normal Memento operation has been restored.",
-                    "action": "No action."
-                },
-                {
-                    "severity": "MAJOR",
-                    "details": "Memento is unable to contact any Memcached processes for a subset of subscribers. Ensure that all Memcached processes are operational and that network connectivity exists between them and Memento.",
-                    "description": "Memento: Memcached vBucket communication error.",
-                    "cause": "Memento is unable to contact any Memcached processes for a subset of subscribers.",
-                    "effect": "Some attempts to retrieve call lists from this Memento server will fail, but no call list records will be lost.",
-                    "action": "Ensure that all Memcached processes are operational and that network connectivity exists between them and Memento. If the alarm does not clear then contact your support representative."
+                    "action": "Monitor for this alarm to clear. If this alarm does not clear, ensure that at least one Astaire process is operational and that network connectivity exists between Astaire and Memento. If the Astaire processes do not return to service then contact your support representative."
                 }
             ]
         },
