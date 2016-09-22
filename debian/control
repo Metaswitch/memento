@@ -11,7 +11,7 @@ Homepage: http://projectclearwater.org/
 
 Package: memento-node
 Architecture: any
-Depends: clearwater-infrastructure, clearwater-tcp-scalability, clearwater-log-cleanup, memento-libs, libzmq3, clearwater-memcached, memento-cassandra, clearwater-monit
+Depends: memento-nginx, memento-as, clearwater-memcached, memento-cassandra
 Suggests: memento-node-dbg
 Description: memento-node
 
@@ -46,11 +46,6 @@ Section: debug
 Priority: extra
 Depends: memento-libs (= ${binary:Version}), gdb
 Description: Debugging symbols for memento's libraries
-
-Package: memento-nginx-node
-Architecture: any
-Depends: clearwater-infrastructure, clearwater-nginx, memento-node
-Description: Integrates memento-node with nginx
 
 Package: memento-nginx
 Architecture: any
