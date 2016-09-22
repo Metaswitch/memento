@@ -15,7 +15,6 @@ DEB_NAMES := memento-libs memento-libs-dbg
 DEB_NAMES += memento memento-dbg
 DEB_NAMES += memento-node memento-node-dbg
 DEB_NAMES += memento-nginx
-DEB_NAMES += memento-nginx-node
 DEB_NAMES += memento-cassandra
 
 INCLUDE_DIR := ${INSTALL_DIR}/include
