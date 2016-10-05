@@ -643,8 +643,12 @@ int main(int argc, char**argv)
     exit(3);
   }
 
-  HttpStack* http_stack = HttpStack::get_instance();
   HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
+  HttpStack* http_stack = new HttpStack(options.http_threads,
+                                        exception_handler,
+                                        access_logger,
+                                        load_monitor,
+                                        &stats_manager);
 
   CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc, options.api_key);
 
@@ -656,13 +660,8 @@ int main(int argc, char**argv)
   try
   {
     http_stack->initialize();
-    http_stack->configure(options.http_address,
-                          options.http_port,
-                          options.http_threads,
-                          exception_handler,
-                          access_logger,
-                          load_monitor,
-                          &stats_manager);
+    http_stack->bind_tcp_socket(options.http_address,
+                                options.http_port);
     http_stack->register_handler("^/ping$", &ping_handler);
     http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
                                     pool.wrap(&call_list_handler));
@@ -704,6 +703,7 @@ int main(int argc, char**argv)
   delete m_store; m_store = NULL;
   delete exception_handler; exception_handler = NULL;
   delete hc; hc = NULL;
+  delete http_stack; http_stack = NULL;
 
   delete mc_comm_monitor; mc_comm_monitor = NULL;
   delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
