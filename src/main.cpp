@@ -659,9 +659,15 @@ int main(int argc, char**argv)
                                                                 load_monitor,
                                                                 hs_comm_monitor);
 
+  // Default to a 30s blacklist/graylist duration and port 9160
+  CassandraResolver* cass_resolver = new CassandraResolver(dns_resolver,
+                                                           af,
+                                                           30,
+                                                           30,
+                                                           9160);
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->configure_connection(options.cassandra, 9160, cass_comm_monitor);
+  call_list_store->configure_connection(options.cassandra, 9160, cass_comm_monitor, cass_resolver);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
@@ -678,8 +684,12 @@ int main(int argc, char**argv)
     exit(3);
   }
 
-  HttpStack* http_stack = HttpStack::get_instance();
   HttpStackUtils::SimpleStatsManager stats_manager(stats_aggregator);
+  HttpStack* http_stack = new HttpStack(options.http_threads,
+                                        exception_handler,
+                                        access_logger,
+                                        load_monitor,
+                                        &stats_manager);
 
   CallListTask::Config call_list_config(auth_store, homestead_conn, call_list_store, options.home_domain, stats_aggregator, hc, options.api_key);
 
@@ -691,13 +701,8 @@ int main(int argc, char**argv)
   try
   {
     http_stack->initialize();
-    http_stack->configure(options.http_address,
-                          options.http_port,
-                          options.http_threads,
-                          exception_handler,
-                          access_logger,
-                          load_monitor,
-                          &stats_manager);
+    http_stack->bind_tcp_socket(options.http_address,
+                                options.http_port);
     http_stack->register_handler("^/ping$", &ping_handler);
     http_stack->register_handler("^/org.projectclearwater.call-list/users/[^/]*/call-list.xml$",
                                     pool.wrap(&call_list_handler));
@@ -731,6 +736,7 @@ int main(int argc, char**argv)
   delete homestead_conn; homestead_conn = NULL;
   delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
+  delete cass_resolver; cass_resolver = NULL;
   delete dns_resolver; dns_resolver = NULL;
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
@@ -739,6 +745,7 @@ int main(int argc, char**argv)
   delete memcached_store; memcached_store = NULL;
   delete exception_handler; exception_handler = NULL;
   delete hc; hc = NULL;
+  delete http_stack; http_stack = NULL;
 
   delete astaire_comm_monitor; astaire_comm_monitor = NULL;
   delete hs_comm_monitor; hs_comm_monitor = NULL;

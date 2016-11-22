@@ -24,7 +24,7 @@ Description: Debugging symbols for memento-node
 
 Package: memento
 Architecture: any
-Depends: clearwater-infrastructure, clearwater-tcp-scalability, clearwater-log-cleanup, memento-libs, libzmq3, clearwater-monit
+Depends: clearwater-infrastructure, clearwater-tcp-scalability, clearwater-log-cleanup, memento-libs, libzmq3, clearwater-monit, clearwater-socket-factory
 Suggests: memento-dbg
 Description: memento
 

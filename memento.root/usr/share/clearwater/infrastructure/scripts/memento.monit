@@ -54,7 +54,7 @@ check process memento_process with pidfile /var/run/memento/memento.pid
   if memory > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 5000.3; /etc/init.d/memento abort'"
 
 # Clear any alarms if the process has been running long enough.
-check program memento_uptime with path /usr/share/clearwater/infrastructure/scripts/check-memento-uptime
+check program memento_uptime with path /usr/share/clearwater/infrastructure/monit_uptime/check-memento-uptime
   group memento
   depends on memento_process
   every 3 cycles

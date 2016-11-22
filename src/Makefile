@@ -23,13 +23,14 @@ COMMON_SOURCES := localstore.cpp \
                   httpconnection.cpp \
                   homesteadconnection.cpp \
                   httpdigestauthenticate.cpp \
+                  cassandra_connection_pool.cpp \
                   cassandra_store.cpp \
                   call_list_store.cpp \
                   call_list_xml.cpp \
                   dnsparser.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
-                  httpresolver.cpp \
+                  a_record_resolver.cpp \
                   mementosaslogger.cpp \
                   alarm.cpp \
                   base_communication_monitor.cpp \
