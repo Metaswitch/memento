@@ -624,9 +624,20 @@ int main(int argc, char**argv)
                                                            30,
                                                            30,
                                                            9160);
+  // Set the cassandra hostname to the loopback IP
+  std::string cassandra_host;
+  if (af == AF_INET6)
+  {
+    cassandra_host = "[::1]";
+  }
+  else
+  {
+    cassandra_host = "127.0.0.1";
+  }
+
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->configure_connection("localhost", 9160, cass_comm_monitor, cass_resolver);
+  call_list_store->configure_connection(cassandra_host, 9160, cass_comm_monitor, cass_resolver);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
