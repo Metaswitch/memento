@@ -498,8 +498,8 @@ int main(int argc, char**argv)
   options.access_log_enabled = false;
   options.log_to_file = false;
   options.log_level = 0;
-  options.astaire = "localhost";
-  options.cassandra = "localhost";
+  options.astaire = "";
+  options.cassandra = "";
   options.memcached_write_format = MemcachedWriteFormat::JSON;
   options.target_latency_us = 100000;
   options.max_tokens = 1000;
@@ -619,8 +619,22 @@ int main(int argc, char**argv)
                                          af,
                                          options.astaire_blacklist_duration);
 
+  // Default the astaire hostname to the loopback IP
+  if (options.astaire == "")
+  {
+    if (af == AF_INET6)
+    {
+      options.astaire = "[::1]";
+    }
+    else
+    {
+      options.astaire = "127.0.0.1";
+    }
+  }
+
   memcached_store = (Store*)new TopologyNeutralMemcachedStore(options.astaire,
                                                               astaire_resolver,
+                                                              false,
                                                               astaire_comm_monitor);
 
   AuthStore::SerializerDeserializer* serializer;
@@ -665,6 +679,19 @@ int main(int argc, char**argv)
                                                            30,
                                                            30,
                                                            9160);
+  // Default the cassandra hostname to the loopback IP
+  if (options.cassandra == "")
+  {
+    if (af == AF_INET6)
+    {
+      options.cassandra = "[::1]";
+    }
+    else
+    {
+      options.cassandra = "127.0.0.1";
+    }
+  }
+
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
   call_list_store->configure_connection(options.cassandra, 9160, cass_comm_monitor, cass_resolver);

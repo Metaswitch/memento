@@ -12,8 +12,9 @@ CQLSH="/usr/share/clearwater/bin/run-in-signaling-namespace cqlsh $cassandra_hos
 if [[ ! -e /var/lib/cassandra/data/memento ]] || \
    [[ $cassandra_hostname != "127.0.0.1" ]];
 then
+  echo "Adding Cassandra schemas..."
   count=0
-  /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period
+  /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period > /dev/null 2>&1
 
   while [ $? -ne 0 ]; do
     ((count++))
@@ -23,13 +24,13 @@ then
     fi
 
     sleep 1
-    /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period
+    /usr/share/clearwater/bin/poll_cassandra.sh --no-grace-period > /dev/null 2>&1
   done
 
   # replication_str is set up by
   # /usr/share/clearwater/cassandra-schemas/replication_string.sh
-  echo "CREATE KEYSPACE memento WITH REPLICATION = $replication_str;
+  echo "CREATE KEYSPACE IF NOT EXISTS memento WITH REPLICATION = $replication_str;
         USE memento;
-        CREATE TABLE call_lists (impu text PRIMARY KEY, dummy text) WITH COMPACT STORAGE and read_repair_chance = 1.0;
+        CREATE TABLE IF NOT EXISTS call_lists (impu text PRIMARY KEY, dummy text) WITH COMPACT STORAGE and read_repair_chance = 1.0;
   " | $CQLSH
 fi
