@@ -105,8 +105,6 @@ get_settings()
     done
   fi
 
-  # Use the sprout_impi_store arg as the location of the astaire cluster to use.  This allows
-  # memento to use a remote astaire, if that's what sprout does.
   [ -z "$target_latency_us" ] || target_latency_us_arg="--target-latency-us $target_latency_us"
   [ -z "$max_tokens" ] || max_tokens_arg="--max-tokens $max_tokens"
   [ -z "$init_token_rate" ] || init_token_rate_arg="--init-token-rate $init_token_rate"
@@ -115,7 +113,7 @@ get_settings()
   [ -z "$exception_max_ttl" ] || exception_max_ttl_arg="--exception-max-ttl $exception_max_ttl"
   [ -z "$memento_api_key" ] || api_key_arg="--api-key $memento_api_key"
   [ -z "$cassandra_hostname" ] || cassandra_arg="--cassandra=$cassandra_hostname"
-  [ -z "$sprout_impi_store" ] || astaire_arg="--astaire=$sprout_impi_store"
+  [ -z "$memento_auth_store" ] || astaire_arg="--astaire=$memento_auth_store"
 }
 
 #
