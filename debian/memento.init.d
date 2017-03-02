@@ -112,6 +112,8 @@ get_settings()
   [ -z "$signaling_namespace" ] || namespace_prefix="ip netns exec $signaling_namespace"
   [ -z "$exception_max_ttl" ] || exception_max_ttl_arg="--exception-max-ttl $exception_max_ttl"
   [ -z "$memento_api_key" ] || api_key_arg="--api-key $memento_api_key"
+  [ -z "$cassandra_hostname" ] || cassandra_arg="--cassandra=$cassandra_hostname"
+  [ -z "$memento_auth_store" ] || astaire_arg="--astaire=$memento_auth_store"
 }
 
 #
@@ -145,6 +147,8 @@ do_start()
                      --homestead-http-name $homestead_http_name
                      --home-domain $home_domain
                      --access-log $log_directory
+                     $cassandra_arg
+                     $astaire_arg
                      $target_latency_us_arg
                      $max_tokens_arg
                      $init_token_rate_arg
@@ -154,7 +158,8 @@ do_start()
                      --log-level $log_level
                      --sas $sas_server,$NAME@$public_hostname
                      $api_key_arg"
-        [ "$http_blacklist_duration" = "" ] || DAEMON_ARGS="$DAEMON_ARGS --http-blacklist-duration=$http_blacklist_duration"
+        [ "$http_blacklist_duration" = "" ]       || DAEMON_ARGS="$DAEMON_ARGS --http-blacklist-duration=$http_blacklist_duration"
+        [ "$astaire_blacklist_duration" = "" ]    || DAEMON_ARGS="$DAEMON_ARGS --astaire-blacklist-duration=$astaire_blacklist_duration"
 
         $namespace_prefix start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --chuid $NAME --chdir $HOME -- $DAEMON_ARGS --daemon --pidfile=$PIDFILE \
                 || return 2

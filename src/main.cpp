@@ -56,6 +56,7 @@
 #include "memento_lvc.h"
 #include "exception_handler.h"
 #include "namespace_hop.h"
+#include "astaire_resolver.h"
 
 enum MemcachedWriteFormat
 {
@@ -80,12 +81,15 @@ struct options
   bool log_to_file;
   std::string log_directory;
   int log_level;
+  std::string astaire;
+  std::string cassandra;
   MemcachedWriteFormat memcached_write_format;
   int target_latency_us;
   int max_tokens;
   float init_token_rate;
   float min_token_rate;
   int exception_max_ttl;
+  int astaire_blacklist_duration;
   int http_blacklist_duration;
   std::string api_key;
   std::string pidfile;
@@ -105,6 +109,8 @@ enum OptionTypes
   SAS_CONFIG,
   ACCESS_LOG,
   ALARMS_ENABLED,
+  ASTAIRE,
+  CASSANDRA,
   MEMCACHED_WRITE_FORMAT,
   LOG_FILE,
   LOG_LEVEL,
@@ -114,6 +120,7 @@ enum OptionTypes
   INIT_TOKEN_RATE,
   MIN_TOKEN_RATE,
   EXCEPTION_MAX_TTL,
+  ASTAIRE_BLACKLIST_DURATION,
   HTTP_BLACKLIST_DURATION,
   API_KEY,
   PIDFILE,
@@ -122,29 +129,32 @@ enum OptionTypes
 
 const static struct option long_opt[] =
 {
-  {"localhost",                required_argument, NULL, LOCAL_HOST},
-  {"http",                     required_argument, NULL, HTTP_ADDRESS},
-  {"http-threads",             required_argument, NULL, HTTP_THREADS},
-  {"http-worker-threads",      required_argument, NULL, HTTP_WORKER_THREADS},
-  {"homestead-http-name",      required_argument, NULL, HOMESTEAD_HTTP_NAME},
-  {"digest-timeout",           required_argument, NULL, DIGEST_TIMEOUT},
-  {"home-domain",              required_argument, NULL, HOME_DOMAIN},
-  {"sas",                      required_argument, NULL, SAS_CONFIG},
-  {"access-log",               required_argument, NULL, ACCESS_LOG},
-  {"memcached-write-format",   required_argument, NULL, MEMCACHED_WRITE_FORMAT},
-  {"log-file",                 required_argument, NULL, LOG_FILE},
-  {"log-level",                required_argument, NULL, LOG_LEVEL},
-  {"help",                     no_argument,       NULL, HELP},
-  {"target-latency-us",        required_argument, NULL, TARGET_LATENCY_US},
-  {"max-tokens",               required_argument, NULL, MAX_TOKENS},
-  {"init-token-rate",          required_argument, NULL, INIT_TOKEN_RATE},
-  {"min-token-rate",           required_argument, NULL, MIN_TOKEN_RATE},
-  {"exception-max-ttl",        required_argument, NULL, EXCEPTION_MAX_TTL},
-  {"http-blacklist-duration",  required_argument, NULL, HTTP_BLACKLIST_DURATION},
-  {"api-key",                  required_argument, NULL, API_KEY},
-  {"pidfile",                  required_argument, NULL, PIDFILE},
-  {"daemon",                   no_argument,       NULL, DAEMON},
-  {NULL,                       0,                 NULL, 0},
+  {"localhost",                  required_argument, NULL, LOCAL_HOST},
+  {"http",                       required_argument, NULL, HTTP_ADDRESS},
+  {"http-threads",               required_argument, NULL, HTTP_THREADS},
+  {"http-worker-threads",        required_argument, NULL, HTTP_WORKER_THREADS},
+  {"homestead-http-name",        required_argument, NULL, HOMESTEAD_HTTP_NAME},
+  {"digest-timeout",             required_argument, NULL, DIGEST_TIMEOUT},
+  {"home-domain",                required_argument, NULL, HOME_DOMAIN},
+  {"sas",                        required_argument, NULL, SAS_CONFIG},
+  {"access-log",                 required_argument, NULL, ACCESS_LOG},
+  {"astaire",                    required_argument, NULL, ASTAIRE},
+  {"cassandra",                  required_argument, NULL, CASSANDRA},
+  {"memcached-write-format",     required_argument, NULL, MEMCACHED_WRITE_FORMAT},
+  {"log-file",                   required_argument, NULL, LOG_FILE},
+  {"log-level",                  required_argument, NULL, LOG_LEVEL},
+  {"help",                       no_argument,       NULL, HELP},
+  {"target-latency-us"  ,        required_argument, NULL, TARGET_LATENCY_US},
+  {"max-tokens",                 required_argument, NULL, MAX_TOKENS},
+  {"init-token-rate",            required_argument, NULL, INIT_TOKEN_RATE},
+  {"min-token-rate",             required_argument, NULL, MIN_TOKEN_RATE},
+  {"exception-max-ttl",          required_argument, NULL, EXCEPTION_MAX_TTL},
+  {"astaire-blacklist-duration", required_argument, NULL, ASTAIRE_BLACKLIST_DURATION},
+  {"http-blacklist-duration",    required_argument, NULL, HTTP_BLACKLIST_DURATION},
+  {"api-key",                    required_argument, NULL, API_KEY},
+  {"pidfile",                    required_argument, NULL, PIDFILE},
+  {"daemon",                     no_argument,       NULL, DAEMON},
+  {NULL,                         0,                 NULL, 0},
 };
 
 void usage(void)
@@ -166,6 +176,12 @@ void usage(void)
        "                            specified, SAS is disabled\n"
        " --access-log <directory>\n"
        "                            Generate access logs in specified directory\n"
+       " --astaire <address>\n"
+       "                            Set the IP address or FQDN of the Astaire to use\n"
+       "                            (default: localhost)\n"
+       " --cassandra <address>\n"
+       "                            Set the IP address or FQDN of the Cassandra database\n"
+       "                            (default: localhost)\n"
        " --memcached-write-format\n"
        "                            The data format to use when writing authentication\n"
        "                            digests to memcached. Values are 'binary' and 'json'\n"
@@ -181,6 +197,8 @@ void usage(void)
        " --exception-max-ttl <secs>\n"
        "                            The maximum time before the process exits if it hits an exception.\n"
        "                            The actual time is randomised.\n"
+       " --astaire-blacklist-duration <secs>\n"
+       "                            The amount of time to blacklist an Astaire node when it is unresponsive.\n"
        " --http-blacklist-duration <secs>\n"
        "                            The amount of time to blacklist an HTTP peer when it is unresponsive.\n"
        " --api-key <key>            Value of NGV-API-Key header that is used to authenticate requests\n"
@@ -306,6 +324,16 @@ int init_options(int argc, char**argv, struct options& options)
       options.access_log_directory = std::string(optarg);
       break;
 
+    case ASTAIRE:
+      TRC_INFO("Astaire host: %s", optarg);
+      options.astaire = std::string(optarg);
+      break;
+
+    case CASSANDRA:
+      TRC_INFO("Cassandra host: %s", optarg);
+      options.cassandra = std::string(optarg);
+      break;
+
     case MEMCACHED_WRITE_FORMAT:
       if (strcmp(optarg, "binary") == 0)
       {
@@ -373,6 +401,12 @@ int init_options(int argc, char**argv, struct options& options)
                options.exception_max_ttl);
       break;
 
+    case ASTAIRE_BLACKLIST_DURATION:
+      options.astaire_blacklist_duration = atoi(optarg);
+      TRC_INFO("Astaire blacklist duration set to %d seconds",
+               options.astaire_blacklist_duration);
+      break;
+
     case HTTP_BLACKLIST_DURATION:
       options.http_blacklist_duration = atoi(optarg);
       TRC_INFO("HTTP blacklist duration set to %d",
@@ -409,6 +443,7 @@ int init_options(int argc, char**argv, struct options& options)
 }
 
 static sem_t term_sem;
+Store* memcached_store = NULL;
 ExceptionHandler* exception_handler;
 
 // Signal handler that triggers memento termination.
@@ -447,6 +482,8 @@ int main(int argc, char**argv)
   sem_init(&term_sem, 0, 0);
   signal(SIGTERM, terminate_handler);
 
+  AstaireResolver* astaire_resolver = NULL;
+
   struct options options;
   options.local_host = "127.0.0.1";
   options.http_address = "0.0.0.0";
@@ -461,12 +498,15 @@ int main(int argc, char**argv)
   options.access_log_enabled = false;
   options.log_to_file = false;
   options.log_level = 0;
+  options.astaire = "";
+  options.cassandra = "";
   options.memcached_write_format = MemcachedWriteFormat::JSON;
   options.target_latency_us = 100000;
   options.max_tokens = 1000;
   options.init_token_rate = 100.0;
   options.min_token_rate = 10.0;
   options.exception_max_ttl = 600;
+  options.astaire_blacklist_duration = AstaireResolver::DEFAULT_BLACKLIST_DURATION;
   options.http_blacklist_duration = HttpResolver::DEFAULT_BLACKLIST_DURATION;
   options.pidfile = "";
   options.daemon = false;
@@ -542,19 +582,26 @@ int main(int argc, char**argv)
   seed = time(NULL) ^ getpid();
   srand(seed);
 
+  // Create a DNS resolver.
+  int af = AF_INET;
+  struct in6_addr dummy_addr;
+  if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
+  {
+    TRC_DEBUG("Local host is an IPv6 address");
+    af = AF_INET6;
+  }
+
+  DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
+
   // Create alarm and communication monitor objects for the conditions
   // reported by memento.
   AlarmManager* alarm_manager = new AlarmManager();
-  CommunicationMonitor* mc_comm_monitor = new CommunicationMonitor(new Alarm(alarm_manager,
-                                                                             "memento",
-                                                                             AlarmDef::MEMENTO_MEMCACHED_COMM_ERROR,
-                                                                             AlarmDef::CRITICAL),
-                                                                   "Memento",
-                                                                   "Memcached");
-  Alarm* mc_vbucket_alarm = new Alarm(alarm_manager,
-                                      "memento",
-                                      AlarmDef::MEMENTO_MEMCACHED_VBUCKET_ERROR,
-                                      AlarmDef::MAJOR);
+  CommunicationMonitor* astaire_comm_monitor = new CommunicationMonitor(new Alarm(alarm_manager,
+                                                                                  "memento",
+                                                                                  AlarmDef::MEMENTO_ASTAIRE_COMM_ERROR,
+                                                                                  AlarmDef::CRITICAL),
+                                                                        "Memento",
+                                                                        "Astaire");
   CommunicationMonitor* hs_comm_monitor = new CommunicationMonitor(new Alarm(alarm_manager,
                                                                              "memento",
                                                                              AlarmDef::MEMENTO_HOMESTEAD_COMM_ERROR,
@@ -568,11 +615,27 @@ int main(int argc, char**argv)
                                                                      "Memento",
                                                                      "Cassandra");
 
-  MemcachedStore* m_store = new MemcachedStore(true,
-                                               "./cluster_settings",
-                                               false,
-                                               mc_comm_monitor,
-                                               mc_vbucket_alarm);
+  astaire_resolver = new AstaireResolver(dns_resolver,
+                                         af,
+                                         options.astaire_blacklist_duration);
+
+  // Default the astaire hostname to the loopback IP
+  if (options.astaire == "")
+  {
+    if (af == AF_INET6)
+    {
+      options.astaire = "[::1]";
+    }
+    else
+    {
+      options.astaire = "127.0.0.1";
+    }
+  }
+
+  memcached_store = (Store*)new TopologyNeutralMemcachedStore(options.astaire,
+                                                              astaire_resolver,
+                                                              false,
+                                                              astaire_comm_monitor);
 
   AuthStore::SerializerDeserializer* serializer;
   std::vector<AuthStore::SerializerDeserializer*> deserializers;
@@ -589,7 +652,7 @@ int main(int argc, char**argv)
   deserializers.push_back(new AuthStore::JsonSerializerDeserializer());
   deserializers.push_back(new AuthStore::BinarySerializerDeserializer());
 
-  AuthStore* auth_store = new AuthStore(m_store,
+  AuthStore* auth_store = new AuthStore(memcached_store,
                                         serializer,
                                         deserializers,
                                         options.digest_timeout);
@@ -601,16 +664,7 @@ int main(int argc, char**argv)
 
   LastValueCache* stats_aggregator = new MementoLVC();
 
-  // Create a DNS resolver and an HTTP specific resolver.
-  int af = AF_INET;
-  struct in6_addr dummy_addr;
-  if (inet_pton(AF_INET6, options.local_host.c_str(), &dummy_addr) == 1)
-  {
-    TRC_DEBUG("Local host is an IPv6 address");
-    af = AF_INET6;
-  }
-
-  DnsCachedResolver* dns_resolver = new DnsCachedResolver("127.0.0.1");
+  // Create a HTTP specific resolver.
   HttpResolver* http_resolver = new HttpResolver(dns_resolver,
                                                  af,
                                                  options.http_blacklist_duration);
@@ -625,20 +679,22 @@ int main(int argc, char**argv)
                                                            30,
                                                            30,
                                                            9160);
-  // Set the cassandra hostname to the loopback IP
-  std::string cassandra_host;
-  if (af == AF_INET6)
+  // Default the cassandra hostname to the loopback IP
+  if (options.cassandra == "")
   {
-    cassandra_host = "[::1]";
-  }
-  else
-  {
-    cassandra_host = "127.0.0.1";
+    if (af == AF_INET6)
+    {
+      options.cassandra = "[::1]";
+    }
+    else
+    {
+      options.cassandra = "127.0.0.1";
+    }
   }
 
   // Create and start the call list store.
   CallListStore::Store* call_list_store = new CallListStore::Store();
-  call_list_store->configure_connection(cassandra_host, 9160, cass_comm_monitor, cass_resolver);
+  call_list_store->configure_connection(options.cassandra, 9160, cass_comm_monitor, cass_resolver);
 
   // Test Cassandra connectivity.
   CassandraStore::ResultCode store_rc = call_list_store->connection_test();
@@ -712,13 +768,13 @@ int main(int argc, char**argv)
   delete load_monitor; load_monitor = NULL;
   delete auth_store; auth_store = NULL;
   delete call_list_store; call_list_store = NULL;
-  delete m_store; m_store = NULL;
+  delete astaire_resolver; astaire_resolver = NULL;
+  delete memcached_store; memcached_store = NULL;
   delete exception_handler; exception_handler = NULL;
   delete hc; hc = NULL;
   delete http_stack; http_stack = NULL;
 
-  delete mc_comm_monitor; mc_comm_monitor = NULL;
-  delete mc_vbucket_alarm; mc_vbucket_alarm = NULL;
+  delete astaire_comm_monitor; astaire_comm_monitor = NULL;
   delete hs_comm_monitor; hs_comm_monitor = NULL;
   delete cass_comm_monitor; cass_comm_monitor = NULL;
   delete alarm_manager; alarm_manager = NULL;
