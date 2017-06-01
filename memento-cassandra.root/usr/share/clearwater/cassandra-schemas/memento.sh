@@ -7,7 +7,7 @@ cassandra_hostname="127.0.0.1"
 
 quit_if_no_cassandra
 
-CQLSH="/usr/share/clearwater/bin/run-in-signaling-namespace cqlsh $cassandra_hostname"
+CQLSH="/usr/share/clearwater/bin/run-in-signaling-namespace cqlsh"
 
 if [[ ! -e /var/lib/cassandra/data/memento ]] || \
    [[ $cassandra_hostname != "127.0.0.1" ]];
