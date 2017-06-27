@@ -26,7 +26,7 @@ check process memento_process with pidfile /var/run/memento/memento.pid
 
   # Check the service's resource usage, and abort the process if it's too high. This will
   # generate a core file and trigger diagnostics collection.
-  if memory > 80% for 6 cycles then exec "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 5000.3; /etc/init.d/memento abort'"
+  if memory > 80% then exec "/bin/bash -c '/usr/share/clearwater/bin/issue-alarm monit 5000.3; /etc/init.d/memento abort'"
 
 # Clear any alarms if the process has been running long enough.
 check program memento_uptime with path /usr/share/clearwater/infrastructure/monit_uptime/check-memento-uptime
