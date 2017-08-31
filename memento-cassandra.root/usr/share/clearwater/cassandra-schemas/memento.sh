@@ -30,7 +30,7 @@ CQLSH="/usr/share/clearwater/bin/run-in-signaling-namespace cqlsh"
 
 rc=0
 
-if [[ ! -e /var/lib/cassandra/data/cedar ]] || \
+if [[ ! -e /var/lib/cassandra/data/memento ]] || \
    [[ $cassandra_hostname != "127.0.0.1" ]];
 then
   $CQLSH -e "CREATE KEYSPACE IF NOT EXISTS memento WITH REPLICATION = $replication_str;
