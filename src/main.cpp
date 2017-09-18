@@ -288,7 +288,7 @@ int init_options(int argc, char**argv, struct options& options)
       }
       else
       {
-        TRC_INFO("Invalid --sas option, SAS disabled\n");
+        TRC_WARNING("Invalid SAS option: %s", optarg);
       }
     }
     break;
