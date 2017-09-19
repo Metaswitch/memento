@@ -288,7 +288,7 @@ int init_options(int argc, char**argv, struct options& options)
       }
       else
       {
-        TRC_WARNING("Invalid SAS option: %s", optarg);
+        TRC_WARNING("Invalid --sas option: %s", optarg);
       }
     }
     break;
@@ -544,6 +544,11 @@ int main(int argc, char**argv)
   exception_handler = new ExceptionHandler(options.exception_max_ttl,
                                            false,
                                            hc);
+
+  if (options.sas_server == "0.0.0.0")
+  {
+    TRC_WARNING("SAS server option was invalid or not configured - SAS is disabled");
+  }
 
   SAS::init(options.sas_system_name,
             "memento",
