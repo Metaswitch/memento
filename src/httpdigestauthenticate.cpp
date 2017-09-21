@@ -56,6 +56,7 @@ HTTPCode HTTPDigestAuthenticate::authenticate_request(const std::string impu,
   // The authorization header was invalid
   if (rc != HTTP_OK)
   {
+    delete response; response = NULL;
     return rc;
   }
 
