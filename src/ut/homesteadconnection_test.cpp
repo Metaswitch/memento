@@ -26,7 +26,7 @@ class HomesteadConnectionTest : public ::testing::Test
 
   HomesteadConnectionTest():
     _resolver("10.42.42.42"),
-    _lm(100000, 20, 10, 10),
+    _lm(100000, 20, 10, 10, 0),
     _hc("narcissus", &_resolver, &_lm)
   {
     fakecurl_responses.clear();

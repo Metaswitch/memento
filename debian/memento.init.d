@@ -80,10 +80,11 @@ get_settings()
     done
   fi
 
-  [ -z "$target_latency_us" ] || target_latency_us_arg="--target-latency-us $target_latency_us"
-  [ -z "$max_tokens" ] || max_tokens_arg="--max-tokens $max_tokens"
-  [ -z "$init_token_rate" ] || init_token_rate_arg="--init-token-rate $init_token_rate"
-  [ -z "$min_token_rate" ] || min_token_rate_arg="--min-token-rate $min_token_rate"
+  [ -z "$memento_target_latency_us" ] || target_latency_us_arg="--target-latency-us $memento_target_latency_us"
+  [ -z "$memento_max_tokens" ] || max_tokens_arg="--max-tokens $memento_max_tokens"
+  [ -z "$memento_init_token_rate" ] || init_token_rate_arg="--init-token-rate $memento_init_token_rate"
+  [ -z "$memento_min_token_rate" ] || min_token_rate_arg="--min-token-rate $memento_min_token_rate"
+  [ -z "$memento_max_token_rate" ] || max_token_rate_arg="--max-token-rate $memento_max_token_rate"
   [ -z "$signaling_namespace" ] || namespace_prefix="ip netns exec $signaling_namespace"
   [ -z "$exception_max_ttl" ] || exception_max_ttl_arg="--exception-max-ttl $exception_max_ttl"
   [ -z "$memento_api_key" ] || api_key_arg="--api-key $memento_api_key"
@@ -128,6 +129,7 @@ do_start()
                      $max_tokens_arg
                      $init_token_rate_arg
                      $min_token_rate_arg
+                     $max_token_rate_arg
                      $exception_max_ttl_arg
                      --log-file $log_directory
                      --log-level $log_level
