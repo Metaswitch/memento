@@ -447,15 +447,22 @@ void signal_handler(int sig)
   signal(SIGABRT, SIG_DFL);
   signal(SIGSEGV, signal_handler);
 
-  // Log the signal, along with a backtrace.
+  // Log the signal, along with a simple backtrace.
   TRC_BACKTRACE("Signal %d caught", sig);
+
+  // Check if there's a stored jmp_buf on the thread and handle if there is
+  exception_handler->handle_exception();
+
+  //
+  // If we get here it means we didn't handle the exception so we need to exit.
+  //
+
+  // Log a full backtrace to make debugging easier.
+  TRC_BACKTRACE_ADV();
 
   // Ensure the log files are complete - the core file created by abort() below
   // will trigger the log files to be copied to the diags bundle
   TRC_COMMIT();
-
-  // Check if there's a stored jmp_buf on the thread and handle if there is
-  exception_handler->handle_exception();
 
   // Dump a core.
   abort();
