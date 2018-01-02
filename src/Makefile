@@ -79,7 +79,7 @@ COVERAGE_ROOT := ..
 memento_test_COVERAGE_EXCLUSIONS := ^src/ut|^usr|^modules/gmock|^modules/cpp-common|^modules/rapidjson
 
 # Add modules/cpp-common/src as a VPATH to pull in required common modules
-VPATH := ../modules/cpp-common/src ../modules/cpp-common/test_utils ut ../modules/memento-common/src
+VPATH := ../modules/cpp-common/src ../modules/cpp-common/test_utils ut ../modules/memento-common/src ../modules/memento-common/ut
 
 COMMON_LDFLAGS += -lzmq \
                   -L../usr/lib \
