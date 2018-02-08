@@ -225,12 +225,12 @@ HTTPCode HTTPDigestAuthenticate::parse_auth_header(std::string auth_header,
 
     TRC_DEBUG("Raising correlating marker with opaque value = %s",
               opaque_entry->second.c_str());
-    SAS::Marker corr(_trail, MARKED_ID_GENERIC_CORRELATOR, 0);
+    SAS::Marker corr(_trail, MARKER_ID_GENERIC_CORRELATOR, 0);
     corr.add_var_param(opaque_entry->second);
 
     // The marker should be trace-scoped, and should not reactivate any trail
-    // groups 
-    SAS::report_marker(corr, SAS::Marker::Scope::Trace, false);      
+    // groups
+    SAS::report_marker(corr, SAS::Marker::Scope::Trace, false);
   }
   else if ((username_entry != response_key_values.end()) &&
            (realm_entry == response_key_values.end()) &&
@@ -519,7 +519,7 @@ void HTTPDigestAuthenticate::generate_www_auth_header(std::string& www_auth_head
 
   TRC_DEBUG("Raising correlating marker with opaque value = %s",
             digest->_opaque.c_str());
-  SAS::Marker corr(_trail, MARKED_ID_GENERIC_CORRELATOR, 0);
+  SAS::Marker corr(_trail, MARKER_ID_GENERIC_CORRELATOR, 0);
   corr.add_var_param(digest->_opaque);
 
   // The marker should be trace-scoped, and should not reactivate any trail
