@@ -30,6 +30,7 @@ COMMON_SOURCES := localstore.cpp \
                   dnsparser.cpp \
                   baseresolver.cpp \
                   dnscachedresolver.cpp \
+                  static_dns_cache.cpp \
                   a_record_resolver.cpp \
                   mementosaslogger.cpp \
                   alarm.cpp \
