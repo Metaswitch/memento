@@ -20,7 +20,7 @@ COMMON_SOURCES := localstore.cpp \
                   authstore.cpp \
                   http_connection_pool.cpp \
                   httpclient.cpp \
-                  httpconnection.cpp \
+                  http_request.cpp \
                   homesteadconnection.cpp \
                   httpdigestauthenticate.cpp \
                   cassandra_connection_pool.cpp \

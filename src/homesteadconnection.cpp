@@ -10,28 +10,20 @@
  */
 
 #include "homesteadconnection.h"
+
+#include "httpconnection.h"
 #include "mementosasevent.h"
 #include <rapidjson/document.h>
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 
-HomesteadConnection::HomesteadConnection(const std::string& server,
-                                         HttpResolver* resolver,
-                                         LoadMonitor *load_monitor,
-                                         CommunicationMonitor* comm_monitor) :
-  _http(new HttpConnection(server,
-                           false,
-                           resolver,
-                           NULL,
-                           load_monitor,
-                           SASEvent::HttpLogLevel::PROTOCOL,
-                           comm_monitor))
+HomesteadConnection::HomesteadConnection(HttpConnection* connection) :
+  _http(connection)
 {
 }
 
 HomesteadConnection::~HomesteadConnection()
 {
-  delete _http; _http = NULL;
 }
 
 /// Retrieve user's digest data.
@@ -80,11 +72,16 @@ HTTPCode HomesteadConnection::get_digest_and_parse(const std::string& path,
                                                    std::string& realm,
                                                    SAS::TrailId trail)
 {
-  std::string json_data;
-  HTTPCode rc = _http->send_get(path, json_data, "", trail);
+  HttpResponse response = _http->create_request(HttpClient::RequestType::GET,
+                                                path)
+    .set_sas_trail(trail)
+    .send();
+
+  HTTPCode rc = response.get_rc();
 
   if (rc == HTTP_OK)
   {
+    std::string json_data = response.get_body();
     rapidjson::Document doc;
     doc.Parse<0>(json_data.c_str());
 

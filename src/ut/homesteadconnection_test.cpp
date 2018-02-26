@@ -13,6 +13,7 @@
 
 #include "utils.h"
 #include "sas.h"
+#include "httpconnection.h"
 #include "homesteadconnection.h"
 #include "fakecurl.hpp"
 #include "fakehttpresolver.hpp"
@@ -22,12 +23,16 @@ class HomesteadConnectionTest : public ::testing::Test
 {
   FakeHttpResolver _resolver;
   LoadMonitor _lm;
+  HttpClient _http_client;
+  HttpConnection _http_connection;
   HomesteadConnection _hc;
 
   HomesteadConnectionTest():
     _resolver("10.42.42.42"),
     _lm(100000, 20, 10, 10, 0),
-    _hc("narcissus", &_resolver, &_lm)
+    _http_client(false, &_resolver, nullptr, &_lm, SASEvent::HttpLogLevel::PROTOCOL, nullptr),
+    _http_connection("narcissus", &_http_client),
+    _hc(&_http_connection)
   {
     fakecurl_responses.clear();
     fakecurl_responses["http://10.42.42.42:80/impi/privid1/av?impu=pubid1"] = "{\"digest\":{\"realm\": \"cw-ngv.com\",\"qop\": \"auth\",\"ha1\": \"12345678\"}}";

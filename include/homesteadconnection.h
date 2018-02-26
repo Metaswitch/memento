@@ -12,8 +12,10 @@
 #ifndef HOMESTEADCONNECTION_H__
 #define HOMESTEADCONNECTION_H__
 
-#include "httpconnection.h"
+#include "httpclient.h"
 #include "sas.h"
+
+class HttpConnection;
 
 /// @class HomesteadConnection
 ///
@@ -21,17 +23,9 @@
 class HomesteadConnection
 {
 public:
-  /// Constructor.
-  /// @param server           The homestead cluster name to use.
-  /// @param resolver         HTTP resolver to use to query homestead.
-  /// @param load_monitor     Load monitor monitoring these requests.
-  /// @param stats_aggregator Statistics aggregator.
-  /// @param comm_monitor     An optional CommunicatorMonitor object to monitor
-  ///                         the state of the connection and reports alarms.
-  HomesteadConnection(const std::string& server,
-                      HttpResolver* resolver,
-                      LoadMonitor *load_monitor,
-                      CommunicationMonitor* comm_monitor=NULL);
+  /// Constructor
+  /// @param connection       HTTP connection to use
+  HomesteadConnection(HttpConnection* connection);
 
   /// Destructor
   virtual ~HomesteadConnection();
@@ -56,7 +50,6 @@ private:
                                         std::string& realm,
                                         SAS::TrailId trail);
 
-  /// Pointer to the underlying http connection manager.
   HttpConnection* _http;
 };
 #endif
