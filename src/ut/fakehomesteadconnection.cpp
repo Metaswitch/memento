@@ -13,8 +13,8 @@
 #include "gtest/gtest.h"
 
 FakeHomesteadConnection::FakeHomesteadConnection() :
-  // Pass NULL in as the HTTP resolver.  This will never get invoked amnyway.
-  HomesteadConnection("narcissus", NULL, NULL, NULL)
+  // Pass NULL in as the HTTP connection.  This will never get invoked amnyway.
+  HomesteadConnection(nullptr)
 {
 }
 

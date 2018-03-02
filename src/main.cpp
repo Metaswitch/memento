@@ -670,10 +670,18 @@ int main(int argc, char**argv)
   HttpResolver* http_resolver = new HttpResolver(dns_resolver,
                                                  af,
                                                  options.http_blacklist_duration);
-  HomesteadConnection* homestead_conn = new HomesteadConnection(options.homestead_http_name,
-                                                                http_resolver,
-                                                                load_monitor,
-                                                                hs_comm_monitor);
+
+  HttpClient* http_client = new HttpClient(false,
+                                           http_resolver,
+                                           nullptr,
+                                           load_monitor,
+                                           SASEvent::HttpLogLevel::PROTOCOL,
+                                           hs_comm_monitor);
+
+  HttpConnection* http_connection = new HttpConnection(options.homestead_http_name,
+                                                       http_client);
+
+  HomesteadConnection* homestead_conn = new HomesteadConnection(http_connection);
 
   // Default to a 30s blacklist/graylist duration and port 9160
   CassandraResolver* cass_resolver = new CassandraResolver(dns_resolver,
@@ -763,6 +771,8 @@ int main(int argc, char**argv)
   hc->stop_thread();
 
   delete homestead_conn; homestead_conn = NULL;
+  delete http_connection; http_connection = NULL;
+  delete http_client; http_client = NULL;
   delete call_list_store; call_list_store = NULL;
   delete http_resolver; http_resolver = NULL;
   delete cass_resolver; cass_resolver = NULL;
