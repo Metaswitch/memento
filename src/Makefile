@@ -9,6 +9,7 @@ COMMON_SOURCES := localstore.cpp \
                   signalhandler.cpp \
                   logger.cpp \
                   saslogger.cpp \
+                  sasservice.cpp \
                   statistic.cpp \
                   utils.cpp \
                   load_monitor.cpp \
@@ -97,6 +98,8 @@ COMMON_LDFLAGS += -lzmq \
                   -lpthread \
                   -lcares \
                   -lboost_regex \
+                  -lboost_thread \
+                  -lboost_system \
                   -lthrift \
                   -lcassandra \
                   `net-snmp-config --netsnmp-agent-libs`

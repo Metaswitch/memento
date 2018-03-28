@@ -19,14 +19,13 @@
 #include "homesteadconnection.h"
 #include "log.h"
 #include "logger.h"
-#include "saslogger.h"
 #include "handlers.h"
-#include "sas.h"
 #include "utils.h"
 #include "load_monitor.h"
 #include "memento_alarmdefinition.h"
 #include "communicationmonitor.h"
 #include "authstore.h"
+#include "sasservice.h"
 #include "mementosaslogger.h"
 #include "memento_lvc.h"
 #include "exception_handler.h"
@@ -49,7 +48,6 @@ struct options
   std::string homestead_http_name;
   int digest_timeout;
   std::string home_domain;
-  std::string sas_server;
   std::string sas_system_name;
   bool access_log_enabled;
   std::string access_log_directory;
@@ -148,10 +146,9 @@ void usage(void)
        "                            Set HTTP address to contact Homestead\n"
        " --digest-timeout N         Time a digest is stored in memcached (in seconds)\n"
        " --home-domain <domain>     The home domain of the deployment\n"
-       " --sas <host>,<system name>\n"
-       "                            Use specified host as Service Assurance Server and specified\n"
-       "                            system name to identify this system to SAS. If this option isn't\n"
-       "                            specified, SAS is disabled\n"
+       " --sas <system name>\n"
+       "                            Use specified system name to identify this system to SAS.\n"
+       "                            If this option isn't specified, SAS is disabled\n"
        " --access-log <directory>\n"
        "                            Generate access logs in specified directory\n"
        " --astaire <address>\n"
@@ -277,22 +274,8 @@ int init_options(int argc, char**argv, struct options& options)
 
     case SAS_CONFIG:
     {
-      std::vector<std::string> sas_options;
-      Utils::split_string(std::string(optarg), ',', sas_options, 0, false);
-
-      if ((sas_options.size() == 2) &&
-          !sas_options[0].empty() &&
-          !sas_options[1].empty())
-      {
-        options.sas_server = sas_options[0];
-        options.sas_system_name = sas_options[1];
-        TRC_INFO("SAS set to %s", options.sas_server.c_str());
-        TRC_INFO("System name is set to %s", options.sas_system_name.c_str());
-      }
-      else
-      {
-        TRC_WARNING("Invalid --sas option: %s", optarg);
-      }
+      options.sas_system_name = std::string(optarg);
+      TRC_INFO("SAS system name is set to %s", options.sas_system_name.c_str());
     }
     break;
 
@@ -488,7 +471,6 @@ int main(int argc, char**argv)
   options.homestead_http_name = "homestead-http-name.unknown";
   options.digest_timeout = 300;
   options.home_domain = "home.domain";
-  options.sas_server = "0.0.0.0";
   options.sas_system_name = "";
   options.access_log_enabled = false;
   options.log_to_file = false;
@@ -566,17 +548,8 @@ int main(int argc, char**argv)
                                            false,
                                            hc);
 
-  if (options.sas_server == "0.0.0.0")
-  {
-    TRC_WARNING("SAS server option was invalid or not configured - SAS is disabled");
-  }
-
-  SAS::init(options.sas_system_name,
-            "memento",
-            SASEvent::CURRENT_RESOURCE_BUNDLE,
-            options.sas_server,
-            sas_write,
-            create_connection_in_management_namespace);
+  // Initialise the SasService, to read the SAS config to pass into SAS::Init
+  SasService* sas_service = new SasService(options.sas_system_name, "memento", false);
 
   // Ensure our random numbers are unpredictable.
   unsigned int seed;
@@ -791,7 +764,7 @@ int main(int argc, char**argv)
   delete cass_comm_monitor; cass_comm_monitor = NULL;
   delete alarm_manager; alarm_manager = NULL;
 
-  SAS::term();
+  delete sas_service; sas_service = NULL;
 
   signal(SIGTERM, SIG_DFL);
   sem_destroy(&term_sem);

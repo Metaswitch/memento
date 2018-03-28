@@ -56,7 +56,6 @@ log_directory=/var/log/$NAME
 get_settings()
 {
   # Set up defaults and then pull in the settings for this node.
-  sas_server=0.0.0.0
   local num_cpus=$(grep processor /proc/cpuinfo | wc -l)
   num_http_threads=$num_cpus
   num_http_worker_threads=$(( $num_cpus * 50 ))
@@ -133,7 +132,7 @@ do_start()
                      $exception_max_ttl_arg
                      --log-file $log_directory
                      --log-level $log_level
-                     --sas $sas_server,$NAME@$public_hostname
+                     --sas $NAME@$public_hostname
                      $api_key_arg"
         [ "$http_blacklist_duration" = "" ]       || DAEMON_ARGS="$DAEMON_ARGS --http-blacklist-duration=$http_blacklist_duration"
         [ "$astaire_blacklist_duration" = "" ]    || DAEMON_ARGS="$DAEMON_ARGS --astaire-blacklist-duration=$astaire_blacklist_duration"
