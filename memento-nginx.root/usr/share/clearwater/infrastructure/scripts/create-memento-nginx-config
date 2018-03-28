@@ -27,7 +27,7 @@ then
   enabled_file=/etc/nginx/sites-enabled/memento
   cat > $temp_file << EOF
 upstream http_backend {
-        server localhost:11888;
+        server ${local_ip}:11888;
 
         # The minimum number of idle connections to keep alive to the backend.
         keepalive 16;
